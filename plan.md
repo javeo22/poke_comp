@@ -17,11 +17,11 @@
 - [x] CI workflow (ruff, pyright, ESLint, tsc)
 
 ### Remaining
-- [ ] Run migration against Supabase instance
-- [ ] Run PokeAPI import script, verify data
-- [ ] Run Champions seed script with real roster data
-- [ ] Test full stack: API -> frontend with real data
-- [ ] Environment variables configured for both apps
+- [x] Run migration against Supabase instance (local via supabase start, 2026-04-10)
+- [x] Run PokeAPI import script, verify data (1025 Pokemon, 919 moves, 307 abilities, 15 regional forms)
+- [x] Run Champions seed script with real roster data (186 roster, 59 megas, 117 items, 3 meta snapshots)
+- [x] Test full stack: API -> frontend with real data
+- [x] Environment variables configured for both apps (local Supabase keys)
 
 ---
 
@@ -29,19 +29,19 @@
 **Goal:** Input and manage real teams.
 
 ### F1: Personal Roster Manager
-- [ ] user_pokemon CRUD endpoints (POST, PUT, DELETE)
-- [ ] Roster management UI: add/edit/delete owned Pokemon
-- [ ] Filter by type, role, tier, build status
-- [ ] Build status tracking (built/training/wishlist)
-- [ ] VP spent tracking per Pokemon
-- [ ] Supabase auth integration
+- [x] user_pokemon CRUD endpoints (POST, GET list, GET single, PUT, DELETE)
+- [x] Roster management UI: add/edit/delete owned Pokemon
+- [x] Filter by build status (built/training/wishlist)
+- [x] Build status tracking (built/training/wishlist)
+- [x] VP spent tracking per Pokemon
+- [ ] Supabase auth integration (deferred — using hardcoded dev user ID)
 
 ### F2: Team Builder
-- [ ] Teams CRUD endpoints
-- [ ] Drag-and-drop 6 Pokemon into team
-- [ ] Mega validation (one per team)
-- [ ] Type coverage analysis (offensive + defensive)
-- [ ] Save/clone teams with notes and tags
+- [x] Teams CRUD endpoints (GET list, GET single, POST, PUT, DELETE)
+- [x] Pick 6 Pokemon from roster into team slots
+- [x] Mega validation (one per team, must be team member)
+- [x] Type coverage analysis (offensive + defensive, 18-type grid)
+- [x] Save/clone teams with notes and archetype tags
 
 ---
 

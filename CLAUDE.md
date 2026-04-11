@@ -44,6 +44,12 @@ See `design/palette.md` for full spec. Key points:
 - Champions data overwrites PokeAPI baseline -- no dual columns for base vs Champions values
 - Items are seeded manually via Champions seed script (not imported from PokeAPI)
 
+## Post-Implementation Checklist
+After completing any implementation work, always update:
+1. `todo.md` — check off completed items, add new ones if needed
+2. `plan.md` — mark completed tasks
+3. **Notion project page** — https://www.notion.so/Pokemon-Champions-Companion-33f1ec88fdeb81dd8994d30a7be3c5b5
+
 ## Working With Me
 - Ask clarifying questions before major decisions
 - Present 2-3 options with trade-offs when multiple valid approaches exist

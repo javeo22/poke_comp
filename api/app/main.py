@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import abilities, items, moves, pokemon
+from app.routers import abilities, items, moves, pokemon, teams, user_pokemon
 
 app = FastAPI(title="Pokemon Champions Companion API", version="0.1.0")
 
@@ -18,6 +18,8 @@ app.include_router(pokemon.router)
 app.include_router(moves.router)
 app.include_router(items.router)
 app.include_router(abilities.router)
+app.include_router(user_pokemon.router)
+app.include_router(teams.router)
 
 
 @app.get("/health")
