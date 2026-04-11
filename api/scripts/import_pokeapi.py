@@ -22,6 +22,26 @@ MAX_CONCURRENT = 20
 UPSERT_BATCH_SIZE = 50
 MAX_POKEMON_ID = 1025
 
+# Regional forms available in Champions (PokeAPI slugs)
+# These have IDs > 10000 in PokeAPI and need separate import.
+REGIONAL_FORM_SLUGS = [
+    "raichu-alola",
+    "ninetales-alola",
+    "arcanine-hisui",
+    "slowbro-galar",
+    "tauros-paldea-combat-breed",
+    "tauros-paldea-blaze-breed",
+    "tauros-paldea-aqua-breed",
+    "typhlosion-hisui",
+    "slowking-galar",
+    "samurott-hisui",
+    "zoroark-hisui",
+    "stunfisk-galar",
+    "goodra-hisui",
+    "avalugg-hisui",
+    "decidueye-hisui",
+]
+
 # National dex ID ranges per generation
 GEN_RANGES = [
     (1, 151, 1),
@@ -225,6 +245,29 @@ async def import_abilities(
     print(f"  Upserted {len(rows)} abilities")
 
 
+async def import_regional_forms(
+    client: httpx.AsyncClient, supabase: Client, semaphore: asyncio.Semaphore
+) -> None:
+    """Import regional/alternate forms from PokeAPI (Champions roster)."""
+    print(f"Importing {len(REGIONAL_FORM_SLUGS)} regional forms...")
+    start = time.time()
+
+    urls = [f"{POKEAPI_BASE}/pokemon/{slug}" for slug in REGIONAL_FORM_SLUGS]
+    tasks = [fetch_with_retry(client, url, semaphore) for url in urls]
+    results = await asyncio.gather(*tasks)
+
+    rows = []
+    for data in results:
+        if data:
+            parsed = parse_pokemon(data)
+            # Regional form names: "Raichu Alola" -> keep as-is from format_name
+            rows.append(parsed)
+
+    print(f"  Fetched {len(rows)} regional forms in {time.time() - start:.1f}s")
+    upsert_batch(supabase, "pokemon", rows)
+    print(f"  Upserted {len(rows)} regional forms")
+
+
 async def main() -> None:
     db = create_client(settings.supabase_url, settings.supabase_service_key)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
@@ -233,6 +276,7 @@ async def main() -> None:
         await import_pokemon(client, db, semaphore)
         await import_moves(client, db, semaphore)
         await import_abilities(client, db, semaphore)
+        await import_regional_forms(client, db, semaphore)
 
     print("\nImport complete.")
 
