@@ -35,10 +35,21 @@ CACHE_TTL_DAYS = 7
 # ═══════════════════════════════════════════════════════════════════
 
 PRIORITY_MOVES = {
-    "Fake Out", "Sucker Punch", "Extreme Speed", "Aqua Jet",
-    "Bullet Punch", "Ice Shard", "Mach Punch", "Quick Attack",
-    "Shadow Sneak", "Accelerock", "Grassy Glide", "Water Shuriken",
-    "First Impression", "Jet Punch", "Vacuum Wave",
+    "Fake Out",
+    "Sucker Punch",
+    "Extreme Speed",
+    "Aqua Jet",
+    "Bullet Punch",
+    "Ice Shard",
+    "Mach Punch",
+    "Quick Attack",
+    "Shadow Sneak",
+    "Accelerock",
+    "Grassy Glide",
+    "Water Shuriken",
+    "First Impression",
+    "Jet Punch",
+    "Vacuum Wave",
 }
 
 SPEED_DOUBLE_ABILITIES: dict[str, str] = {
@@ -50,8 +61,12 @@ SPEED_DOUBLE_ABILITIES: dict[str, str] = {
 }
 
 SP_LABEL: dict[str, str] = {
-    "hp": "HP", "attack": "Atk", "defense": "Def",
-    "sp_attack": "SpA", "sp_defense": "SpD", "speed": "Spd",
+    "hp": "HP",
+    "attack": "Atk",
+    "defense": "Def",
+    "sp_attack": "SpA",
+    "sp_defense": "SpD",
+    "speed": "Spd",
 }
 
 
@@ -89,10 +104,7 @@ def _fetch_pokemon_data(pokemon_ids: list[int]) -> dict[int, dict]:
 def _fetch_user_builds(pokemon_ids: list[int]) -> dict[int, dict]:
     result = (
         supabase.table("user_pokemon")
-        .select(
-            "pokemon_id, ability, moves, item_id, "
-            "stat_points, nature, notes"
-        )
+        .select("pokemon_id, ability, moves, item_id, stat_points, nature, notes")
         .eq("user_id", USER_ID)
         .in_("pokemon_id", pokemon_ids)
         .execute()
@@ -104,12 +116,7 @@ def _fetch_user_builds(pokemon_ids: list[int]) -> dict[int, dict]:
 def _fetch_item_names(item_ids: list[int]) -> dict[int, str]:
     if not item_ids:
         return {}
-    result = (
-        supabase.table("items")
-        .select("id, name")
-        .in_("id", item_ids)
-        .execute()
-    )
+    result = supabase.table("items").select("id, name").in_("id", item_ids).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     return {r["id"]: r["name"] for r in rows}
 
@@ -118,12 +125,7 @@ def _fetch_move_types(move_names: list[str]) -> dict[str, str]:
     """Fetch move types from the moves table for STAB classification."""
     if not move_names:
         return {}
-    result = (
-        supabase.table("moves")
-        .select("name, type")
-        .in_("name", move_names)
-        .execute()
-    )
+    result = supabase.table("moves").select("name, type").in_("name", move_names).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     return {r["name"]: r["type"] for r in rows}
 
@@ -148,10 +150,7 @@ def _fetch_meta_context() -> tuple[list[dict], list[dict]]:
     # Top usage data
     usage_result = (
         supabase.table("pokemon_usage")
-        .select(
-            "pokemon_name, usage_percent, moves, items, "
-            "abilities, teammates"
-        )
+        .select("pokemon_name, usage_percent, moves, items, abilities, teammates")
         .order("usage_percent", desc=True)
         .limit(15)
         .execute()
@@ -219,21 +218,22 @@ def _build_roster(
         item_id = build.get("item_id")
         item_name = item_names.get(item_id) if item_id else None
 
-        is_mega = (
-            "mega" in poke["name"].lower()
-            and poke["name"].lower() != "meganium"
-        ) or (mega_pokemon_id is not None and pid == mega_pokemon_id)
+        is_mega = ("mega" in poke["name"].lower() and poke["name"].lower() != "meganium") or (
+            mega_pokemon_id is not None and pid == mega_pokemon_id
+        )
 
-        roster.append(RosterEntry(
-            name=poke["name"],
-            types=types,
-            item=item_name,
-            ability=build.get("ability"),
-            nature=build.get("nature"),
-            stat_points=_format_stat_points(build.get("stat_points")),
-            moves=moves,
-            is_mega=is_mega,
-        ))
+        roster.append(
+            RosterEntry(
+                name=poke["name"],
+                types=types,
+                item=item_name,
+                ability=build.get("ability"),
+                nature=build.get("nature"),
+                stat_points=_format_stat_points(build.get("stat_points")),
+                moves=moves,
+                is_mega=is_mega,
+            )
+        )
     return roster
 
 
@@ -257,11 +257,13 @@ def _build_speed_tiers(
 
         # Add conditional speed entry for doubling abilities
         if ability in SPEED_DOUBLE_ABILITIES:
-            tiers.append(SpeedTier(
-                pokemon=poke["name"],
-                speed=base_speed * 2,
-                note=f"x{ability} ({SPEED_DOUBLE_ABILITIES[ability]})",
-            ))
+            tiers.append(
+                SpeedTier(
+                    pokemon=poke["name"],
+                    speed=base_speed * 2,
+                    note=f"x{ability} ({SPEED_DOUBLE_ABILITIES[ability]})",
+                )
+            )
 
     tiers.sort(key=lambda t: t.speed, reverse=True)
     return tiers
@@ -273,9 +275,7 @@ def _build_speed_tiers(
 
 
 def _make_cache_key(roster: list[RosterEntry]) -> str:
-    key_data = json.dumps(
-        [r.model_dump(mode="json") for r in roster], sort_keys=True
-    )
+    key_data = json.dumps([r.model_dump(mode="json") for r in roster], sort_keys=True)
     return "cheatsheet:" + hashlib.sha256(key_data.encode()).hexdigest()
 
 
@@ -293,9 +293,7 @@ def _check_cache(request_hash: str) -> dict | None:
     row: dict = result.data  # type: ignore[assignment]
     expires = row.get("expires_at")
     if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        supabase.table("ai_analyses").delete().eq(
-            "request_hash", request_hash
-        ).execute()
+        supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
         return None
 
     response: dict = row["response_json"]
@@ -309,10 +307,7 @@ def _save_cache(request_hash: str, response: CheatsheetResponse) -> None:
             "opponent_team": [],
             "my_team": {"type": "cheatsheet"},
             "response_json": response.model_dump(mode="json"),
-            "expires_at": (
-                datetime.now(timezone.utc)
-                + timedelta(days=CACHE_TTL_DAYS)
-            ).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=CACHE_TTL_DAYS)).isoformat(),
         },
         on_conflict="request_hash",
     ).execute()
@@ -334,9 +329,7 @@ def _build_prompt(
     # ── Team section ──
     team_lines = []
     for r in roster:
-        move_str = ", ".join(
-            f"{m.name} [{m.category}]" for m in r.moves
-        )
+        move_str = ", ".join(f"{m.name} [{m.category}]" for m in r.moves)
         mega = " [MEGA]" if r.is_mega else ""
         team_lines.append(
             f"- {r.name}{mega} ({'/'.join(r.types)})\n"
@@ -348,8 +341,7 @@ def _build_prompt(
 
     # ── Speed section ──
     speed_lines = [
-        f"- {t.pokemon}: {t.speed}{f'  ({t.note})' if t.note else ''}"
-        for t in speed_tiers
+        f"- {t.pokemon}: {t.speed}{f'  ({t.note})' if t.note else ''}" for t in speed_tiers
     ]
 
     # ── Meta tier list ──
@@ -360,9 +352,7 @@ def _build_prompt(
         s_tier = ", ".join(tiers.get("S", []))
         a_plus = ", ".join(tiers.get("A+", []))
         if s_tier or a_plus:
-            tier_lines.append(
-                f"  {fmt}: S=[{s_tier}] A+=[{a_plus}]"
-            )
+            tier_lines.append(f"  {fmt}: S=[{s_tier}] A+=[{a_plus}]")
 
     # ── Usage data ──
     usage_lines = []
@@ -378,9 +368,7 @@ def _build_prompt(
         top_mates = ", ".join(t["name"] for t in teammates_list[:3])
 
         usage_lines.append(
-            f"- {name} ({pct}%): "
-            f"Moves=[{top_moves}] Items=[{top_items}] "
-            f"Teammates=[{top_mates}]"
+            f"- {name} ({pct}%): Moves=[{top_moves}] Items=[{top_items}] Teammates=[{top_mates}]"
         )
 
     return f"""\
@@ -464,9 +452,7 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 def generate_cheatsheet(team_id: str):
     """Generate an AI-powered pre-match cheat sheet for a team."""
     if not settings.anthropic_api_key:
-        raise HTTPException(
-            status_code=400, detail="ANTHROPIC_API_KEY is not configured"
-        )
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
     # 1. Fetch team
     team = _fetch_team(team_id)
@@ -479,10 +465,7 @@ def generate_cheatsheet(team_id: str):
     user_builds = _fetch_user_builds(pokemon_ids)
 
     # 3. Resolve item names
-    item_ids = [
-        b["item_id"] for b in user_builds.values()
-        if b.get("item_id")
-    ]
+    item_ids = [b["item_id"] for b in user_builds.values() if b.get("item_id")]
     item_names = _fetch_item_names(item_ids)
 
     # 4. Resolve move types for STAB classification
@@ -493,8 +476,12 @@ def generate_cheatsheet(team_id: str):
 
     # 5. Pre-calculate roster + speed tiers
     roster = _build_roster(
-        pokemon_ids, pokemon_data, user_builds,
-        item_names, move_types, mega_id_int,
+        pokemon_ids,
+        pokemon_data,
+        user_builds,
+        item_names,
+        move_types,
+        mega_id_int,
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 
@@ -504,9 +491,7 @@ def generate_cheatsheet(team_id: str):
     if cached:
         # Re-inject live roster/speed data (may have changed)
         cached["roster"] = [r.model_dump(mode="json") for r in roster]
-        cached["speed_tiers"] = [
-            s.model_dump(mode="json") for s in speed_tiers
-        ]
+        cached["speed_tiers"] = [s.model_dump(mode="json") for s in speed_tiers]
         cached["cached"] = True
         cached["estimated_cost_usd"] = 0.0
         return CheatsheetResponse.model_validate(cached)
@@ -516,8 +501,12 @@ def generate_cheatsheet(team_id: str):
 
     # 8. Build prompt and call Claude
     prompt = _build_prompt(
-        team["name"], team["format"],
-        roster, speed_tiers, tier_data, usage_data,
+        team["name"],
+        team["format"],
+        roster,
+        speed_tiers,
+        tier_data,
+        usage_data,
     )
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
@@ -529,9 +518,7 @@ def generate_cheatsheet(team_id: str):
 
     block = message.content[0]
     if block.type != "text":
-        raise HTTPException(
-            status_code=500, detail="Unexpected Claude response type"
-        )
+        raise HTTPException(status_code=500, detail="Unexpected Claude response type")
 
     text = block.text.strip()
     if text.startswith("```"):
@@ -555,19 +542,10 @@ def generate_cheatsheet(team_id: str):
         format=team["format"],
         roster=roster,
         speed_tiers=speed_tiers,
-        game_plan=[
-            GamePlanStep.model_validate(s) for s in raw.get("game_plan", [])
-        ],
-        key_rules=[
-            KeyRule.model_validate(r) for r in raw.get("key_rules", [])
-        ],
-        lead_matchups=[
-            LeadMatchup.model_validate(m)
-            for m in raw.get("lead_matchups", [])
-        ],
-        weaknesses=[
-            Weakness.model_validate(w) for w in raw.get("weaknesses", [])
-        ],
+        game_plan=[GamePlanStep.model_validate(s) for s in raw.get("game_plan", [])],
+        key_rules=[KeyRule.model_validate(r) for r in raw.get("key_rules", [])],
+        lead_matchups=[LeadMatchup.model_validate(m) for m in raw.get("lead_matchups", [])],
+        weaknesses=[Weakness.model_validate(w) for w in raw.get("weaknesses", [])],
         cached=False,
         # ~4K input + ~2K output tokens at Sonnet pricing
         estimated_cost_usd=0.04,

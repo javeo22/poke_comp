@@ -11,11 +11,14 @@ class OpponentPokemon(BaseModel):
 class MatchupCreate(BaseModel):
     my_team_id: str = Field(description="UUID of saved team used")
     opponent_team_data: list[OpponentPokemon] = Field(
-        min_length=1, max_length=6,
+        min_length=1,
+        max_length=6,
         description="Opponent's team (1-6 Pokemon)",
     )
     lead_pair: list[str] | None = Field(
-        None, min_length=2, max_length=2,
+        None,
+        min_length=2,
+        max_length=2,
         description="My lead pair Pokemon names",
     )
     outcome: str = Field(pattern=r"^(win|loss)$")

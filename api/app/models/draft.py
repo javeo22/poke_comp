@@ -5,7 +5,8 @@ from pydantic import BaseModel, Field
 
 class DraftRequest(BaseModel):
     opponent_team: list[str] = Field(
-        min_length=1, max_length=6,
+        min_length=1,
+        max_length=6,
         description="Opponent's 6 Pokemon names (Title Case)",
     )
     my_team_id: str = Field(description="UUID of user's saved team")
@@ -36,11 +37,13 @@ class DamageCalc(BaseModel):
 class DraftAnalysis(BaseModel):
     summary: str = Field(description="1-2 sentence overview of the matchup")
     bring_four: list[BringRecommendation] = Field(
-        min_length=4, max_length=4,
+        min_length=4,
+        max_length=4,
         description="Recommended 4 Pokemon to bring",
     )
     lead_pair: list[str] = Field(
-        min_length=2, max_length=2,
+        min_length=2,
+        max_length=2,
         description="Recommended lead pair",
     )
     threats: list[ThreatInfo] = Field(description="Key threats to watch for")

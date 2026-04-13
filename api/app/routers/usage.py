@@ -18,11 +18,7 @@ def list_usage(
     if format:
         query = query.eq("format", format)
 
-    result = (
-        query.order("usage_percent", desc=True)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
+    result = query.order("usage_percent", desc=True).range(offset, offset + limit - 1).execute()
     return PokemonUsageList(
         data=[PokemonUsageResponse.model_validate(row) for row in result.data],
         count=result.count or len(result.data),

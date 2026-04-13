@@ -26,6 +26,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/seed_champions.py" = ["E501"]
+
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"

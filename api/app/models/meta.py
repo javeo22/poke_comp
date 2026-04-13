@@ -27,6 +27,7 @@ class MetaSnapshotList(BaseModel):
 
 class TierEntry(BaseModel):
     """Convenience model for a single Pokemon's tier placement."""
+
     pokemon_name: str
     tier: str
     format: str

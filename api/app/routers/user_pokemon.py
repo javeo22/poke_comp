@@ -24,9 +24,7 @@ def list_user_pokemon(
     offset: int = Query(0, ge=0),
 ):
     query = (
-        supabase.table("user_pokemon")
-        .select("*", count=CountMethod.exact)
-        .eq("user_id", USER_ID)
+        supabase.table("user_pokemon").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
     )
 
     if build_status:

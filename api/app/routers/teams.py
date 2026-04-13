@@ -18,11 +18,7 @@ def list_teams(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    query = (
-        supabase.table("teams")
-        .select("*", count=CountMethod.exact)
-        .eq("user_id", USER_ID)
-    )
+    query = supabase.table("teams").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
 
     if format:
         query = query.eq("format", format)
@@ -101,13 +97,7 @@ def update_team(team_id: str, body: TeamUpdate):
             mega = body.mega_pokemon_id
         _validate_mega(list(ids), mega)
 
-    result = (
-        supabase.table("teams")
-        .update(data)
-        .eq("id", team_id)
-        .eq("user_id", USER_ID)
-        .execute()
-    )
+    result = supabase.table("teams").update(data).eq("id", team_id).eq("user_id", USER_ID).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")
     return TeamResponse.model_validate(result.data[0])
@@ -115,12 +105,6 @@ def update_team(team_id: str, body: TeamUpdate):
 
 @router.delete("/{team_id}", status_code=204)
 def delete_team(team_id: str):
-    result = (
-        supabase.table("teams")
-        .delete()
-        .eq("id", team_id)
-        .eq("user_id", USER_ID)
-        .execute()
-    )
+    result = supabase.table("teams").delete().eq("id", team_id).eq("user_id", USER_ID).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")

@@ -26,11 +26,7 @@ def list_snapshots(
     if format:
         query = query.eq("format", format)
 
-    result = (
-        query.order("snapshot_date", desc=True)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
+    result = query.order("snapshot_date", desc=True).range(offset, offset + limit - 1).execute()
     return MetaSnapshotList(
         data=[MetaSnapshotResponse.model_validate(row) for row in result.data],
         count=result.count or len(result.data),
@@ -60,13 +56,7 @@ def get_latest_snapshots():
 
 @router.get("/{snapshot_id}", response_model=MetaSnapshotResponse)
 def get_snapshot(snapshot_id: int):
-    result = (
-        supabase.table("meta_snapshots")
-        .select("*")
-        .eq("id", snapshot_id)
-        .single()
-        .execute()
-    )
+    result = supabase.table("meta_snapshots").select("*").eq("id", snapshot_id).single().execute()
     return MetaSnapshotResponse.model_validate(result.data)
 
 
@@ -82,12 +72,7 @@ def create_snapshot(body: MetaSnapshotCreate):
 
 @router.delete("/{snapshot_id}", status_code=204)
 def delete_snapshot(snapshot_id: int):
-    result = (
-        supabase.table("meta_snapshots")
-        .delete()
-        .eq("id", snapshot_id)
-        .execute()
-    )
+    result = supabase.table("meta_snapshots").delete().eq("id", snapshot_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Meta snapshot not found")
 
@@ -103,10 +88,7 @@ GAME8_URLS: dict[str, str] = {
 VALID_TIERS = {"S", "A+", "A", "B", "C"}
 
 SCRAPE_HEADERS = {
-    "User-Agent": (
-        "PokemonChampionsCompanion/0.1 "
-        "(personal-tool; +github.com/javeo22/poke_comp)"
-    ),
+    "User-Agent": ("PokemonChampionsCompanion/0.1 (personal-tool; +github.com/javeo22/poke_comp)"),
     "Accept": "text/html",
 }
 
@@ -128,9 +110,7 @@ def _fetch_page(url: str) -> str:
     soup = BeautifulSoup(resp.text, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()
-    article = soup.find("article") or soup.find(
-        "div", class_="archive-style-wrapper"
-    )
+    article = soup.find("article") or soup.find("div", class_="archive-style-wrapper")
     if article:
         return article.get_text(separator="\n", strip=True)[:8000]
     return soup.get_text(separator="\n", strip=True)[:8000]
@@ -168,9 +148,7 @@ def _parse_with_claude(
     return {k: v for k, v in tier_data.items() if k in VALID_TIERS}
 
 
-def _upsert_snapshot(
-    format_name: str, tier_data: dict[str, list[str]], source_url: str
-) -> None:
+def _upsert_snapshot(format_name: str, tier_data: dict[str, list[str]], source_url: str) -> None:
     supabase.table("meta_snapshots").upsert(
         {
             "snapshot_date": date.today().isoformat(),
@@ -203,25 +181,32 @@ def scrape_game8():
             _upsert_snapshot(format_name, tier_data, url)
             total = sum(len(v) for v in tier_data.values())
             api_calls += 1
-            results.append(ScrapeResult(
-                format=format_name, pokemon_count=total, status="ok"
-            ))
+            results.append(ScrapeResult(format=format_name, pokemon_count=total, status="ok"))
         except httpx.HTTPStatusError as e:
-            results.append(ScrapeResult(
-                format=format_name, pokemon_count=0,
-                status=f"HTTP {e.response.status_code}",
-            ))
+            results.append(
+                ScrapeResult(
+                    format=format_name,
+                    pokemon_count=0,
+                    status=f"HTTP {e.response.status_code}",
+                )
+            )
         except (json.JSONDecodeError, ValueError) as e:
             api_calls += 1
-            results.append(ScrapeResult(
-                format=format_name, pokemon_count=0,
-                status=f"Parse error: {e}",
-            ))
+            results.append(
+                ScrapeResult(
+                    format=format_name,
+                    pokemon_count=0,
+                    status=f"Parse error: {e}",
+                )
+            )
         except anthropic.APIError as e:
-            results.append(ScrapeResult(
-                format=format_name, pokemon_count=0,
-                status=f"Claude API error: {e}",
-            ))
+            results.append(
+                ScrapeResult(
+                    format=format_name,
+                    pokemon_count=0,
+                    status=f"Claude API error: {e}",
+                )
+            )
 
     # ~2200 input + ~400 output tokens per call at Sonnet pricing
     estimated_cost = api_calls * 0.013

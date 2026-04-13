@@ -30,9 +30,7 @@ def list_matchups(
     offset: int = Query(0, ge=0),
 ):
     query = (
-        supabase.table("matchup_log")
-        .select("*", count=CountMethod.exact)
-        .eq("user_id", USER_ID)
+        supabase.table("matchup_log").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
     )
 
     if outcome:
@@ -40,11 +38,7 @@ def list_matchups(
     if my_team_id:
         query = query.eq("my_team_id", my_team_id)
 
-    result = (
-        query.order("played_at", desc=True)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
+    result = query.order("played_at", desc=True).range(offset, offset + limit - 1).execute()
 
     rows: list[dict] = result.data  # type: ignore[assignment]
 
@@ -52,12 +46,10 @@ def list_matchups(
     if opponent_pokemon:
         search = opponent_pokemon.lower()
         rows = [
-            r for r in rows
+            r
+            for r in rows
             if r.get("opponent_team_data")
-            and any(
-                search in p.get("name", "").lower()
-                for p in r["opponent_team_data"]
-            )
+            and any(search in p.get("name", "").lower() for p in r["opponent_team_data"])
         ]
 
     return MatchupList(
@@ -78,12 +70,8 @@ def get_stats():
     all_rows: list[dict] = result.data  # type: ignore[assignment]
 
     if not all_rows:
-        empty = WinRateStat(
-            label="Overall", wins=0, losses=0, total=0, win_rate=0.0
-        )
-        return MatchupStats(
-            overall=empty, by_team=[], by_opponent_pokemon=[]
-        )
+        empty = WinRateStat(label="Overall", wins=0, losses=0, total=0, win_rate=0.0)
+        return MatchupStats(overall=empty, by_team=[], by_opponent_pokemon=[])
 
     # Overall
     wins = sum(1 for r in all_rows if r["outcome"] == "win")
@@ -98,9 +86,7 @@ def get_stats():
     )
 
     # By team
-    team_stats: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"wins": 0, "losses": 0}
-    )
+    team_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "losses": 0})
     for r in all_rows:
         tid = r.get("my_team_id") or "Unknown"
         if r["outcome"] == "win":
@@ -112,12 +98,7 @@ def get_stats():
     team_ids = [tid for tid in team_stats if tid != "Unknown"]
     team_names: dict[str, str] = {}
     if team_ids:
-        teams_result = (
-            supabase.table("teams")
-            .select("id, name")
-            .in_("id", team_ids)
-            .execute()
-        )
+        teams_result = supabase.table("teams").select("id, name").in_("id", team_ids).execute()
         team_rows: list[dict] = teams_result.data  # type: ignore[assignment]
         team_names = {t["id"]: t["name"] for t in team_rows}
 
@@ -126,17 +107,19 @@ def get_stats():
         wins = counts["wins"]
         losses = counts["losses"]
         total = wins + losses
-        by_team.append(WinRateStat(
-            label=team_names.get(tid, tid),
-            wins=wins, losses=losses, total=total,
-            win_rate=round(wins / total * 100, 1) if total else 0.0,
-        ))
+        by_team.append(
+            WinRateStat(
+                label=team_names.get(tid, tid),
+                wins=wins,
+                losses=losses,
+                total=total,
+                win_rate=round(wins / total * 100, 1) if total else 0.0,
+            )
+        )
     by_team.sort(key=lambda s: s.total, reverse=True)
 
     # By opponent Pokemon
-    opp_stats: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"wins": 0, "losses": 0}
-    )
+    opp_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "losses": 0})
     for r in all_rows:
         opp_team = r.get("opponent_team_data") or []
         for p in opp_team:
@@ -151,10 +134,15 @@ def get_stats():
         wins = counts["wins"]
         losses = counts["losses"]
         total = wins + losses
-        by_opp.append(WinRateStat(
-            label=name, wins=wins, losses=losses, total=total,
-            win_rate=round(wins / total * 100, 1) if total else 0.0,
-        ))
+        by_opp.append(
+            WinRateStat(
+                label=name,
+                wins=wins,
+                losses=losses,
+                total=total,
+                win_rate=round(wins / total * 100, 1) if total else 0.0,
+            )
+        )
     by_opp.sort(key=lambda s: s.total, reverse=True)
 
     return MatchupStats(
@@ -211,11 +199,7 @@ def update_matchup(matchup_id: str, body: MatchupUpdate):
 @router.delete("/{matchup_id}", status_code=204)
 def delete_matchup(matchup_id: str):
     result = (
-        supabase.table("matchup_log")
-        .delete()
-        .eq("id", matchup_id)
-        .eq("user_id", USER_ID)
-        .execute()
+        supabase.table("matchup_log").delete().eq("id", matchup_id).eq("user_id", USER_ID).execute()
     )
     rows: list[dict] = result.data  # type: ignore[assignment]
     if not rows:

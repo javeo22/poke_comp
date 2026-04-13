@@ -34,10 +34,7 @@ CHAMPIONS_URL = f"{BASE_URL}/pokemonchampions"
 POKEDEX_URL = f"{BASE_URL}/pokedex-champions"
 
 HEADERS = {
-    "User-Agent": (
-        "PokemonChampionsCompanion/0.1 "
-        "(personal-tool; +github.com/javeo22/poke_comp)"
-    ),
+    "User-Agent": ("PokemonChampionsCompanion/0.1 (personal-tool; +github.com/javeo22/poke_comp)"),
     "Accept": "text/html",
 }
 
@@ -207,13 +204,15 @@ async def scrape_pokemon_roster(client: httpx.AsyncClient) -> list[PokemonEntry]
 
         if slug not in seen_slugs:
             seen_slugs.add(slug)
-            entries.append(PokemonEntry(
-                dex_number=dex_number,
-                name=title_case_name(name),
-                slug=slug,
-                types=types,
-                is_mega=False,
-            ))
+            entries.append(
+                PokemonEntry(
+                    dex_number=dex_number,
+                    name=title_case_name(name),
+                    slug=slug,
+                    types=types,
+                    is_mega=False,
+                )
+            )
 
     print(f"  Found {len(entries)} unique base-form Pokemon")
     return entries
@@ -274,7 +273,8 @@ async def scrape_pokemon_detail(
     movepool: list[str] = []
     for table in soup.find_all("table"):
         attack_links = [
-            link for link in table.find_all("a")
+            link
+            for link in table.find_all("a")
             if "/attackdex-champions/" in str(link.get("href", ""))
             and link.get_text(strip=True)
             and not link.get_text(strip=True).startswith("-")
@@ -317,9 +317,24 @@ async def scrape_pokemon_detail(
 
 
 VALID_TYPES = {
-    "normal", "fire", "water", "electric", "grass", "ice",
-    "fighting", "poison", "ground", "flying", "psychic", "bug",
-    "rock", "ghost", "dragon", "dark", "steel", "fairy",
+    "normal",
+    "fire",
+    "water",
+    "electric",
+    "grass",
+    "ice",
+    "fighting",
+    "poison",
+    "ground",
+    "flying",
+    "psychic",
+    "bug",
+    "rock",
+    "ghost",
+    "dragon",
+    "dark",
+    "steel",
+    "fairy",
 }
 
 
@@ -335,7 +350,7 @@ async def scrape_all_pokemon(
     # Process in batches
     batch_size = 10
     for i in range(0, len(roster), batch_size):
-        batch = roster[i:i + batch_size]
+        batch = roster[i : i + batch_size]
         tasks = [scrape_pokemon_detail(client, entry) for entry in batch]
         results = await asyncio.gather(*tasks)
         for result in results:
@@ -427,14 +442,16 @@ async def scrape_items(client: httpx.AsyncClient) -> list[ItemEntry]:
             if name.endswith("ite") and current_category != "berry":
                 current_category = "mega_stone"
 
-            items.append(ItemEntry(
-                name=title_case_name(name),
-                effect=effect,
-                location=location,
-                category=current_category,
-                vp_cost=vp_cost,
-                champions_shop=champions_shop,
-            ))
+            items.append(
+                ItemEntry(
+                    name=title_case_name(name),
+                    effect=effect,
+                    location=location,
+                    category=current_category,
+                    vp_cost=vp_cost,
+                    champions_shop=champions_shop,
+                )
+            )
 
     print(f"  Found {len(items)} items")
     cats = {}
@@ -498,15 +515,17 @@ async def scrape_moves(client: httpx.AsyncClient) -> list[MoveEntry]:
             effect = clean_text(cells[6])
 
             if move_type in VALID_TYPES:
-                moves.append(MoveEntry(
-                    name=title_case_name(name),
-                    move_type=move_type,
-                    category=category,
-                    pp=pp,
-                    power=power,
-                    accuracy=accuracy,
-                    effect=effect,
-                ))
+                moves.append(
+                    MoveEntry(
+                        name=title_case_name(name),
+                        move_type=move_type,
+                        category=category,
+                        pp=pp,
+                        power=power,
+                        accuracy=accuracy,
+                        effect=effect,
+                    )
+                )
 
     print(f"  Found {len(moves)} moves")
     return moves
@@ -573,12 +592,14 @@ async def scrape_mega_abilities(
                         types.append(t)
 
         if name and ability:
-            entries.append(MegaAbilityEntry(
-                dex_number=dex_number,
-                name=title_case_name(name),
-                types=types,
-                ability=title_case_name(ability),
-            ))
+            entries.append(
+                MegaAbilityEntry(
+                    dex_number=dex_number,
+                    name=title_case_name(name),
+                    types=types,
+                    ability=title_case_name(ability),
+                )
+            )
 
     print(f"  Found {len(entries)} mega abilities")
     return entries
@@ -600,20 +621,13 @@ def upsert_pokemon(sb: Client, details: list[PokemonDetail]) -> None:
         if d.types:
             update_data["types"] = d.types
         if d.abilities:
-            update_data["abilities"] = [
-                title_case_name(a) for a in d.abilities
-            ]
+            update_data["abilities"] = [title_case_name(a) for a in d.abilities]
         if d.base_stats:
             update_data["base_stats"] = d.base_stats
         if d.movepool:
             update_data["movepool"] = d.movepool
 
-        result = (
-            sb.table("pokemon")
-            .update(update_data)
-            .eq("id", d.dex_number)
-            .execute()
-        )
+        result = sb.table("pokemon").update(update_data).eq("id", d.dex_number).execute()
         if result.data:
             updated += 1
 
@@ -625,21 +639,14 @@ def reset_eligibility(sb: Client, eligible_ids: set[int]) -> None:
     """Set champions_eligible=false for Pokemon not in the roster."""
     print("  Resetting eligibility for non-roster Pokemon...")
     # Get all Pokemon currently marked eligible
-    result = (
-        sb.table("pokemon")
-        .select("id")
-        .eq("champions_eligible", True)
-        .execute()
-    )
+    result = sb.table("pokemon").select("id").eq("champions_eligible", True).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     current_eligible = {row["id"] for row in rows}
     to_reset = current_eligible - eligible_ids
 
     if to_reset:
         for pid in to_reset:
-            sb.table("pokemon").update(
-                {"champions_eligible": False}
-            ).eq("id", pid).execute()
+            sb.table("pokemon").update({"champions_eligible": False}).eq("id", pid).execute()
         print(f"  Reset {len(to_reset)} Pokemon to ineligible")
     else:
         print("  No eligibility resets needed")
@@ -652,13 +659,7 @@ def upsert_items(sb: Client, items: list[ItemEntry]) -> None:
     new_items = 0
 
     # Get the max existing ID to generate new IDs for unknown items
-    max_result = (
-        sb.table("items")
-        .select("id")
-        .order("id", desc=True)
-        .limit(1)
-        .execute()
-    )
+    max_result = sb.table("items").select("id").order("id", desc=True).limit(1).execute()
     max_rows: list[dict] = max_result.data  # type: ignore[assignment]
     next_id = max(20000, (max_rows[0]["id"] + 1) if max_rows else 20000)
 
@@ -677,18 +678,11 @@ def upsert_items(sb: Client, items: list[ItemEntry]) -> None:
             data["vp_cost"] = item.vp_cost
 
         # Try to find existing item by name (case-insensitive)
-        existing = (
-            sb.table("items")
-            .select("id")
-            .ilike("name", item.name)
-            .execute()
-        )
+        existing = sb.table("items").select("id").ilike("name", item.name).execute()
 
         existing_rows: list[dict] = existing.data  # type: ignore[assignment]
         if existing_rows:
-            sb.table("items").update(data).eq(
-                "id", existing_rows[0]["id"]
-            ).execute()
+            sb.table("items").update(data).eq("id", existing_rows[0]["id"]).execute()
             upserted += 1
         else:
             # Insert new item with generated ID
@@ -711,13 +705,7 @@ def upsert_moves(sb: Client, moves: list[MoveEntry]) -> None:
     new_moves = 0
 
     # Get max existing ID for generating new ones
-    max_result = (
-        sb.table("moves")
-        .select("id")
-        .order("id", desc=True)
-        .limit(1)
-        .execute()
-    )
+    max_result = sb.table("moves").select("id").order("id", desc=True).limit(1).execute()
     max_rows: list[dict] = max_result.data  # type: ignore[assignment]
     next_id = max(20000, (max_rows[0]["id"] + 1) if max_rows else 20000)
 
@@ -736,18 +724,11 @@ def upsert_moves(sb: Client, moves: list[MoveEntry]) -> None:
             data["effect_text"] = move.effect
 
         # Try to find existing move by name (case-insensitive)
-        existing = (
-            sb.table("moves")
-            .select("id")
-            .ilike("name", move.name)
-            .execute()
-        )
+        existing = sb.table("moves").select("id").ilike("name", move.name).execute()
 
         existing_rows: list[dict] = existing.data  # type: ignore[assignment]
         if existing_rows:
-            sb.table("moves").update(data).eq(
-                "id", existing_rows[0]["id"]
-            ).execute()
+            sb.table("moves").update(data).eq("id", existing_rows[0]["id"]).execute()
             upserted += 1
         else:
             data["id"] = next_id
@@ -762,9 +743,7 @@ def upsert_moves(sb: Client, moves: list[MoveEntry]) -> None:
     print(f"  Upserted {upserted} moves ({new_moves} new)")
 
 
-def upsert_mega_abilities(
-    sb: Client, megas: list[MegaAbilityEntry]
-) -> None:
+def upsert_mega_abilities(sb: Client, megas: list[MegaAbilityEntry]) -> None:
     """Update mega Pokemon abilities from Serebii data."""
     print("\n  Updating mega abilities...")
     updated = 0
@@ -776,12 +755,7 @@ def upsert_mega_abilities(
             mega.name,
         ]
         for name in name_patterns:
-            result = (
-                sb.table("pokemon")
-                .select("id, name")
-                .ilike("name", f"%{name}%")
-                .execute()
-            )
+            result = sb.table("pokemon").select("id, name").ilike("name", f"%{name}%").execute()
             matched: list[dict] = result.data  # type: ignore[assignment]
             if matched:
                 update_data: dict = {
@@ -790,9 +764,7 @@ def upsert_mega_abilities(
                 if mega.types:
                     update_data["types"] = mega.types
 
-                sb.table("pokemon").update(update_data).eq(
-                    "id", matched[0]["id"]
-                ).execute()
+                sb.table("pokemon").update(update_data).eq("id", matched[0]["id"]).execute()
                 updated += 1
                 break
 

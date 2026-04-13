@@ -18,10 +18,13 @@ CACHE_TTL_HOURS = 24
 
 def _make_hash(opponent: list[str], my_pokemon_ids: list[str]) -> str:
     """Deterministic hash: sorted opponent names + sorted team pokemon IDs."""
-    key = json.dumps({
-        "opponent": sorted(n.lower().strip() for n in opponent),
-        "my_team": sorted(my_pokemon_ids),
-    }, sort_keys=True)
+    key = json.dumps(
+        {
+            "opponent": sorted(n.lower().strip() for n in opponent),
+            "my_team": sorted(my_pokemon_ids),
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(key.encode()).hexdigest()
 
 
@@ -39,9 +42,7 @@ def _check_cache(request_hash: str) -> DraftAnalysis | None:
     row: dict = result.data  # type: ignore[assignment]
     expires = row.get("expires_at")
     if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        supabase.table("ai_analyses").delete().eq(
-            "request_hash", request_hash
-        ).execute()
+        supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
         return None
 
     return DraftAnalysis.model_validate(row["response_json"])
@@ -105,20 +106,24 @@ def _fetch_team_pokemon(team_id: str) -> dict:
     poke_rows: list[dict] = pokemon_rows.data  # type: ignore[assignment]
     for p in poke_rows:
         build = builds_by_id.get(str(p["id"]), {})
-        pokemon_list.append({
-            "name": p["name"],
-            "types": p["types"],
-            "base_stats": p["base_stats"],
-            "abilities": p["abilities"],
-            "movepool": p["movepool"][:20],  # trim for token budget
-            "build": {
-                "ability": build.get("ability"),
-                "moves": build.get("moves"),
-                "item": build.get("item_id"),
-                "nature": build.get("nature"),
-                "stat_points": build.get("stat_points"),
-            } if build else None,
-        })
+        pokemon_list.append(
+            {
+                "name": p["name"],
+                "types": p["types"],
+                "base_stats": p["base_stats"],
+                "abilities": p["abilities"],
+                "movepool": p["movepool"][:20],  # trim for token budget
+                "build": {
+                    "ability": build.get("ability"),
+                    "moves": build.get("moves"),
+                    "item": build.get("item_id"),
+                    "nature": build.get("nature"),
+                    "stat_points": build.get("stat_points"),
+                }
+                if build
+                else None,
+            }
+        )
 
     return {
         "team_name": team_row["name"],
@@ -144,6 +149,7 @@ def _fetch_usage_context(pokemon_names: list[str]) -> list[dict]:
             row: dict = result.data[0]  # type: ignore[assignment]
             usage_rows.append(row)
     return usage_rows
+
 
 def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
     """Fetch tournament archetype if this exact team combination has placed recently."""
@@ -198,10 +204,15 @@ def _fetch_opponent_pokemon(names: list[str]) -> list[dict]:
         if rows:
             pokemon_list.append(rows[0])
         else:
-            pokemon_list.append({
-                "id": 0, "name": name, "types": [],
-                "base_stats": {}, "abilities": [],
-            })
+            pokemon_list.append(
+                {
+                    "id": 0,
+                    "name": name,
+                    "types": [],
+                    "base_stats": {},
+                    "abilities": [],
+                }
+            )
     return pokemon_list
 
 
@@ -224,14 +235,15 @@ def _build_prompt(
             )
         my_lines.append(
             f"- {p['name']} ({'/'.join(p['types'])}) "
-            f"HP:{p['base_stats'].get('hp',0)} Atk:{p['base_stats'].get('attack',0)} "
-            f"Def:{p['base_stats'].get('defense',0)} SpA:{p['base_stats'].get('sp_attack',0)} "
-            f"SpD:{p['base_stats'].get('sp_defense',0)} Spe:{p['base_stats'].get('speed',0)}"
-            f"\n{build_info}" if build_info else
-            f"- {p['name']} ({'/'.join(p['types'])}) "
-            f"HP:{p['base_stats'].get('hp',0)} Atk:{p['base_stats'].get('attack',0)} "
-            f"Def:{p['base_stats'].get('defense',0)} SpA:{p['base_stats'].get('sp_attack',0)} "
-            f"SpD:{p['base_stats'].get('sp_defense',0)} Spe:{p['base_stats'].get('speed',0)}"
+            f"HP:{p['base_stats'].get('hp', 0)} Atk:{p['base_stats'].get('attack', 0)} "
+            f"Def:{p['base_stats'].get('defense', 0)} SpA:{p['base_stats'].get('sp_attack', 0)} "
+            f"SpD:{p['base_stats'].get('sp_defense', 0)} Spe:{p['base_stats'].get('speed', 0)}"
+            f"\n{build_info}"
+            if build_info
+            else f"- {p['name']} ({'/'.join(p['types'])}) "
+            f"HP:{p['base_stats'].get('hp', 0)} Atk:{p['base_stats'].get('attack', 0)} "
+            f"Def:{p['base_stats'].get('defense', 0)} SpA:{p['base_stats'].get('sp_attack', 0)} "
+            f"SpD:{p['base_stats'].get('sp_defense', 0)} Spe:{p['base_stats'].get('speed', 0)}"
         )
 
     # Format opponent team
@@ -240,9 +252,9 @@ def _build_prompt(
         stats = p.get("base_stats", {})
         opp_lines.append(
             f"- {p['name']} ({'/'.join(p.get('types', []))}) "
-            f"HP:{stats.get('hp',0)} Atk:{stats.get('attack',0)} "
-            f"Def:{stats.get('defense',0)} SpA:{stats.get('sp_attack',0)} "
-            f"SpD:{stats.get('sp_defense',0)} Spe:{stats.get('speed',0)}"
+            f"HP:{stats.get('hp', 0)} Atk:{stats.get('attack', 0)} "
+            f"Def:{stats.get('defense', 0)} SpA:{stats.get('sp_attack', 0)} "
+            f"SpD:{stats.get('sp_defense', 0)} Spe:{stats.get('speed', 0)}"
         )
 
     # Format usage context
@@ -254,22 +266,15 @@ def _build_prompt(
             moves_list: list[dict] = u.get("moves") or []
             items_list: list[dict] = u.get("items") or []
 
-            moves = ", ".join(
-                f"{m['name']} ({m['percent']}%)" for m in moves_list[:4]
-            )
-            items = ", ".join(
-                f"{i['name']} ({i['percent']}%)" for i in items_list[:3]
-            )
+            moves = ", ".join(f"{m['name']} ({m['percent']}%)" for m in moves_list[:4])
+            items = ", ".join(f"{i['name']} ({i['percent']}%)" for i in items_list[:3])
 
             usage_lines.append(
                 f"- {name} (usage: {u.get('usage_percent', 0)}%)\n"
                 f"  Common moves: {moves}\n"
                 f"  Common items: {items}"
             )
-        usage_context = (
-            "\n\n## Competitive Usage Data\n"
-            + "\n".join(usage_lines)
-        )
+        usage_context = "\n\n## Competitive Usage Data\n" + "\n".join(usage_lines)
 
     mega_note = ""
     if my_team.get("mega_pokemon_id"):
@@ -279,10 +284,7 @@ def _build_prompt(
         "You are a competitive Pokemon Champions VGC doubles analyst. "
         "Analyze this team preview matchup."
     )
-    my_team_section = (
-        f"## My Team ({my_team['team_name']})\n"
-        f"{chr(10).join(my_lines)}{mega_note}"
-    )
+    my_team_section = f"## My Team ({my_team['team_name']})\n{chr(10).join(my_lines)}{mega_note}"
     opp_section = (
         "## Opponent's Team (6 shown in team preview)\n"
         f"{chr(10).join(opp_lines)}"
@@ -338,9 +340,7 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 def analyze_draft(body: DraftRequest):
     """Analyze a team preview matchup and recommend bring-4 + leads."""
     if not settings.anthropic_api_key:
-        raise HTTPException(
-            status_code=400, detail="ANTHROPIC_API_KEY is not configured"
-        )
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
     # Fetch my team data
     my_team = _fetch_team_pokemon(body.my_team_id)
@@ -403,6 +403,4 @@ def analyze_draft(body: DraftRequest):
     # Estimate cost: ~3000 input + ~1500 output tokens at Sonnet pricing
     estimated_cost = 0.02
 
-    return DraftResponse(
-        analysis=analysis, cached=False, estimated_cost_usd=estimated_cost
-    )
+    return DraftResponse(analysis=analysis, cached=False, estimated_cost_usd=estimated_cost)

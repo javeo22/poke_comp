@@ -40,33 +40,200 @@ STAT_NAME_MAP = {
 # =============================================================================
 CHAMPIONS_ROSTER: list[int] = [
     # --- Gen 1 (28) ---
-    3, 6, 9, 15, 18, 24, 25, 26, 36, 38, 59, 65, 68, 71, 80,
-    94, 115, 121, 127, 128, 130, 132, 134, 135, 136, 142, 143, 149,
+    3,
+    6,
+    9,
+    15,
+    18,
+    24,
+    25,
+    26,
+    36,
+    38,
+    59,
+    65,
+    68,
+    71,
+    80,
+    94,
+    115,
+    121,
+    127,
+    128,
+    130,
+    132,
+    134,
+    135,
+    136,
+    142,
+    143,
+    149,
     # --- Gen 2 (17) ---
-    154, 157, 160, 168, 181, 184, 186, 196, 197, 199, 205, 208,
-    212, 214, 227, 229, 248,
+    154,
+    157,
+    160,
+    168,
+    181,
+    184,
+    186,
+    196,
+    197,
+    199,
+    205,
+    208,
+    212,
+    214,
+    227,
+    229,
+    248,
     # --- Gen 3 (16) ---
-    279, 282, 302, 306, 308, 310, 319, 323, 324, 334, 350, 351,
-    354, 358, 359, 362,
+    279,
+    282,
+    302,
+    306,
+    308,
+    310,
+    319,
+    323,
+    324,
+    334,
+    350,
+    351,
+    354,
+    358,
+    359,
+    362,
     # --- Gen 4 (23) ---
-    389, 392, 395, 405, 407, 409, 411, 428, 442, 445, 448, 450,
-    454, 460, 461, 464, 470, 471, 472, 473, 475, 478, 479,
+    389,
+    392,
+    395,
+    405,
+    407,
+    409,
+    411,
+    428,
+    442,
+    445,
+    448,
+    450,
+    454,
+    460,
+    461,
+    464,
+    470,
+    471,
+    472,
+    473,
+    475,
+    478,
+    479,
     # --- Gen 5 (25) ---
-    497, 500, 503, 505, 510, 512, 514, 516, 530, 531, 534, 547,
-    553, 563, 569, 571, 579, 584, 587, 609, 614, 618, 623, 635, 637,
+    497,
+    500,
+    503,
+    505,
+    510,
+    512,
+    514,
+    516,
+    530,
+    531,
+    534,
+    547,
+    553,
+    563,
+    569,
+    571,
+    579,
+    584,
+    587,
+    609,
+    614,
+    618,
+    623,
+    635,
+    637,
     # --- Gen 6 (27) ---
-    652, 655, 658, 660, 663, 666, 670, 671, 675, 676, 678, 681,
-    683, 685, 693, 695, 697, 699, 700, 701, 702, 706, 707, 709,
-    711, 713, 715,
+    652,
+    655,
+    658,
+    660,
+    663,
+    666,
+    670,
+    671,
+    675,
+    676,
+    678,
+    681,
+    683,
+    685,
+    693,
+    695,
+    697,
+    699,
+    700,
+    701,
+    702,
+    706,
+    707,
+    709,
+    711,
+    713,
+    715,
     # --- Gen 7 (16) ---
-    724, 727, 730, 733, 740, 745, 748, 750, 752, 758, 763, 765,
-    766, 778, 780, 784,
+    724,
+    727,
+    730,
+    733,
+    740,
+    745,
+    748,
+    750,
+    752,
+    758,
+    763,
+    765,
+    766,
+    778,
+    780,
+    784,
     # --- Gen 8 (15) ---
-    823, 841, 842, 844, 855, 858, 866, 867, 869, 877, 887, 899,
-    900, 902, 903,
+    823,
+    841,
+    842,
+    844,
+    855,
+    858,
+    866,
+    867,
+    869,
+    877,
+    887,
+    899,
+    900,
+    902,
+    903,
     # --- Gen 9 (19) ---
-    908, 911, 914, 925, 934, 936, 937, 939, 952, 956, 959, 964,
-    968, 970, 981, 983, 1013, 1018, 1019,
+    908,
+    911,
+    914,
+    925,
+    934,
+    936,
+    937,
+    939,
+    952,
+    956,
+    959,
+    964,
+    968,
+    970,
+    981,
+    983,
+    1013,
+    1018,
+    1019,
 ]
 
 # =============================================================================
@@ -74,18 +241,42 @@ CHAMPIONS_ROSTER: list[int] = [
 # (base_pokemon_id, pokeapi_slug)
 # =============================================================================
 CLASSIC_MEGA_SLUGS: list[tuple[int, str]] = [
-    (3, "venusaur-mega"), (6, "charizard-mega-x"), (6, "charizard-mega-y"),
-    (9, "blastoise-mega"), (15, "beedrill-mega"), (18, "pidgeot-mega"),
-    (65, "alakazam-mega"), (80, "slowbro-mega"), (94, "gengar-mega"),
-    (115, "kangaskhan-mega"), (127, "pinsir-mega"), (130, "gyarados-mega"),
-    (142, "aerodactyl-mega"), (181, "ampharos-mega"), (208, "steelix-mega"),
-    (212, "scizor-mega"), (214, "heracross-mega"), (229, "houndoom-mega"),
-    (248, "tyranitar-mega"), (282, "gardevoir-mega"), (302, "sableye-mega"),
-    (306, "aggron-mega"), (308, "medicham-mega"), (310, "manectric-mega"),
-    (319, "sharpedo-mega"), (323, "camerupt-mega"), (334, "altaria-mega"),
-    (354, "banette-mega"), (359, "absol-mega"), (362, "glalie-mega"),
-    (428, "lopunny-mega"), (445, "garchomp-mega"), (448, "lucario-mega"),
-    (460, "abomasnow-mega"), (475, "gallade-mega"), (531, "audino-mega"),
+    (3, "venusaur-mega"),
+    (6, "charizard-mega-x"),
+    (6, "charizard-mega-y"),
+    (9, "blastoise-mega"),
+    (15, "beedrill-mega"),
+    (18, "pidgeot-mega"),
+    (65, "alakazam-mega"),
+    (80, "slowbro-mega"),
+    (94, "gengar-mega"),
+    (115, "kangaskhan-mega"),
+    (127, "pinsir-mega"),
+    (130, "gyarados-mega"),
+    (142, "aerodactyl-mega"),
+    (181, "ampharos-mega"),
+    (208, "steelix-mega"),
+    (212, "scizor-mega"),
+    (214, "heracross-mega"),
+    (229, "houndoom-mega"),
+    (248, "tyranitar-mega"),
+    (282, "gardevoir-mega"),
+    (302, "sableye-mega"),
+    (306, "aggron-mega"),
+    (308, "medicham-mega"),
+    (310, "manectric-mega"),
+    (319, "sharpedo-mega"),
+    (323, "camerupt-mega"),
+    (334, "altaria-mega"),
+    (354, "banette-mega"),
+    (359, "absol-mega"),
+    (362, "glalie-mega"),
+    (428, "lopunny-mega"),
+    (445, "garchomp-mega"),
+    (448, "lucario-mega"),
+    (460, "abomasnow-mega"),
+    (475, "gallade-mega"),
+    (531, "audino-mega"),
 ]
 
 # =============================================================================
@@ -93,6 +284,7 @@ CLASSIC_MEGA_SLUGS: list[tuple[int, str]] = [
 # IDs 20001+. Types and abilities from game8.co mega evolutions guide.
 # Stats and abilities verified via community datamine (April 10, 2026).
 # =============================================================================
+# fmt: off
 NEW_MEGAS: list[dict] = [
     {"id": 20001, "base_id": 36, "name": "Mega Clefable",
      "types": ["fairy", "flying"], "ability": "Magic Bounce",
@@ -164,6 +356,7 @@ NEW_MEGAS: list[dict] = [
      "types": ["rock", "poison"], "ability": "Adaptability",
      "stats": {"hp": 83, "attack": 90, "defense": 105, "sp_attack": 150, "sp_defense": 96, "speed": 101}},
 ]
+# fmt: on
 
 # =============================================================================
 # CHAMPIONS ITEMS
@@ -306,18 +499,44 @@ INITIAL_TIER_DATA: dict[str, dict] = {
         "S": ["Hippowdon", "Garchomp"],
         "A+": ["Meowscarada", "Archaludon", "Hydreigon", "Mimikyu", "Greninja"],
         "A": [
-            "Corviknight", "Wash Rotom", "Kingambit", "Primarina",
-            "Dragapult", "Basculegion", "Volcarona",
+            "Corviknight",
+            "Wash Rotom",
+            "Kingambit",
+            "Primarina",
+            "Dragapult",
+            "Basculegion",
+            "Volcarona",
         ],
         "B": [
-            "Whimsicott", "Scizor", "Snorlax", "Umbreon", "Alolan Ninetales",
-            "Tyranitar", "Espathra", "Sylveon", "Dragonite", "Heat Rotom",
-            "Sneasler", "Excadrill",
+            "Whimsicott",
+            "Scizor",
+            "Snorlax",
+            "Umbreon",
+            "Alolan Ninetales",
+            "Tyranitar",
+            "Espathra",
+            "Sylveon",
+            "Dragonite",
+            "Heat Rotom",
+            "Sneasler",
+            "Excadrill",
         ],
         "C": [
-            "Mow Rotom", "Serperior", "Gallade", "Ceruledge", "Vivillon",
-            "Vaporeon", "Politoed", "Palafin", "Gengar", "Skeledirge",
-            "Fan Rotom", "Frost Rotom", "Tinkaton", "Garganacl", "Skarmory",
+            "Mow Rotom",
+            "Serperior",
+            "Gallade",
+            "Ceruledge",
+            "Vivillon",
+            "Vaporeon",
+            "Politoed",
+            "Palafin",
+            "Gengar",
+            "Skeledirge",
+            "Fan Rotom",
+            "Frost Rotom",
+            "Tinkaton",
+            "Garganacl",
+            "Skarmory",
             "Leafeon",
         ],
     },
@@ -325,26 +544,50 @@ INITIAL_TIER_DATA: dict[str, dict] = {
         "S": ["Incineroar", "Kingambit"],
         "A+": ["Garchomp", "Dragonite", "Glimmora", "Torkoal", "Sinistcha"],
         "A": [
-            "Espathra", "Primarina", "Farigiraf", "Archaludon", "Whimsicott",
-            "Pelipper", "Sneasler", "Tyranitar", "Maushold", "Hatterene",
+            "Espathra",
+            "Primarina",
+            "Farigiraf",
+            "Archaludon",
+            "Whimsicott",
+            "Pelipper",
+            "Sneasler",
+            "Tyranitar",
+            "Maushold",
+            "Hatterene",
             "Excadrill",
         ],
         "B": [
-            "Arcanine", "Palafin", "Dragapult", "Sylveon", "Ceruledge",
-            "Armarouge", "Meganium", "Corviknight",
+            "Arcanine",
+            "Palafin",
+            "Dragapult",
+            "Sylveon",
+            "Ceruledge",
+            "Armarouge",
+            "Meganium",
+            "Corviknight",
         ],
     },
     "megas": {
         "S": ["Mega Delphox", "Mega Greninja", "Mega Floette", "Mega Gengar"],
         "A+": ["Mega Charizard Y", "Mega Hawlucha"],
         "A": [
-            "Mega Scizor", "Mega Feraligatr", "Mega Froslass", "Mega Venusaur",
-            "Mega Blastoise", "Mega Kangaskhan", "Mega Gyarados",
+            "Mega Scizor",
+            "Mega Feraligatr",
+            "Mega Froslass",
+            "Mega Venusaur",
+            "Mega Blastoise",
+            "Mega Kangaskhan",
+            "Mega Gyarados",
         ],
         "B": [
-            "Mega Charizard X", "Mega Clefable", "Mega Crabominable",
-            "Mega Glimmora", "Mega Heracross", "Mega Lucario",
-            "Mega Meganium", "Mega Emboar",
+            "Mega Charizard X",
+            "Mega Clefable",
+            "Mega Crabominable",
+            "Mega Glimmora",
+            "Mega Heracross",
+            "Mega Lucario",
+            "Mega Meganium",
+            "Mega Emboar",
         ],
     },
 }
@@ -353,6 +596,7 @@ INITIAL_TIER_DATA: dict[str, dict] = {
 # =============================================================================
 # HELPERS
 # =============================================================================
+
 
 def format_name(name: str) -> str:
     """Convert PokeAPI kebab-case to Title Case."""
@@ -410,20 +654,17 @@ def resolve_item_id(slug: str) -> int | None:
 # SEED FUNCTIONS
 # =============================================================================
 
+
 def seed_champions_roster(supabase: Client) -> None:
     """Flag Champions-eligible Pokemon in bulk."""
     print(f"Flagging {len(CHAMPIONS_ROSTER)} Pokemon as champions_eligible...")
 
     # Reset all to False
-    supabase.table("pokemon").update(
-        {"champions_eligible": False}
-    ).neq("id", -1).execute()
+    supabase.table("pokemon").update({"champions_eligible": False}).neq("id", -1).execute()
 
     # Flag eligible Pokemon
     for pid in CHAMPIONS_ROSTER:
-        supabase.table("pokemon").update(
-            {"champions_eligible": True}
-        ).eq("id", pid).execute()
+        supabase.table("pokemon").update({"champions_eligible": True}).eq("id", pid).execute()
 
     print(f"  Done. {len(CHAMPIONS_ROSTER)} Pokemon flagged.")
 
@@ -449,9 +690,13 @@ def seed_new_megas(supabase: Client) -> None:
 
     for mega in NEW_MEGAS:
         # Copy stats and movepool from the base Pokemon
-        result = supabase.table("pokemon").select(
-            "base_stats, movepool, generation"
-        ).eq("id", mega["base_id"]).single().execute()
+        result = (
+            supabase.table("pokemon")
+            .select("base_stats, movepool, generation")
+            .eq("id", mega["base_id"])
+            .single()
+            .execute()
+        )
 
         if not result.data:
             print(f"  Warning: base Pokemon {mega['base_id']} not found, skipping {mega['name']}")
@@ -481,20 +726,20 @@ def seed_mega_links(supabase: Client) -> None:
     # Classic megas: look up the mega's PokeAPI ID from the pokemon table
     for base_id, slug in CLASSIC_MEGA_SLUGS:
         mega_name = format_mega_name(slug)
-        result = supabase.table("pokemon").select("id").eq(
-            "name", mega_name
-        ).maybe_single().execute()
+        result = (
+            supabase.table("pokemon").select("id").eq("name", mega_name).maybe_single().execute()
+        )
         if result.data:
-            supabase.table("pokemon").update(
-                {"mega_evolution_id": result.data["id"]}
-            ).eq("id", base_id).execute()
+            supabase.table("pokemon").update({"mega_evolution_id": result.data["id"]}).eq(
+                "id", base_id
+            ).execute()
             linked += 1
 
     # New megas: ID is known directly
     for mega in NEW_MEGAS:
-        supabase.table("pokemon").update(
-            {"mega_evolution_id": mega["id"]}
-        ).eq("id", mega["base_id"]).execute()
+        supabase.table("pokemon").update({"mega_evolution_id": mega["id"]}).eq(
+            "id", mega["base_id"]
+        ).execute()
         linked += 1
 
     print(f"  Linked {linked} mega evolutions.")
@@ -513,10 +758,15 @@ def seed_items(supabase: Client) -> None:
             item_id = next_fallback_id
             next_fallback_id += 1
             print(f"  Fallback ID {item_id} for {name}")
-        all_items.append({
-            "id": item_id, "name": name, "category": category,
-            "vp_cost": vp_cost, "champions_shop_available": True,
-        })
+        all_items.append(
+            {
+                "id": item_id,
+                "name": name,
+                "category": category,
+                "vp_cost": vp_cost,
+                "champions_shop_available": True,
+            }
+        )
 
     # Berries
     print(f"Resolving {len(BERRIES)} berry IDs from PokeAPI...")
@@ -526,10 +776,15 @@ def seed_items(supabase: Client) -> None:
             item_id = next_fallback_id
             next_fallback_id += 1
             print(f"  Fallback ID {item_id} for {name}")
-        all_items.append({
-            "id": item_id, "name": name, "category": "berry",
-            "vp_cost": vp_cost, "champions_shop_available": True,
-        })
+        all_items.append(
+            {
+                "id": item_id,
+                "name": name,
+                "category": "berry",
+                "vp_cost": vp_cost,
+                "champions_shop_available": True,
+            }
+        )
 
     # Mega stones
     print(f"Resolving {len(MEGA_STONES)} mega stone IDs from PokeAPI...")
@@ -538,10 +793,15 @@ def seed_items(supabase: Client) -> None:
         if item_id is None:
             item_id = next_fallback_id
             next_fallback_id += 1
-        all_items.append({
-            "id": item_id, "name": name, "category": "mega-stone",
-            "vp_cost": vp_cost, "champions_shop_available": True,
-        })
+        all_items.append(
+            {
+                "id": item_id,
+                "name": name,
+                "category": "mega-stone",
+                "vp_cost": vp_cost,
+                "champions_shop_available": True,
+            }
+        )
 
     print(f"Upserting {len(all_items)} items...")
     batch_size = 50

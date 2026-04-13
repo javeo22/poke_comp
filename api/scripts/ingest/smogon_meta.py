@@ -63,18 +63,13 @@ def fetch_smogon_data() -> dict[str, Any] | None:
         return None
 
 
-def _top_entries(
-    raw_dict: dict[str, float], top_n: int = 5
-) -> list[dict[str, str | float]]:
+def _top_entries(raw_dict: dict[str, float], top_n: int = 5) -> list[dict[str, str | float]]:
     """Normalize weights to [{name, percent}] sorted descending, top N only."""
     total = sum(raw_dict.values())
     if total == 0:
         return []
 
-    items = [
-        {"name": k, "percent": round((v / total) * 100, 1)}
-        for k, v in raw_dict.items()
-    ]
+    items = [{"name": k, "percent": round((v / total) * 100, 1)} for k, v in raw_dict.items()]
     items.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
     return items[:top_n]
 
@@ -108,8 +103,7 @@ def ingest_smogon_data(sb: Client) -> None:
     result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     local_roster: dict[str, str] = {
-        row["name"].lower().replace("-", "").replace(" ", ""): row["name"]
-        for row in rows
+        row["name"].lower().replace("-", "").replace(" ", ""): row["name"] for row in rows
     }
 
     today_date = date.today().isoformat()
