@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/team";
 import type { Pokemon } from "@/types/pokemon";
 import type { DraftResponse } from "@/types/draft";
-import { fetchTeams, fetchPokemon, analyzeDraft } from "@/lib/api";
+import { fetchTeams, fetchPokemon, analyzeDraft, createMatchup } from "@/lib/api";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 
@@ -27,6 +27,9 @@ export default function DraftPage() {
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveOutcome, setSaveOutcome] = useState<"win" | "loss" | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -69,6 +72,8 @@ export default function DraftPage() {
     if (!canAnalyze) return;
     setIsAnalyzing(true);
     setError(null);
+    setSavedId(null);
+    setSaveOutcome(null);
     setResult(null);
     try {
       const response = await analyzeDraft({
@@ -80,6 +85,26 @@ export default function DraftPage() {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleSave = async (outcome: "win" | "loss") => {
+    if (!selectedTeamId || !result) return;
+    setIsSaving(true);
+    try {
+      const matchup = await createMatchup({
+        my_team_id: selectedTeamId,
+        opponent_team_data: filledOpponents.map((name) => ({ name })),
+        lead_pair: result.analysis.lead_pair,
+        outcome,
+        notes: `AI Draft Analysis: ${result.analysis.summary}`,
+      });
+      setSavedId(matchup.id);
+      setSaveOutcome(outcome);
+    } catch (err) {
+      console.error("Failed to save matchup:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -370,6 +395,50 @@ export default function DraftPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Record Outcome */}
+          <div className="rounded-chunky bg-surface-low p-6">
+            <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              Record Outcome
+            </h3>
+            {savedId ? (
+              <div className="flex items-center gap-3">
+                <span className={`rounded-pill px-4 py-2 font-display text-sm font-bold uppercase tracking-wider ${
+                  saveOutcome === "win"
+                    ? "bg-secondary/20 text-secondary"
+                    : "bg-tertiary/20 text-tertiary"
+                }`}>
+                  {saveOutcome === "win" ? "Victory" : "Defeat"} Recorded
+                </span>
+                <a
+                  href="/matches"
+                  className="font-display text-xs uppercase tracking-wider text-primary hover:text-primary/80"
+                >
+                  View match log →
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleSave("win")}
+                  disabled={isSaving}
+                  className="h-10 rounded-pill bg-secondary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-secondary transition-all hover:bg-secondary/30 disabled:opacity-40"
+                >
+                  {isSaving ? "Saving..." : "Win"}
+                </button>
+                <button
+                  onClick={() => handleSave("loss")}
+                  disabled={isSaving}
+                  className="h-10 rounded-pill bg-tertiary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-tertiary transition-all hover:bg-tertiary/30 disabled:opacity-40"
+                >
+                  {isSaving ? "Saving..." : "Loss"}
+                </button>
+                <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                  Save this matchup to your match log
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
