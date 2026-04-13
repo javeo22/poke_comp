@@ -1,5 +1,4 @@
 {
   "private": true,
-  "name": "poke-comp",
-  "packageManager": "pnpm@10.33.0"
+  "name": "poke-comp"
 }
