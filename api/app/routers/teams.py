@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from postgrest.types import CountMethod
 
+from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
 from app.models.team import TeamCreate, TeamList, TeamResponse, TeamUpdate
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
-# TODO: Replace with real auth user extraction
-USER_ID = settings.dev_user_id
+
 
 
 @router.get("", response_model=TeamList)
@@ -17,8 +17,9 @@ def list_teams(
     archetype_tag: str | None = Query(None, description="Filter by archetype tag"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_current_user),
 ):
-    query = supabase.table("teams").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
+    query = supabase.table("teams").select("*", count=CountMethod.exact).eq("user_id", user_id)
 
     if format:
         query = query.eq("format", format)
@@ -33,12 +34,12 @@ def list_teams(
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
-def get_team(team_id: str):
+def get_team(team_id: str, user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("teams")
         .select("*")
         .eq("id", team_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .single()
         .execute()
     )
@@ -55,11 +56,11 @@ def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
 
 
 @router.post("", response_model=TeamResponse, status_code=201)
-def create_team(body: TeamCreate):
+def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
     _validate_mega(body.pokemon_ids, body.mega_pokemon_id)
 
     data = body.model_dump(exclude_none=True)
-    data["user_id"] = USER_ID
+    data["user_id"] = user_id
 
     result = supabase.table("teams").insert(data).execute()
     if not result.data:
@@ -68,7 +69,7 @@ def create_team(body: TeamCreate):
 
 
 @router.put("/{team_id}", response_model=TeamResponse)
-def update_team(team_id: str, body: TeamUpdate):
+def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_current_user)):
     data = body.model_dump(exclude_none=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -81,7 +82,7 @@ def update_team(team_id: str, body: TeamUpdate):
                 supabase.table("teams")
                 .select("pokemon_ids, mega_pokemon_id")
                 .eq("id", team_id)
-                .eq("user_id", USER_ID)
+                .eq("user_id", user_id)
                 .single()
                 .execute()
             )
@@ -97,14 +98,14 @@ def update_team(team_id: str, body: TeamUpdate):
             mega = body.mega_pokemon_id
         _validate_mega(list(ids), mega)
 
-    result = supabase.table("teams").update(data).eq("id", team_id).eq("user_id", USER_ID).execute()
+    result = supabase.table("teams").update(data).eq("id", team_id).eq("user_id", user_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")
     return TeamResponse.model_validate(result.data[0])
 
 
 @router.delete("/{team_id}", status_code=204)
-def delete_team(team_id: str):
-    result = supabase.table("teams").delete().eq("id", team_id).eq("user_id", USER_ID).execute()
+def delete_team(team_id: str, user_id: str = Depends(get_current_user)):
+    result = supabase.table("teams").delete().eq("id", team_id).eq("user_id", user_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")

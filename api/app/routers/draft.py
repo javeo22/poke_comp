@@ -3,15 +3,17 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
+from app.main import limiter
 from app.models.draft import DraftAnalysis, DraftRequest, DraftResponse
 
 router = APIRouter(prefix="/draft", tags=["draft"])
 
-USER_ID = settings.dev_user_id
+
 
 CACHE_TTL_HOURS = 24
 
@@ -68,13 +70,13 @@ def _save_cache(
     ).execute()
 
 
-def _fetch_team_pokemon(team_id: str) -> dict:
+def _fetch_team_pokemon(team_id: str, user_id: str) -> dict:
     """Fetch team + its Pokemon details."""
     team = (
         supabase.table("teams")
         .select("*")
         .eq("id", team_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .single()
         .execute()
     )
@@ -94,7 +96,7 @@ def _fetch_team_pokemon(team_id: str) -> dict:
     user_builds = (
         supabase.table("user_pokemon")
         .select("pokemon_id, ability, moves, item_id, stat_points, nature")
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .in_("pokemon_id", [int(pid) for pid in pokemon_ids])
         .execute()
     )
@@ -284,7 +286,7 @@ def _build_prompt(
         "You are a competitive Pokemon Champions VGC doubles analyst. "
         "Analyze this team preview matchup."
     )
-    my_team_section = f"## My Team ({my_team['team_name']})\n{chr(10).join(my_lines)}{mega_note}"
+    my_team_section = f"## My Team (<team_name>{my_team['team_name']}</team_name>)\n{chr(10).join(my_lines)}{mega_note}"
     opp_section = (
         "## Opponent's Team (6 shown in team preview)\n"
         f"{chr(10).join(opp_lines)}"
@@ -337,13 +339,14 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 
 
 @router.post("/analyze", response_model=DraftResponse)
-def analyze_draft(body: DraftRequest):
+@limiter.limit("5/minute")
+def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(get_current_user)):
     """Analyze a team preview matchup and recommend bring-4 + leads."""
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
     # Fetch my team data
-    my_team = _fetch_team_pokemon(body.my_team_id)
+    my_team = _fetch_team_pokemon(body.my_team_id, user_id)
 
     # Build cache key
     my_pokemon_ids = [str(p["name"]) for p in my_team["pokemon"]]

@@ -10,10 +10,12 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
+from app.main import limiter
 from app.models.cheatsheet import (
     CheatsheetMove,
     CheatsheetResponse,
@@ -27,7 +29,7 @@ from app.models.cheatsheet import (
 
 router = APIRouter(prefix="/cheatsheet", tags=["cheatsheet"])
 
-USER_ID = settings.dev_user_id
+
 CACHE_TTL_DAYS = 7
 
 # ═══════════════════════════════════════════════════════════════════
@@ -75,12 +77,12 @@ SP_LABEL: dict[str, str] = {
 # ═══════════════════════════════════════════════════════════════════
 
 
-def _fetch_team(team_id: str) -> dict:
+def _fetch_team(team_id: str, user_id: str) -> dict:
     result = (
         supabase.table("teams")
         .select("*")
         .eq("id", team_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .single()
         .execute()
     )
@@ -101,11 +103,11 @@ def _fetch_pokemon_data(pokemon_ids: list[int]) -> dict[int, dict]:
     return {r["id"]: r for r in rows}
 
 
-def _fetch_user_builds(pokemon_ids: list[int]) -> dict[int, dict]:
+def _fetch_user_builds(pokemon_ids: list[int], user_id: str) -> dict[int, dict]:
     result = (
         supabase.table("user_pokemon")
         .select("pokemon_id, ability, moves, item_id, stat_points, nature, notes")
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .in_("pokemon_id", pokemon_ids)
         .execute()
     )
@@ -375,7 +377,7 @@ def _build_prompt(
 You are an expert Pokemon Champions VGC doubles analyst creating a \
 pre-match cheat sheet for a competitive team.
 
-## My Team: "{team_name}" ({team_format} format)
+## My Team: <team_name>{team_name}</team_name> ({team_format} format)
 {chr(10).join(team_lines)}
 
 ## Speed Tiers (base stats, sorted)
@@ -449,20 +451,21 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 
 
 @router.post("/{team_id}", response_model=CheatsheetResponse)
-def generate_cheatsheet(team_id: str):
+@limiter.limit("5/minute")
+def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(get_current_user)):
     """Generate an AI-powered pre-match cheat sheet for a team."""
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
     # 1. Fetch team
-    team = _fetch_team(team_id)
+    team = _fetch_team(team_id, user_id)
     pokemon_ids = [int(pid) for pid in team["pokemon_ids"]]
     mega_id = team.get("mega_pokemon_id")
     mega_id_int = int(mega_id) if mega_id else None
 
     # 2. Fetch base data + builds
     pokemon_data = _fetch_pokemon_data(pokemon_ids)
-    user_builds = _fetch_user_builds(pokemon_ids)
+    user_builds = _fetch_user_builds(pokemon_ids, user_id)
 
     # 3. Resolve item names
     item_ids = [b["item_id"] for b in user_builds.values() if b.get("item_id")]

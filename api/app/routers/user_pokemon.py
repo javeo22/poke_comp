@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from postgrest.types import CountMethod
 
+from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
 from app.models.user_pokemon import (
@@ -12,9 +13,6 @@ from app.models.user_pokemon import (
 
 router = APIRouter(prefix="/user-pokemon", tags=["user_pokemon"])
 
-# TODO: Replace with real auth user extraction
-USER_ID = settings.dev_user_id
-
 
 @router.get("", response_model=UserPokemonList)
 def list_user_pokemon(
@@ -22,9 +20,10 @@ def list_user_pokemon(
     pokemon_id: int | None = Query(None, description="Filter by pokemon"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_current_user),
 ):
     query = (
-        supabase.table("user_pokemon").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
+        supabase.table("user_pokemon").select("*", count=CountMethod.exact).eq("user_id", user_id)
     )
 
     if build_status:
@@ -40,12 +39,12 @@ def list_user_pokemon(
 
 
 @router.get("/{user_pokemon_id}", response_model=UserPokemonResponse)
-def get_user_pokemon(user_pokemon_id: str):
+def get_user_pokemon(user_pokemon_id: str, user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("user_pokemon")
         .select("*")
         .eq("id", user_pokemon_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .single()
         .execute()
     )
@@ -53,9 +52,9 @@ def get_user_pokemon(user_pokemon_id: str):
 
 
 @router.post("", response_model=UserPokemonResponse, status_code=201)
-def create_user_pokemon(body: UserPokemonCreate):
+def create_user_pokemon(body: UserPokemonCreate, user_id: str = Depends(get_current_user)):
     data = body.model_dump(exclude_none=True)
-    data["user_id"] = USER_ID
+    data["user_id"] = user_id
 
     result = supabase.table("user_pokemon").insert(data).execute()
     if not result.data:
@@ -64,7 +63,7 @@ def create_user_pokemon(body: UserPokemonCreate):
 
 
 @router.put("/{user_pokemon_id}", response_model=UserPokemonResponse)
-def update_user_pokemon(user_pokemon_id: str, body: UserPokemonUpdate):
+def update_user_pokemon(user_pokemon_id: str, body: UserPokemonUpdate, user_id: str = Depends(get_current_user)):
     data = body.model_dump(exclude_none=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -73,7 +72,7 @@ def update_user_pokemon(user_pokemon_id: str, body: UserPokemonUpdate):
         supabase.table("user_pokemon")
         .update(data)
         .eq("id", user_pokemon_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .execute()
     )
     if not result.data:
@@ -82,12 +81,12 @@ def update_user_pokemon(user_pokemon_id: str, body: UserPokemonUpdate):
 
 
 @router.delete("/{user_pokemon_id}", status_code=204)
-def delete_user_pokemon(user_pokemon_id: str):
+def delete_user_pokemon(user_pokemon_id: str, user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("user_pokemon")
         .delete()
         .eq("id", user_pokemon_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .execute()
     )
     if not result.data:
