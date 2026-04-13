@@ -1,4 +1,7 @@
 {
   "private": true,
-  "name": "poke-comp"
+  "name": "poke-comp",
+  "dependencies": {
+    "next": "16.2.3"
+  }
 }
