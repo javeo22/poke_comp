@@ -3,7 +3,7 @@
   "buildCommand": "cd web && npm install --legacy-peer-deps && npx next build",
   "outputDirectory": "web/.next",
   "installCommand": "npm install",
-  "framework": null,
+  "framework": "nextjs",
   "regions": ["iad1"],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }
