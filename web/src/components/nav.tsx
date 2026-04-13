@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/pokemon", label: "Pokedex" },
   { href: "/roster", label: "Roster" },
   { href: "/teams", label: "Teams" },
+  { href: "/meta", label: "Meta" },
 ];
 
 export function Nav() {

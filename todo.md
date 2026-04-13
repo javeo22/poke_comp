@@ -2,33 +2,25 @@
 
 ## In Progress
 
-### Week 1 Remaining (Phase 0)
-- [x] Run 001_initial_schema.sql against Supabase project (local via supabase start)
-- [x] Configure .env files with real Supabase URL + service key (local keys)
-- [x] Run `uv run python -m scripts.import_pokeapi` to populate reference data
-- [x] Run `uv run python -m scripts.seed_champions`
-- [x] Start API (`uv run uvicorn app.main:app --reload`) and verify endpoints
-- [x] Start web (`pnpm dev`) and verify Pokemon search page with real data
-- [ ] Push to GitHub remote
+### Phase 2 Remaining
+- [ ] F5: AI Draft Helper (endpoint + UI)
+- [ ] Automated Pikalytics scraper (currently seeded manually)
+- [ ] Supabase Auth (deferred — using hardcoded dev user ID)
 
 ---
 
-## Up Next (Phase 1 - Weeks 2-3)
-- [ ] Set up Supabase Auth (email/password for single user) — deferred, using hardcoded dev user ID
-- [x] user_pokemon CRUD endpoints (GET list, GET single, POST, PUT, DELETE)
-- [x] Roster management UI (roster page, card, form modal, nav bar, status filters)
-- [x] Teams CRUD endpoints (GET list, GET single, POST, PUT, DELETE with mega validation)
-- [x] Team builder UI (slot picker from roster, format filter, clone, mega selector)
-- [x] Type coverage analysis component (offensive + defensive, 18-type grid)
+## Up Next (Phase 3 - Weeks 6-7)
+- [ ] F6: Matchup Log (record ranked matches, win rate analytics)
+- [ ] Refined AI prompts based on real usage data
+- [ ] UI polish pass across all features
 
 ---
 
 ## Backlog
-- [ ] Investigate Champions-specific movepool differences from PokeAPI
-- [ ] Determine Champions item shop availability from Serebii
 - [ ] Decide on open source license (MIT vs Apache 2.0)
 - [ ] Set up Cloud Run deployment for API
 - [ ] Set up Vercel deployment for web
+- [ ] Push to GitHub remote
 
 ---
 
@@ -46,7 +38,18 @@
 - [x] Git remote configured (github.com/javeo22/poke_comp.git)
 - [x] user_pokemon CRUD API endpoints (hardcoded dev user, auth-ready scoping)
 - [x] Roster management UI: page, card, add/edit form modal, status filters
-- [x] Top nav bar (Pokedex + Roster + Teams)
+- [x] Top nav bar (Pokedex + Roster + Teams + Meta)
 - [x] Teams CRUD API endpoints (mega validation, format filtering)
 - [x] Team builder UI: slot picker, mega selector, clone, format filters
 - [x] Type coverage component (offensive + defensive analysis grid)
+- [x] F4: Meta Tracker — CRUD endpoints, Game8 scraper (Claude API), tier list UI
+- [x] Serebii import script — Champions-verified movepools, abilities, items, moves, mega abilities
+- [x] Fixed champions_eligible for regional forms + added missing items
+- [x] Notion roster seed (52 Pokemon from personal Notion database)
+- [x] Pikalytics usage data — pokemon_usage table, API endpoint, 25 Pokemon seeded
+- [x] Meta page overhaul — usage % bars, inline moves/items/abilities, detail panel with competitive data
+- [x] Smart roster form — moves/items sorted by usage %, ability dropdown, item field, stat point editor
+- [x] Speed tier reference in stat editor (outspeeds/outsped by meta Pokemon)
+- [x] Coverage analyzer on roster page (18-type grid, gap highlighting)
+- [x] CSS polish (stagger animations, hover-lift, panel slide-in)
+- [x] Legal compliance (fan project disclaimer, data source attribution)

@@ -1,4 +1,8 @@
+import type { ItemListResponse } from "@/types/item";
+import type { MetaSnapshot } from "@/types/meta";
+import type { MoveListResponse } from "@/types/move";
 import type { PokemonListResponse } from "@/types/pokemon";
+import type { PokemonUsage, PokemonUsageList } from "@/types/usage";
 import type {
   Team,
   TeamCreate,
@@ -97,6 +101,39 @@ export async function deleteUserPokemon(id: string) {
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
 }
 
+// ── Items ──
+
+export interface ItemFilters {
+  name?: string;
+  category?: string;
+  champions_only?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchItems(filters: ItemFilters = {}) {
+  return apiFetch<ItemListResponse>("/items", {
+    params: filters as Record<string, string | number | boolean | undefined>,
+  });
+}
+
+// ── Moves ──
+
+export interface MoveFilters {
+  name?: string;
+  type?: string;
+  category?: string;
+  champions_only?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchMoves(filters: MoveFilters = {}) {
+  return apiFetch<MoveListResponse>("/moves", {
+    params: filters as Record<string, string | number | boolean | undefined>,
+  });
+}
+
 // ── Teams ──
 
 export interface TeamFilters {
@@ -141,6 +178,53 @@ export async function deleteTeam(id: string) {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+}
+
+// ── Meta Snapshots ──
+
+export async function fetchLatestMeta() {
+  return apiFetch<MetaSnapshot[]>("/meta/latest");
+}
+
+export interface ScrapeResult {
+  format: string;
+  pokemon_count: number;
+  status: string;
+}
+
+export interface ScrapeResponse {
+  results: ScrapeResult[];
+  estimated_cost_usd: number;
+}
+
+export async function triggerMetaScrape(): Promise<ScrapeResponse> {
+  const res = await fetch(`${API_URL}/meta/scrape`, { method: "POST" });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<ScrapeResponse>;
+}
+
+export interface MetaFilters {
+  format?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchMetaSnapshots(filters: MetaFilters = {}) {
+  return apiFetch<{ data: MetaSnapshot[]; count: number }>("/meta", {
+    params: filters as Record<string, string | number | boolean | undefined>,
+  });
+}
+
+// ── Usage Stats ──
+
+export async function fetchUsage(format: string = "doubles", limit: number = 50) {
+  return apiFetch<PokemonUsageList>("/usage", {
+    params: { format, limit },
+  });
+}
+
+export async function fetchPokemonUsage(pokemonName: string) {
+  return apiFetch<PokemonUsage[]>(`/usage/pokemon/${encodeURIComponent(pokemonName)}`);
 }
 
 export { apiFetch };

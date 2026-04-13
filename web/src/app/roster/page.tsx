@@ -1,21 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { Item } from "@/types/item";
 import type { Pokemon } from "@/types/pokemon";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
 import {
   fetchUserPokemon,
   fetchPokemon,
+  fetchItems,
   createUserPokemon,
   updateUserPokemon,
   deleteUserPokemon,
 } from "@/lib/api";
+import { CoverageSummary } from "@/components/roster/coverage-summary";
 import { RosterCard } from "@/components/roster/roster-card";
 import { RosterForm } from "@/components/roster/roster-form";
 
 export default function RosterPage() {
   const [entries, setEntries] = useState<UserPokemon[]>([]);
   const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
+  const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
@@ -34,16 +38,19 @@ export default function RosterPage() {
       setEntries(result.data);
       setCount(result.count);
 
-      // Fetch pokemon details for all roster entries
-      const ids = [...new Set(result.data.map((e) => e.pokemon_id))];
-      if (ids.length > 0) {
-        const pokemonResult = await fetchPokemon({ limit: 200, champions_only: true });
-        const map = new Map<number, Pokemon>();
-        for (const p of pokemonResult.data) {
-          map.set(p.id, p);
-        }
-        setPokemonMap(map);
-      }
+      // Fetch pokemon + items for all roster entries
+      const [pokemonResult, itemsResult] = await Promise.all([
+        fetchPokemon({ limit: 200, champions_only: true }),
+        fetchItems({ champions_only: true, limit: 200 }),
+      ]);
+
+      const pMap = new Map<number, Pokemon>();
+      for (const p of pokemonResult.data) pMap.set(p.id, p);
+      setPokemonMap(pMap);
+
+      const iMap = new Map<number, Item>();
+      for (const item of itemsResult.data) iMap.set(item.id, item);
+      setItemsMap(iMap);
     } catch (err) {
       console.error("Failed to fetch roster:", err);
       setEntries([]);
@@ -150,6 +157,13 @@ export default function RosterPage() {
         />
       </div>
 
+      {/* Coverage analysis */}
+      {!isLoading && entries.length > 0 && (
+        <div className="mb-6">
+          <CoverageSummary entries={entries} pokemonMap={pokemonMap} />
+        </div>
+      )}
+
       {/* Grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -181,6 +195,7 @@ export default function RosterPage() {
               key={entry.id}
               entry={entry}
               pokemon={pokemonMap.get(entry.pokemon_id)}
+              itemsMap={itemsMap}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />

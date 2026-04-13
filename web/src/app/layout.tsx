@@ -30,7 +30,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Nav />
-        {children}
+        <main className="flex-1 flex flex-col">{children}</main>
+        <footer className="px-6 py-4 text-center">
+          <p className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+            Pokemon Champions Companion is a fan project. Not affiliated with
+            or endorsed by The Pokemon Company, Nintendo, or Game Freak.
+          </p>
+        </footer>
       </body>
     </html>
   );

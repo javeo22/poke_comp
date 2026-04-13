@@ -15,20 +15,15 @@
 - [x] Champions seed script (roster flags, items, mega links)
 - [x] Next.js Pokemon search/filter page with design system
 - [x] CI workflow (ruff, pyright, ESLint, tsc)
-
-### Remaining
-- [x] Run migration against Supabase instance (local via supabase start, 2026-04-10)
-- [x] Run PokeAPI import script, verify data (1025 Pokemon, 919 moves, 307 abilities, 15 regional forms)
-- [x] Run Champions seed script with real roster data (186 roster, 59 megas, 117 items, 3 meta snapshots)
-- [x] Test full stack: API -> frontend with real data
-- [x] Environment variables configured for both apps (local Supabase keys)
+- [x] Run migration, import data, verify full stack end-to-end
+- [x] Environment variables configured (local Supabase keys)
 
 ---
 
 ## Phase 1: Personal Data (Weeks 2-3 - April 17-30)
 **Goal:** Input and manage real teams.
 
-### F1: Personal Roster Manager
+### F1: Personal Roster Manager -- COMPLETE
 - [x] user_pokemon CRUD endpoints (POST, GET list, GET single, PUT, DELETE)
 - [x] Roster management UI: add/edit/delete owned Pokemon
 - [x] Filter by build status (built/training/wishlist)
@@ -36,7 +31,7 @@
 - [x] VP spent tracking per Pokemon
 - [ ] Supabase auth integration (deferred — using hardcoded dev user ID)
 
-### F2: Team Builder
+### F2: Team Builder -- COMPLETE
 - [x] Teams CRUD endpoints (GET list, GET single, POST, PUT, DELETE)
 - [x] Pick 6 Pokemon from roster into team slots
 - [x] Mega validation (one per team, must be team member)
@@ -48,14 +43,20 @@
 ## Phase 2: Meta & AI (Weeks 4-5 - May 1-14)
 **Goal:** Meta awareness and AI-powered draft help.
 
-### F4: Meta Tracker
-- [ ] Meta snapshots CRUD endpoints
-- [ ] Game8 tier list scraper (Claude API parsing)
-- [ ] Tier list display UI (singles, doubles, megas)
-- [ ] Top archetypes with example teams
-- [ ] Weekly manual update workflow
+### F4: Meta Tracker -- COMPLETE
+- [x] Meta snapshots CRUD endpoints + Game8 tier list scraper (Claude API)
+- [x] Serebii import: Champions-verified movepools, abilities, items, moves, mega data
+- [x] Pikalytics usage data: pokemon_usage table with top 25 Pokemon (usage %, moves, items, abilities, teammates)
+- [x] Meta page overhaul: usage % bars, inline competitive data, format filters, usage/tier toggle
+- [x] Pokemon detail panel: click any Pokemon -> usage breakdown, base stats, movepool, teammates
+- [x] Smart roster form: moves/items sorted by competitive usage, item dropdown, stat point editor
+- [x] Speed tier reference in stat editor
+- [x] Coverage analyzer on roster page (18-type grid with gap detection)
+- [x] Notion roster seed script (52 Pokemon from personal database)
+- [x] CSS polish: stagger animations, hover-lift, panel transitions
+- [x] Legal compliance: fan project disclaimer, data source attribution
 
-### F5: AI Draft Helper
+### F5: AI Draft Helper -- IN PROGRESS
 - [ ] Draft analysis endpoint (Claude API integration)
 - [ ] Text input for opponent team (6 Pokemon)
 - [ ] Select my team from saved teams

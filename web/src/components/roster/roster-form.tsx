@@ -2,9 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Pokemon } from "@/types/pokemon";
+import type { Item } from "@/types/item";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
+import type { PokemonUsage } from "@/types/usage";
 import { BUILD_STATUSES, NATURES } from "@/types/user-pokemon";
-import { fetchPokemon } from "@/lib/api";
+import { fetchPokemon, fetchItems, fetchPokemonUsage } from "@/lib/api";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import type { DropdownOption } from "@/components/ui/searchable-dropdown";
+import { StatPointEditor } from "./stat-point-editor";
 
 interface RosterFormProps {
   editing: UserPokemon | null;
@@ -12,6 +17,10 @@ interface RosterFormProps {
   onSubmit: (data: UserPokemonCreate | (UserPokemonUpdate & { id: string })) => void;
   onClose: () => void;
 }
+
+const DEFAULT_STATS: Record<string, number> = {
+  hp: 0, attack: 0, defense: 0, sp_attack: 0, sp_defense: 0, speed: 0,
+};
 
 export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: RosterFormProps) {
   // Pokemon search (only for new entries)
@@ -21,15 +30,30 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
     editing ? pokemonLookup.get(editing.pokemon_id) ?? null : null
   );
 
+  // Items (loaded once) + usage data
+  const [items, setItems] = useState<Item[]>([]);
+  const [usage, setUsage] = useState<PokemonUsage | null>(null);
+
   // Form fields
   const [ability, setAbility] = useState(editing?.ability ?? "");
   const [nature, setNature] = useState(editing?.nature ?? "");
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(editing?.item_id ?? null);
   const [moves, setMoves] = useState<string[]>(editing?.moves ?? ["", "", "", ""]);
+  const [statPoints, setStatPoints] = useState<Record<string, number>>(
+    editing?.stat_points ?? { ...DEFAULT_STATS }
+  );
   const [buildStatus, setBuildStatus] = useState<string>(editing?.build_status ?? "wishlist");
   const [vpSpent, setVpSpent] = useState(String(editing?.vp_spent ?? 0));
   const [notes, setNotes] = useState(editing?.notes ?? "");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Load Champions items on mount
+  useEffect(() => {
+    fetchItems({ champions_only: true, limit: 200 })
+      .then((res) => setItems(res.data))
+      .catch(() => setItems([]));
+  }, []);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -62,10 +86,13 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
     setSelectedPokemon(p);
     setSearchQuery("");
     setSearchResults([]);
-    // Pre-fill first ability if available
     if (!ability && p.abilities.length > 0) {
       setAbility(p.abilities[0]);
     }
+    // Fetch usage data for this Pokemon
+    fetchPokemonUsage(p.name)
+      .then((res) => setUsage(res[0] ?? null))
+      .catch(() => setUsage(null));
   };
 
   const handleMoveChange = (index: number, value: string) => {
@@ -79,13 +106,16 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
 
     const filledMoves = moves.filter((m) => m.trim());
     const movesPayload = filledMoves.length === 4 ? filledMoves : undefined;
+    const hasStats = Object.values(statPoints).some((v) => v > 0);
 
     if (editing) {
       const update: UserPokemonUpdate & { id: string } = {
         id: editing.id,
         ability: ability || undefined,
         nature: nature || undefined,
+        item_id: selectedItemId,
         moves: movesPayload,
+        stat_points: hasStats ? statPoints : undefined,
         build_status: (buildStatus as UserPokemonCreate["build_status"]) || undefined,
         vp_spent: Number(vpSpent) || 0,
         notes: notes || undefined,
@@ -97,7 +127,9 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
         pokemon_id: selectedPokemon.id,
         ability: ability || undefined,
         nature: nature || undefined,
+        item_id: selectedItemId,
         moves: movesPayload,
+        stat_points: hasStats ? statPoints : undefined,
         build_status: (buildStatus as UserPokemonCreate["build_status"]) || undefined,
         vp_spent: Number(vpSpent) || 0,
         notes: notes || undefined,
@@ -106,184 +138,240 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
     }
   };
 
-  // Available abilities for dropdown
-  const availableAbilities = selectedPokemon?.abilities ?? [];
+  // Derived option lists — sorted by competitive usage when available
+  const usageMoveMap = new Map(
+    (usage?.moves ?? []).map((m) => [m.name, m.percent])
+  );
+  const usageItemMap = new Map(
+    (usage?.items ?? []).map((i) => [i.name, i.percent])
+  );
+  const usageAbilityMap = new Map(
+    (usage?.abilities ?? []).map((a) => [a.name, a.percent])
+  );
+
+  const abilityOptions: DropdownOption[] = (selectedPokemon?.abilities ?? [])
+    .map((a) => ({
+      value: a,
+      label: a,
+      sublabel: usageAbilityMap.has(a)
+        ? `${usageAbilityMap.get(a)!.toFixed(0)}% usage`
+        : undefined,
+    }))
+    .sort((a, b) => (usageAbilityMap.get(b.value) ?? 0) - (usageAbilityMap.get(a.value) ?? 0));
+
+  const moveOptions: DropdownOption[] = (selectedPokemon?.movepool ?? [])
+    .map((m) => ({
+      value: m,
+      label: m,
+      sublabel: usageMoveMap.has(m)
+        ? `${usageMoveMap.get(m)!.toFixed(0)}%`
+        : undefined,
+    }))
+    .sort((a, b) => (usageMoveMap.get(b.value) ?? 0) - (usageMoveMap.get(a.value) ?? 0));
+
+  const itemOptions: DropdownOption[] = items
+    .map((item) => ({
+      value: String(item.id),
+      label: item.name,
+      sublabel: usageItemMap.has(item.name)
+        ? `${usageItemMap.get(item.name)!.toFixed(0)}% usage`
+        : item.vp_cost
+          ? `${item.vp_cost} VP`
+          : undefined,
+    }))
+    .sort((a, b) => {
+      const aUsage = usageItemMap.get(a.label) ?? 0;
+      const bUsage = usageItemMap.get(b.label) ?? 0;
+      return bUsage - aUsage;
+    });
+
+  const noPokemonSelected = !selectedPokemon;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="glass glass-border mx-4 w-full max-w-lg rounded-shell p-8"
+        className="glass glass-border mx-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-shell"
       >
-        <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
-          {editing ? "Edit Build" : "Add to Roster"}
-        </h2>
+        <div className="overflow-y-auto p-8">
+          <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
+            {editing ? "Edit Build" : "Add to Roster"}
+          </h2>
 
-        {/* Pokemon search (new only) */}
-        {!editing && (
-          <div className="mb-5">
-            <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-              Pokemon
-            </label>
-            {selectedPokemon ? (
-              <div className="flex items-center gap-3 rounded-chunky bg-surface-low p-3">
-                <span className="font-display font-semibold text-on-surface">
-                  {selectedPokemon.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPokemon(null)}
-                  className="ml-auto font-display text-xs text-on-surface-muted hover:text-on-surface"
-                >
-                  Change
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search Champions Pokemon..."
-                  className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
-                  autoFocus
-                />
-                {searchResults.length > 0 && (
-                  <div className="absolute left-0 right-0 top-11 z-10 max-h-48 overflow-y-auto rounded-chunky bg-surface-high">
-                    {searchResults.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleSelectPokemon(p)}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-highest"
-                      >
-                        <span className="font-display text-[0.65rem] text-on-surface-muted">
-                          #{String(p.id).padStart(4, "0")}
-                        </span>
-                        <span className="font-body text-sm text-on-surface">{p.name}</span>
-                        <span className="ml-auto font-display text-[0.6rem] uppercase text-on-surface-muted">
-                          {p.types.join(" / ")}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Ability */}
-        <div className="mb-4">
-          <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-            Ability
-          </label>
-          {availableAbilities.length > 0 ? (
-            <select
-              value={ability}
-              onChange={(e) => setAbility(e.target.value)}
-              className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
-            >
-              <option value="">Select ability</option>
-              {availableAbilities.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={ability}
-              onChange={(e) => setAbility(e.target.value)}
-              placeholder="Ability name"
-              className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
-            />
+          {/* Pokemon search (new only) */}
+          {!editing && (
+            <div className="mb-5">
+              <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                Pokemon
+              </label>
+              {selectedPokemon ? (
+                <div className="flex items-center gap-3 rounded-chunky bg-surface-low p-3">
+                  <span className="font-display font-semibold text-on-surface">
+                    {selectedPokemon.name}
+                  </span>
+                  <span className="font-display text-[0.6rem] uppercase text-on-surface-muted">
+                    {selectedPokemon.types.join(" / ")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPokemon(null)}
+                    className="ml-auto font-display text-xs text-on-surface-muted hover:text-on-surface"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Search Champions Pokemon..."
+                    className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+                    autoFocus
+                  />
+                  {searchResults.length > 0 && (
+                    <div className="absolute left-0 right-0 top-11 z-10 max-h-48 overflow-y-auto rounded-chunky bg-surface-high">
+                      {searchResults.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleSelectPokemon(p)}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-highest"
+                        >
+                          <span className="font-display text-[0.65rem] text-on-surface-muted">
+                            #{String(p.id).padStart(4, "0")}
+                          </span>
+                          <span className="font-body text-sm text-on-surface">{p.name}</span>
+                          <span className="ml-auto font-display text-[0.6rem] uppercase text-on-surface-muted">
+                            {p.types.join(" / ")}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* Nature */}
-        <div className="mb-4">
-          <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-            Nature
-          </label>
-          <select
-            value={nature}
-            onChange={(e) => setNature(e.target.value)}
-            className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
-          >
-            <option value="">Select nature</option>
-            {NATURES.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Moves */}
-        <div className="mb-4">
-          <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-            Moves
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {moves.map((m, i) => (
-              <input
-                key={i}
-                type="text"
-                value={m}
-                onChange={(e) => handleMoveChange(i, e.target.value)}
-                placeholder={`Move ${i + 1}`}
-                className="input-recessed h-9 rounded-chunky px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
-              />
-            ))}
+          {/* Ability */}
+          <div className="mb-4">
+            <SearchableDropdown
+              label="Ability"
+              placeholder="Select ability"
+              value={ability}
+              onChange={setAbility}
+              options={abilityOptions}
+              disabled={noPokemonSelected}
+            />
           </div>
-        </div>
 
-        {/* Status + VP row */}
-        <div className="mb-4 flex gap-3">
-          <div className="flex-1">
+          {/* Nature */}
+          <div className="mb-4">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-              Status
+              Nature
             </label>
             <select
-              value={buildStatus}
-              onChange={(e) => setBuildStatus(e.target.value)}
+              value={nature}
+              onChange={(e) => setNature(e.target.value)}
               className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
             >
-              {BUILD_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
+              <option value="">Select nature</option>
+              {NATURES.map((n) => (
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
-          <div className="w-28">
-            <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-              VP Spent
+
+          {/* Item */}
+          <div className="mb-4">
+            <SearchableDropdown
+              label="Held Item"
+              placeholder="Search items..."
+              value={selectedItemId ? String(selectedItemId) : ""}
+              onChange={(v) => setSelectedItemId(v ? Number(v) : null)}
+              options={itemOptions}
+            />
+          </div>
+
+          {/* Moves */}
+          <div className="mb-4">
+            <label className="mb-2 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+              Moves
             </label>
-            <input
-              type="number"
-              value={vpSpent}
-              onChange={(e) => setVpSpent(e.target.value)}
-              min={0}
-              className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow"
+            <div className="grid grid-cols-2 gap-2">
+              {moves.map((m, i) => (
+                <SearchableDropdown
+                  key={i}
+                  placeholder={`Move ${i + 1}`}
+                  value={m}
+                  onChange={(v) => handleMoveChange(i, v)}
+                  options={moveOptions}
+                  disabled={noPokemonSelected}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Stat Points */}
+          <div className="mb-4">
+            <StatPointEditor
+              value={statPoints}
+              onChange={setStatPoints}
+              baseStats={selectedPokemon?.base_stats}
+            />
+          </div>
+
+          {/* Status + VP row */}
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                Status
+              </label>
+              <select
+                value={buildStatus}
+                onChange={(e) => setBuildStatus(e.target.value)}
+                className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+              >
+                {BUILD_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-28">
+              <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                VP Spent
+              </label>
+              <input
+                type="number"
+                value={vpSpent}
+                onChange={(e) => setVpSpent(e.target.value)}
+                min={0}
+                className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow"
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="mb-6">
+            <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Build notes, matchup thoughts..."
+              className="input-recessed w-full resize-none rounded-chunky px-4 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
             />
           </div>
         </div>
 
-        {/* Notes */}
-        <div className="mb-6">
-          <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-            Notes
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Build notes, matchup thoughts..."
-            className="input-recessed w-full resize-none rounded-chunky px-4 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3">
+        {/* Sticky actions */}
+        <div className="flex gap-3 border-t border-surface-high/20 p-6">
           <button
             type="submit"
             disabled={!editing && !selectedPokemon}

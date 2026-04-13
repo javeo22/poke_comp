@@ -1,12 +1,12 @@
 # Design System Specification: Tactical Nostalgia & High-Gloss Futurism
 
-## 1. Overview & Creative North Star: "The Translucent Artifact"
+## 1. Overview & Creative North Star: "The Orbital Archive"
 
-The Creative North Star for this design system is **The Translucent Artifact**. We are not merely building a web application; we are designing a piece of high-end hardware trapped inside a digital viewport. This system bridges the gap between the tactile, experimental industrial design of 1998 and the ultra-refined, editorial precision of 2026.
+The Creative North Star for this design system is **The Orbital Archive**. We are designing a digital constellation—a weightless, holographic interface floating in an infinite space. We have moved beyond the "chassis" of hardware into the pure energy of data. This system celebrates **Spatial Freedom** and **Momentum**.
 
-To break the "standard template" look, we lean into **intentional asymmetry** and **physical depth**. Layouts should feel like a hardware teardown—components don't just sit on a grid; they are "mounted" into the chassis. We achieve this through:
-- **Asymmetric Composition:** Use heavy groupings of elements on one side balanced by wide-open "negative air" on the other.
-- **Overlapping Planes:** Allow glass containers to slightly overlap, creating a sense of physical assembly.
+To break the "standard template" look, we lean into **Dynamic Perspective** and **Atmospheric Depth**. Interaction shouldn't just be about clicks; it should be about shifting gravity. We achieve this through:
+- **Perspective Displacement:** Main layout containers use CSS `perspective` and `translateZ` to pull content out of the screen.
+- **Orbital Grouping:** Elements are not "mounted"; they hover in proximity. Clusters should feel like they are held together by mutual attraction.
 - **High-Contrast Scales:** Use massive `display-lg` headers against ultra-refined `label-sm` metadata to create a premium, editorial feel.
 
 ## 2. Colors: Tonal Depth & The "Atomic" Glow
@@ -37,13 +37,13 @@ This system utilizes a "High-Tech/High-Human" pairing.
 
 **Hierarchy Note:** Use `label-md` in all-caps with increased letter-spacing (0.05rem) for technical metadata or "serial numbers" to lean into the retro-hardware aesthetic.
 
-## 4. Elevation & Depth: Tonal Layering
+## 4. Elevation & Depth: Z-Axis Orbiting
+ 
+Shadows in this system are not "drop shadows"—they are **Distance Indicators**.
 
-Shadows in this system are not "drop shadows"—they are **Ambient Occlusion**.
-
-- **The Layering Principle:** Stack `surface_container_lowest` cards on `surface_container_low` backgrounds to create a soft, natural lift.
-- **Ambient Shadows:** For floating glass panels, use extra-diffused shadows: `box-shadow: 0 20px 40px rgba(18, 19, 29, 0.4)`. The shadow must be a tinted version of the background, never pure black.
-- **The "Ghost Border" Fallback:** If a container requires further definition, use a **Ghost Border**: `outline-variant` (#464650) at 15% opacity. 
+- **The Orbital Principle:** Elements aren't just "higher"; they are "closer" to the lens. Use `translateZ` in combination with varying blur. 
+- **Dynamic Shadows:** For floating panels, use a nested shadow technique to simulate deep distance: `box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 30px 60px rgba(0,0,0,0.05)`.
+- **The refraction Rim:** Instead of a Ghost Border, use a 1px `linear-gradient` border at 20% opacity that mimics the "edge highlight" of curved glass.
 - **The Gloss Factor:** Apply a subtle top-down inner highlight (1px, white at 10% opacity) to the top edge of purple containers to mimic light hitting a plastic edge.
 
 ## 5. Components: The Hardware Interface

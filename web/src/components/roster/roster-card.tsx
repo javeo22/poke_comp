@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { Item } from "@/types/item";
 import type { Pokemon } from "@/types/pokemon";
 import type { UserPokemon } from "@/types/user-pokemon";
 import { TypeBadge } from "@/components/pokemon/type-badge";
@@ -20,14 +21,19 @@ const STATUS_LABEL: Record<string, string> = {
 interface RosterCardProps {
   entry: UserPokemon;
   pokemon: Pokemon | undefined;
+  itemsMap?: Map<number, Item>;
   onEdit: (entry: UserPokemon) => void;
   onDelete: (id: string) => void;
 }
 
-export function RosterCard({ entry, pokemon, onEdit, onDelete }: RosterCardProps) {
+export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: RosterCardProps) {
   if (!pokemon) return null;
 
   const statusKey = entry.build_status || "wishlist";
+  const item = entry.item_id && itemsMap ? itemsMap.get(entry.item_id) : null;
+  const statTotal = entry.stat_points
+    ? Object.values(entry.stat_points).reduce((s, v) => s + v, 0)
+    : 0;
 
   return (
     <div className="group relative rounded-chunky bg-surface-low p-5 transition-all duration-200 hover:bg-surface-mid gloss-top">
@@ -80,6 +86,18 @@ export function RosterCard({ entry, pokemon, onEdit, onDelete }: RosterCardProps
           <div className="flex justify-between">
             <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">Nature</span>
             <span className="font-body text-xs text-on-surface">{entry.nature}</span>
+          </div>
+        )}
+        {item && (
+          <div className="flex justify-between">
+            <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">Item</span>
+            <span className="font-body text-xs text-on-surface">{item.name}</span>
+          </div>
+        )}
+        {statTotal > 0 && (
+          <div className="flex justify-between">
+            <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">EVs</span>
+            <span className="font-body text-xs text-on-surface">{statTotal}/66</span>
           </div>
         )}
         {entry.moves && entry.moves.length > 0 && (

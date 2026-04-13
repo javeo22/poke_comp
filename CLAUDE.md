@@ -32,12 +32,15 @@ poke_comp/
 - **Radii:** Minimum 1rem ("chunky") or pill (9999px), never 4px/8px
 - **Text color:** Use on-surface (#E2E1F1), never pure white (#FFFFFF)
 
-## Design System
-See `design/palette.md` for full spec. Key points:
-- **Fonts:** Space Grotesk (headers/labels), Plus Jakarta Sans (body)
-- **Surface hierarchy:** surface -> surface-low -> surface-mid -> surface-high -> surface-highest
-- **Glass panels:** primary-container at 40-60% opacity with backdrop-blur
-- **Accent colors:** primary (#C1C1FF), secondary/neon teal (#56E8C5), tertiary/berry red (#E8567A)
+## Design System: The Orbital Archive (Antigravity)
+The UI is a holographic projection floating in a weightless void. See `design/ANTIGRAVITY_DESIGN_REVIEW.md`.
+- **Core Principle:** Elements orbit the user; they are never "fixed" or "heavy."
+- **Z-Axis Depth:** Mandatory use of CSS `perspective: 1000px` on main layouts.
+- **Motion:** GSAP is the source of truth for all physics. No instant snaps. No generic ease-out.
+- **Glassmorphism:** `backdrop-filter: blur(16px)` with variable opacity (30-70%) based on elevation.
+- **Shadows:** Natural, ultra-diffused ambient occlusion. Shadows tint towards surface color.
+- **No Borders:** Strictly prohibited. Use tonal shifts and glass refraction for definition.
+- **Interaction:** Every hover must trigger a 3D tilt or slight Z-lift. Stagger all grid entrances.
 
 ## Data Model Decisions
 - `movepool` and `abilities` on pokemon table are TEXT[] (denormalized, no FK to moves/abilities tables)
