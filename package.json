@@ -1,13 +1,4 @@
 {
   "private": true,
-  "name": "poke-comp",
-  "dependencies": {
-    "next": "16.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
-  },
-  "scripts": {
-    "build": "cd web && npm install --legacy-peer-deps && npx next build",
-    "dev": "cd web && npm run dev"
-  }
+  "name": "poke-comp"
 }
