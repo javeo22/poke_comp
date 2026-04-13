@@ -70,5 +70,23 @@ After completing any implementation work, always update:
 - **Web build:** `cd web && pnpm build`
 - **PokeAPI import:** `cd api && uv run python -m scripts.import_pokeapi`
 - **Champions seed:** `cd api && uv run python -m scripts.seed_champions`
-- **Data Ingest (Meta):** `cd api && uv run python -m scripts.ingest.smogon_meta`
-- **Data Ingest (Teams):** `cd api && uv run python -m scripts.ingest.limitless_teams`
+- **Serebii import:** `cd api && uv run python -m scripts.ingest.serebii_static`
+- **Usage ingest (Smogon):** `cd api && uv run python -m scripts.ingest.smogon_meta`
+- **Teams ingest (Limitless):** `cd api && uv run python -m scripts.ingest.limitless_teams`
+- **Tier list refresh (AI):** `cd api && uv run python -m scripts.refresh_meta`
+
+## Data Pipeline
+Scripts are organized into three layers:
+
+**One-time setup** (run once, re-run on game patches):
+- `scripts/import_pokeapi.py` -- PokeAPI bulk import (pokemon, moves, abilities)
+- `scripts/seed_champions.py` -- Champions roster flags, items, mega links
+- `scripts/ingest/serebii_static.py` -- Champions-verified movepools, abilities, items, moves, mega data
+
+**Automated refresh** (scheduled weekly/daily):
+- `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon -> `pokemon_usage` table
+- `scripts/ingest/limitless_teams.py` -- Tournament teams -> `tournament_teams` table
+- `scripts/refresh_meta.py` -- AI-extracted tier lists -> `meta_snapshots` table (daily cron)
+
+**On-demand** (via API):
+- `POST /meta/scrape` -- Trigger Game8 tier list scrape from the API

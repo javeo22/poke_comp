@@ -128,29 +128,28 @@ def _fetch_team_pokemon(team_id: str) -> dict:
     }
 
 
-def _fetch_usage_context(pokemon_ids: list[int]) -> list[dict]:
-    """Fetch competitive usage data for a list of Pokemon IDs."""
-    usage_rows = []
-    for pid in pokemon_ids:
+def _fetch_usage_context(pokemon_names: list[str]) -> list[dict]:
+    """Fetch competitive usage data for a list of Pokemon names."""
+    usage_rows: list[dict] = []
+    for name in pokemon_names:
         result = (
-            supabase.table("pokemon_usage_stats")
-            .select("pokemon_id, usage_percent, common_moves, common_items, common_teammates")
-            .eq("pokemon_id", pid)
+            supabase.table("pokemon_usage")
+            .select("pokemon_name, usage_percent, moves, items, abilities, teammates")
+            .ilike("pokemon_name", name.strip())
             .order("snapshot_date", desc=True)
             .limit(1)
             .execute()
         )
         if result.data:
-            usage_rows.append(result.data[0])
+            row: dict = result.data[0]  # type: ignore[assignment]
+            usage_rows.append(row)
     return usage_rows
 
 def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
     """Fetch tournament archetype if this exact team combination has placed recently."""
     if len(pokemon_ids) < 4:
         return ""
-        
-    # In a real scenario, this involves a more complex query to check array inclusion.
-    # For now, we will query Top 8 placements to see if the archetype matches the team heavily.
+
     result = (
         supabase.table("tournament_teams")
         .select("archetype, tournament_name, placement")
@@ -159,14 +158,19 @@ def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
         .limit(10)
         .execute()
     )
-    
+
     if result.data:
-        # We just grab the first archetype for demonstration, or we would do array matching
-        # in SQL (e.g. `pokemon_ids @> '{1,2,3}'`).
-        # This gives Claude the idea of tournament archetypes to watch out for.
-        arch = result.data[0]
-        return f"\n\n## Tournament Context\nA similar team recently placed {arch['placement']} in {arch['tournament_name']}, classified as the '{arch['archetype']}' archetype. Keep this in mind for the opponent's strategy."
-        
+        arch: dict = result.data[0]  # type: ignore[assignment]
+        placement = arch["placement"]
+        tournament = arch["tournament_name"]
+        archetype = arch["archetype"]
+        return (
+            f"\n\n## Tournament Context\n"
+            f"A similar team recently placed {placement} in "
+            f"{tournament}, classified as the '{archetype}' "
+            f"archetype. Keep this in mind for the opponent's strategy."
+        )
+
     return ""
 
 
@@ -194,7 +198,10 @@ def _fetch_opponent_pokemon(names: list[str]) -> list[dict]:
         if rows:
             pokemon_list.append(rows[0])
         else:
-            pokemon_list.append({"id": 0, "name": name, "types": [], "base_stats": {}, "abilities": []})
+            pokemon_list.append({
+                "id": 0, "name": name, "types": [],
+                "base_stats": {}, "abilities": [],
+            })
     return pokemon_list
 
 
@@ -242,22 +249,25 @@ def _build_prompt(
     usage_context = ""
     if opponent_usage:
         usage_lines = []
-        name_map = {p["id"]: p["name"] for p in opponent_pokemon if "id" in p}
         for u in opponent_usage:
-            name = name_map.get(u.get("pokemon_id"), "Unknown")
-            moves_dict = u.get("common_moves") or {}
-            items_dict = u.get("common_items") or {}
-            
-            moves = ", ".join(f"{m} ({p}%)" for m, p in list(moves_dict.items())[:4])
-            items = ", ".join(f"{i} ({p}%)" for i, p in list(items_dict.items())[:3])
-            
+            name = u.get("pokemon_name", "Unknown")
+            moves_list: list[dict] = u.get("moves") or []
+            items_list: list[dict] = u.get("items") or []
+
+            moves = ", ".join(
+                f"{m['name']} ({m['percent']}%)" for m in moves_list[:4]
+            )
+            items = ", ".join(
+                f"{i['name']} ({i['percent']}%)" for i in items_list[:3]
+            )
+
             usage_lines.append(
                 f"- {name} (usage: {u.get('usage_percent', 0)}%)\n"
                 f"  Common moves: {moves}\n"
                 f"  Common items: {items}"
             )
         usage_context = (
-            "\n\n## Opponent Usage Data (from Smogon API)\n"
+            "\n\n## Competitive Usage Data\n"
             + "\n".join(usage_lines)
         )
 
@@ -346,14 +356,12 @@ def analyze_draft(body: DraftRequest):
 
     # Enrich with data
     opponent_pokemon = _fetch_opponent_pokemon(body.opponent_team)
+    opponent_names = [p["name"] for p in opponent_pokemon]
     opponent_ids = [p["id"] for p in opponent_pokemon if p.get("id", 0) > 0]
-    
-    # We still need the IDs for my team, which we can extract from the pokemon array if we fetch id
-    my_ids_int = [] 
 
-    opponent_usage = _fetch_usage_context(opponent_ids)
-    my_usage = [] 
-    
+    opponent_usage = _fetch_usage_context(opponent_names)
+    my_usage: list[dict] = []
+
     tournament_context = _fetch_tournament_context(opponent_ids)
 
     # Build prompt and call Claude

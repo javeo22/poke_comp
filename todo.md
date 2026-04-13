@@ -2,26 +2,26 @@
 
 ## In Progress
 
-### Phase 2 Remaining
-- [x] F5: AI Draft Helper (endpoint + UI)
-- [x] Automated multi-source ingestion pipelines (Smogon & Limitless APIs)
-- [ ] Supabase Auth (deferred — using hardcoded dev user ID)
+### Phase 3 Remaining
+- [ ] Draft helper <-> matchup log integration (save outcomes from draft)
+- [ ] UI polish pass across all features
+- [ ] Supabase Auth (deferred -- using hardcoded dev user ID)
 
 ---
 
-## Up Next (Phase 3 - Weeks 6-7)
-- [x] F6: Matchup Log (record ranked matches, win rate analytics)
-- [ ] Draft helper <-> matchup log integration (save outcomes from draft)
-- [x] Refined AI prompts based on real usage data and tournament context
-- [ ] UI polish pass across all features
+## Up Next (Phase 4 - Week 8+)
+- [ ] F3: Static reference pages (moves, items, abilities, type chart)
+- [ ] Deploy to Cloud Run + Vercel
+- [ ] Open source release (MIT or Apache 2.0)
 
 ---
 
 ## Backlog
 - [ ] Decide on open source license (MIT vs Apache 2.0)
-- [ ] Set up Cloud Run deployment for API
-- [ ] Set up Vercel deployment for web
 - [ ] Push to GitHub remote
+- [ ] F7: Damage calculator
+- [ ] F8: Sprite display improvements
+- [ ] README with setup instructions
 
 ---
 
@@ -43,16 +43,18 @@
 - [x] Teams CRUD API endpoints (mega validation, format filtering)
 - [x] Team builder UI: slot picker, mega selector, clone, format filters
 - [x] Type coverage component (offensive + defensive analysis grid)
-- [x] F4: Meta Tracker — CRUD endpoints, Game8 scraper (Claude API), tier list UI
-- [x] Serebii import script — Champions-verified movepools, abilities, items, moves, mega abilities
+- [x] F4: Meta Tracker -- CRUD endpoints, Game8 scraper (Claude API), tier list UI
+- [x] Serebii import script -- Champions-verified movepools, abilities, items, moves, mega abilities
 - [x] Fixed champions_eligible for regional forms + added missing items
 - [x] Notion roster seed (52 Pokemon from personal Notion database)
-- [x] Pikalytics usage data — pokemon_usage table, API endpoint, 25 Pokemon seeded
-- [x] Meta page overhaul — usage % bars, inline moves/items/abilities, detail panel with competitive data
-- [x] Smart roster form — moves/items sorted by usage %, ability dropdown, item field, stat point editor
+- [x] Pikalytics usage data -- pokemon_usage table, API endpoint, 25 Pokemon seeded
+- [x] Meta page overhaul -- usage % bars, inline moves/items/abilities, detail panel with competitive data
+- [x] Smart roster form -- moves/items sorted by usage %, ability dropdown, item field, stat point editor
 - [x] Speed tier reference in stat editor (outspeeds/outsped by meta Pokemon)
 - [x] Coverage analyzer on roster page (18-type grid, gap highlighting)
 - [x] CSS polish (stagger animations, hover-lift, panel slide-in)
 - [x] Legal compliance (fan project disclaimer, data source attribution)
-- [x] F5: AI Draft Helper — POST /draft/analyze endpoint, /draft page with opponent input + team selector, bring-4/leads/threats/calcs/game plan, 24h cache
-- [x] F6: Matchup Log — CRUD endpoints, /matches page with log form, match cards, filters (outcome/team), stats view (overall/by team/by opponent Pokemon win rates)
+- [x] F5: AI Draft Helper -- POST /draft/analyze endpoint, /draft page with opponent input + team selector, bring-4/leads/threats/calcs/game plan, 24h cache
+- [x] Automated multi-source ingestion pipelines (Smogon & Limitless APIs)
+- [x] F6: Matchup Log -- CRUD endpoints, /matches page with log form, match cards, filters (outcome/team), stats view (overall/by team/by opponent Pokemon win rates)
+- [x] Data pipeline consolidation -- single pokemon_usage table, removed redundant seed scripts, documented three-layer pipeline

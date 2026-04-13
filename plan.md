@@ -75,6 +75,13 @@
 - [x] Win rate analytics: overall, by team, by opponent Pokemon
 - [ ] Integration with AI draft helper (save outcomes) -- deferred to polish
 
+### Data Pipeline Consolidation -- COMPLETE
+- [x] Consolidated usage data to single `pokemon_usage` table (removed `pokemon_usage_stats`)
+- [x] Smogon ingest writes to `pokemon_usage` (source="smogon")
+- [x] Draft router reads from `pokemon_usage` by name (not by ID)
+- [x] Removed redundant scripts: scrape_meta.py, seed_meta.py, seed_usage.py, seed_roster_from_notion.py
+- [x] Documented three-layer pipeline (one-time / automated / on-demand) in CLAUDE.md
+
 ### Polish
 - [x] Refined AI prompts based on real usage data and tournament context
 - [ ] UI polish pass across all features
