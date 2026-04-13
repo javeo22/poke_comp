@@ -13,7 +13,7 @@ def list_pokemon(
     type: str | None = Query(None, description="Filter by type"),
     champions_only: bool = Query(False, description="Only Champions-eligible Pokemon"),
     generation: int | None = Query(None, description="Filter by generation"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     query = supabase.table("pokemon").select("*", count=CountMethod.exact)
