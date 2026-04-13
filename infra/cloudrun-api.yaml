@@ -1,0 +1,40 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: poke-comp-api
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-url
+                  key: latest
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-service-key
+                  key: latest
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: anthropic-api-key
+                  key: latest
+            - name: CORS_ORIGINS
+              value: "https://pokecomp.app,https://www.pokecomp.app,http://localhost:3000"
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "1"
