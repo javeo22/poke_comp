@@ -108,7 +108,7 @@ def extract_tier_data(client: anthropic.Anthropic, html_content: str) -> dict | 
             ],
         )
         block = message.content[0]
-        response_text = block.text if hasattr(block, "text") else ""
+        response_text: str = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
         return json.loads(response_text)
     except json.JSONDecodeError:
         print("  Warning: Claude response was not valid JSON")

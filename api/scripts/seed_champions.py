@@ -702,15 +702,16 @@ def seed_new_megas(supabase: Client) -> None:
             print(f"  Warning: base Pokemon {mega['base_id']} not found, skipping {mega['name']}")
             continue
 
+        base: dict = result.data  # type: ignore[assignment]
         record = {
             "id": mega["id"],
             "name": mega["name"],
             "types": mega["types"],
             "base_stats": mega["stats"],
             "abilities": [mega["ability"]],
-            "movepool": result.data["movepool"],
+            "movepool": base["movepool"],
             "champions_eligible": True,
-            "generation": result.data.get("generation"),
+            "generation": base.get("generation"),
             "sprite_url": None,
         }
         supabase.table("pokemon").upsert(record).execute()
@@ -729,8 +730,9 @@ def seed_mega_links(supabase: Client) -> None:
         result = (
             supabase.table("pokemon").select("id").eq("name", mega_name).maybe_single().execute()
         )
-        if result.data:
-            supabase.table("pokemon").update({"mega_evolution_id": result.data["id"]}).eq(
+        if result and result.data:
+            row: dict = result.data  # type: ignore[assignment]
+            supabase.table("pokemon").update({"mega_evolution_id": row["id"]}).eq(
                 "id", base_id
             ).execute()
             linked += 1

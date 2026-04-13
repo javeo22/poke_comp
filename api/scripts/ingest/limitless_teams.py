@@ -112,7 +112,8 @@ def ingest_limitless_tournament(sb: Client, tournament_id: str) -> None:
 
     # Fetch local roster
     result = sb.table("pokemon").select("id, name").eq("champions_eligible", True).execute()
-    local_roster = {row["name"].lower().replace("-", ""): row["id"] for row in result.data}
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    local_roster = {row["name"].lower().replace("-", ""): row["id"] for row in rows}
 
     upsert_batch = []
 
