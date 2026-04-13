@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { Item } from "@/types/item";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
 import type { PokemonUsage } from "@/types/usage";

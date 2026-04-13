@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Move } from "@/types/move";
 import { fetchMoves } from "@/lib/api";
-import { TypeBadge } from "@/components/pokemon/type-badge";
-import { POKEMON_TYPES } from "@/types/pokemon";
+import { TypeBadge } from "@/features/pokemon/components/type-badge";
+import { POKEMON_TYPES } from "@/features/pokemon/types";
 
 const PAGE_SIZE = 50;
 

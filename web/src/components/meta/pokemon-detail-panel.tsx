@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { PokemonUsage, UsageEntry } from "@/types/usage";
 import { fetchPokemon, fetchPokemonUsage } from "@/lib/api";
-import { TypeBadge } from "@/components/pokemon/type-badge";
-import { StatBar } from "@/components/pokemon/stat-bar";
+import { TypeBadge } from "@/features/pokemon/components/type-badge";
+import { StatBar } from "@/features/pokemon/components/stat-bar";
 
 interface PokemonDetailPanelProps {
   pokemonName: string;

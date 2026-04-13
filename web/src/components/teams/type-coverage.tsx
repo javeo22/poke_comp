@@ -1,6 +1,6 @@
 "use client";
 
-import { POKEMON_TYPES } from "@/types/pokemon";
+import { POKEMON_TYPES } from "@/features/pokemon/types";
 
 // Type effectiveness chart: attacker -> defender -> multiplier
 // 0 = immune, 0.5 = resisted, 1 = neutral, 2 = super effective

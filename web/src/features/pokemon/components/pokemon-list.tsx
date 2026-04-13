@@ -1,6 +1,6 @@
 "use client";
 
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import { PokemonCard } from "./pokemon-card";
 
 interface PokemonListProps {

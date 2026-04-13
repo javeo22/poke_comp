@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/team";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { Matchup, MatchupStats } from "@/types/matchup";
 import {
   fetchTeams,

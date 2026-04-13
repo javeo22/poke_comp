@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Item } from "@/types/item";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
 import {
   fetchUserPokemon,

@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import type { Item } from "@/types/item";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
-import { TypeBadge } from "@/components/pokemon/type-badge";
+import { TypeBadge } from "@/features/pokemon/components/type-badge";
 
 const STATUS_LED: Record<string, string> = {
   built: "led-active",

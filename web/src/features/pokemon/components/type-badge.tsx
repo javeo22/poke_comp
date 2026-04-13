@@ -1,6 +1,6 @@
 "use client";
 
-import type { PokemonType } from "@/types/pokemon";
+import type { PokemonType } from "@/features/pokemon/types";
 
 const TYPE_COLORS: Record<PokemonType, string> = {
   normal: "bg-type-normal",

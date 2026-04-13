@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/team";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { DraftResponse } from "@/types/draft";
 import { fetchTeams, fetchPokemon, analyzeDraft, createMatchup } from "@/lib/api";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";

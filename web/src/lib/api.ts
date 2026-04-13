@@ -10,7 +10,7 @@ import type {
 } from "@/types/matchup";
 import type { MetaSnapshot } from "@/types/meta";
 import type { MoveListResponse } from "@/types/move";
-import type { PokemonListResponse } from "@/types/pokemon";
+import type { PokemonListResponse } from "@/features/pokemon/types";
 import type { PokemonUsage, PokemonUsageList } from "@/types/usage";
 import type {
   Team,
@@ -24,12 +24,13 @@ import type {
   UserPokemonListResponse,
   UserPokemonUpdate,
 } from "@/types/user-pokemon";
+import { createClient } from "@/utils/supabase/client";
 
 // Production (Vercel): "/api" — same-origin Python function at /api/*
 // Development: "http://localhost:8000" — local FastAPI server
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface FetchOptions {
+interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
@@ -45,7 +46,19 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const qs = params.toString();
   const url = `${API_URL}${path}${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url);
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
+
+  // Attempt to attach JWT for all requests
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
+  }
+
+  const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -87,29 +100,30 @@ export async function fetchUserPokemon(filters: UserPokemonFilters = {}) {
 }
 
 export async function createUserPokemon(body: UserPokemonCreate) {
-  const res = await fetch(`${API_URL}/user-pokemon`, {
+  return apiFetch<UserPokemon>("/user-pokemon", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<UserPokemon>;
 }
 
 export async function updateUserPokemon(id: string, body: UserPokemonUpdate) {
-  const res = await fetch(`${API_URL}/user-pokemon/${id}`, {
+  return apiFetch<UserPokemon>(`/user-pokemon/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<UserPokemon>;
 }
 
 export async function deleteUserPokemon(id: string) {
-  const res = await fetch(`${API_URL}/user-pokemon/${id}`, {
-    method: "DELETE",
-  });
+  const url = `${API_URL}/user-pokemon/${id}`;
+  const headers = new Headers();
+  
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  const res = await fetch(url, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
 }
 
@@ -166,29 +180,30 @@ export async function fetchOneTeam(id: string) {
 }
 
 export async function createTeam(body: TeamCreate) {
-  const res = await fetch(`${API_URL}/teams`, {
+  return apiFetch<Team>("/teams", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<Team>;
 }
 
 export async function updateTeam(id: string, body: TeamUpdate) {
-  const res = await fetch(`${API_URL}/teams/${id}`, {
+  return apiFetch<Team>(`/teams/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<Team>;
 }
 
 export async function deleteTeam(id: string) {
-  const res = await fetch(`${API_URL}/teams/${id}`, {
-    method: "DELETE",
-  });
+  const url = `${API_URL}/teams/${id}`;
+  const headers = new Headers();
+  
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  const res = await fetch(url, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
 }
 
@@ -210,9 +225,7 @@ export interface ScrapeResponse {
 }
 
 export async function triggerMetaScrape(): Promise<ScrapeResponse> {
-  const res = await fetch(`${API_URL}/meta/scrape`, { method: "POST" });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<ScrapeResponse>;
+  return apiFetch<ScrapeResponse>("/meta/scrape", { method: "POST" });
 }
 
 export interface MetaFilters {
@@ -260,53 +273,49 @@ export async function fetchMatchupStats() {
 }
 
 export async function createMatchup(body: MatchupCreate) {
-  const res = await fetch(`${API_URL}/matchups`, {
+  return apiFetch<Matchup>("/matchups", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<Matchup>;
 }
 
 export async function updateMatchup(id: string, body: MatchupUpdate) {
-  const res = await fetch(`${API_URL}/matchups/${id}`, {
+  return apiFetch<Matchup>(`/matchups/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<Matchup>;
 }
 
 export async function deleteMatchup(id: string) {
-  const res = await fetch(`${API_URL}/matchups/${id}`, {
-    method: "DELETE",
-  });
+  const url = `${API_URL}/matchups/${id}`;
+  const headers = new Headers();
+  
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  const res = await fetch(url, { method: "DELETE", headers });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
 }
 
 // ── Draft Analysis ──
 
 export async function analyzeDraft(body: DraftRequest): Promise<DraftResponse> {
-  const res = await fetch(`${API_URL}/draft/analyze`, {
+  return apiFetch<DraftResponse>("/draft/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<DraftResponse>;
 }
 
 // ── Cheatsheet ──
 
 export async function generateCheatsheet(teamId: string): Promise<CheatsheetResponse> {
-  const res = await fetch(`${API_URL}/cheatsheet/${teamId}`, {
+  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<CheatsheetResponse>;
 }
 
 export { apiFetch };
+

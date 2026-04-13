@@ -1,6 +1,6 @@
 "use client";
 
-import { POKEMON_TYPES } from "@/types/pokemon";
+import { POKEMON_TYPES } from "@/features/pokemon/types";
 
 interface FilterState {
   name: string;

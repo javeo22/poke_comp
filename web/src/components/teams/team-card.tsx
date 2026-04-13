@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { Pokemon } from "@/types/pokemon";
+import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team } from "@/types/team";
 import { TypeCoverage } from "./type-coverage";
