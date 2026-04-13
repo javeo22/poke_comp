@@ -1,4 +1,12 @@
+import type { DraftRequest, DraftResponse } from "@/types/draft";
 import type { ItemListResponse } from "@/types/item";
+import type {
+  Matchup,
+  MatchupCreate,
+  MatchupListResponse,
+  MatchupStats,
+  MatchupUpdate,
+} from "@/types/matchup";
 import type { MetaSnapshot } from "@/types/meta";
 import type { MoveListResponse } from "@/types/move";
 import type { PokemonListResponse } from "@/types/pokemon";
@@ -225,6 +233,65 @@ export async function fetchUsage(format: string = "doubles", limit: number = 50)
 
 export async function fetchPokemonUsage(pokemonName: string) {
   return apiFetch<PokemonUsage[]>(`/usage/pokemon/${encodeURIComponent(pokemonName)}`);
+}
+
+// ── Matchups ──
+
+export interface MatchupFilters {
+  outcome?: string;
+  my_team_id?: string;
+  opponent_pokemon?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchMatchups(filters: MatchupFilters = {}) {
+  return apiFetch<MatchupListResponse>("/matchups", {
+    params: filters as Record<string, string | number | boolean | undefined>,
+  });
+}
+
+export async function fetchMatchupStats() {
+  return apiFetch<MatchupStats>("/matchups/stats");
+}
+
+export async function createMatchup(body: MatchupCreate) {
+  const res = await fetch(`${API_URL}/matchups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<Matchup>;
+}
+
+export async function updateMatchup(id: string, body: MatchupUpdate) {
+  const res = await fetch(`${API_URL}/matchups/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<Matchup>;
+}
+
+export async function deleteMatchup(id: string) {
+  const res = await fetch(`${API_URL}/matchups/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+}
+
+// ── Draft Analysis ──
+
+export async function analyzeDraft(body: DraftRequest): Promise<DraftResponse> {
+  const res = await fetch(`${API_URL}/draft/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<DraftResponse>;
 }
 
 export { apiFetch };

@@ -51,3 +51,12 @@ Architectural and design decisions made during development, with rationale.
 **Context:** Pokemon sprites from PokeAPI CDN. next/image requires domain config and adds optimization overhead for tiny pixel art.
 **Decision:** Use next/image with `unoptimized` prop.
 **Rationale:** Satisfies ESLint rule, avoids image optimization overhead for 96x96 pixel art sprites. Can revisit if we add larger images later.
+
+## D009: Multi-Source Data Ingestion Strategy
+**Date:** 2026-04-12
+**Context:** The app needs to blend static game data with live meta trends from multiple external sources without being flagged for aggressive scraping.
+**Decision:** Categorize sources by 'Volatility':
+- **Static (Serebii):** Low frequency (One-time/Monthly). Source for base roster and VP shop data.
+- **Meta (Pikalytics):** High frequency (Weekly). Source for usage statistics, item popularity, and move trends.
+- **Contextual (Limitless):** High frequency (Weekly). Source for tournament team compositions and matchup history.
+**Rationale:** Serebii is highly protective but the data is static; we only hit it once. Pikalytics and Limitless are open/community-driven and provide the 'Expertise' (the Meta). This reduces load on external servers and keeps our data fresh.

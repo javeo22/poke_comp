@@ -8,6 +8,8 @@ const LINKS = [
   { href: "/roster", label: "Roster" },
   { href: "/teams", label: "Teams" },
   { href: "/meta", label: "Meta" },
+  { href: "/draft", label: "Draft" },
+  { href: "/matches", label: "Matches" },
 ];
 
 export function Nav() {

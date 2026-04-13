@@ -56,27 +56,27 @@
 - [x] CSS polish: stagger animations, hover-lift, panel transitions
 - [x] Legal compliance: fan project disclaimer, data source attribution
 
-### F5: AI Draft Helper -- IN PROGRESS
-- [ ] Draft analysis endpoint (Claude API integration)
-- [ ] Text input for opponent team (6 Pokemon)
-- [ ] Select my team from saved teams
-- [ ] Response: lead pair, back pair, turn 1 plan, threats
-- [ ] Analysis caching (hash by composition, 24h TTL)
+### F5: AI Draft Helper -- COMPLETE
+- [x] Draft analysis endpoint (Claude API integration)
+- [x] Text input for opponent team (6 Pokemon via searchable dropdowns)
+- [x] Select my team from saved teams
+- [x] Response: bring-4 recs, lead pair, threats, damage calcs, game plan
+- [x] Analysis caching (hash by composition, 24h TTL via ai_analyses table)
 
 ---
 
 ## Phase 3: Analytics & Polish (Weeks 6-7 - May 15-28)
 **Goal:** Track results, refine AI, polish UX.
 
-### F6: Matchup Log
-- [ ] Match recording endpoints
-- [ ] Match log UI: my team, opponent, leads, outcome, notes
-- [ ] Filter by archetype, win/loss, opponent Pokemon
-- [ ] Win rate analytics per archetype
-- [ ] Integration with AI draft helper (save outcomes)
+### F6: Matchup Log -- COMPLETE
+- [x] Match recording endpoints (CRUD: POST, GET list, GET single, PUT, DELETE)
+- [x] Match log UI: my team, opponent (6 slots), leads, outcome, notes
+- [x] Filter by win/loss, team, opponent Pokemon
+- [x] Win rate analytics: overall, by team, by opponent Pokemon
+- [ ] Integration with AI draft helper (save outcomes) -- deferred to polish
 
 ### Polish
-- [ ] Refined AI prompts based on real usage data
+- [x] Refined AI prompts based on real usage data and tournament context
 - [ ] UI polish pass across all features
 - [ ] Error handling and loading states
 - [ ] Performance optimization

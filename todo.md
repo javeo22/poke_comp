@@ -3,15 +3,16 @@
 ## In Progress
 
 ### Phase 2 Remaining
-- [ ] F5: AI Draft Helper (endpoint + UI)
-- [ ] Automated Pikalytics scraper (currently seeded manually)
+- [x] F5: AI Draft Helper (endpoint + UI)
+- [x] Automated multi-source ingestion pipelines (Smogon & Limitless APIs)
 - [ ] Supabase Auth (deferred — using hardcoded dev user ID)
 
 ---
 
 ## Up Next (Phase 3 - Weeks 6-7)
-- [ ] F6: Matchup Log (record ranked matches, win rate analytics)
-- [ ] Refined AI prompts based on real usage data
+- [x] F6: Matchup Log (record ranked matches, win rate analytics)
+- [ ] Draft helper <-> matchup log integration (save outcomes from draft)
+- [x] Refined AI prompts based on real usage data and tournament context
 - [ ] UI polish pass across all features
 
 ---
@@ -53,3 +54,5 @@
 - [x] Coverage analyzer on roster page (18-type grid, gap highlighting)
 - [x] CSS polish (stagger animations, hover-lift, panel slide-in)
 - [x] Legal compliance (fan project disclaimer, data source attribution)
+- [x] F5: AI Draft Helper — POST /draft/analyze endpoint, /draft page with opponent input + team selector, bring-4/leads/threats/calcs/game plan, 24h cache
+- [x] F6: Matchup Log — CRUD endpoints, /matches page with log form, match cards, filters (outcome/team), stats view (overall/by team/by opponent Pokemon win rates)

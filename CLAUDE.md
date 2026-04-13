@@ -70,3 +70,5 @@ After completing any implementation work, always update:
 - **Web build:** `cd web && pnpm build`
 - **PokeAPI import:** `cd api && uv run python -m scripts.import_pokeapi`
 - **Champions seed:** `cd api && uv run python -m scripts.seed_champions`
+- **Data Ingest (Meta):** `cd api && uv run python -m scripts.ingest.smogon_meta`
+- **Data Ingest (Teams):** `cd api && uv run python -m scripts.ingest.limitless_teams`
