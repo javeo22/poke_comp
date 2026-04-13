@@ -25,6 +25,8 @@ import type {
   UserPokemonUpdate,
 } from "@/types/user-pokemon";
 
+// Production (Vercel): "/api" — same-origin Python function at /api/*
+// Development: "http://localhost:8000" — local FastAPI server
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface FetchOptions {
@@ -32,17 +34,18 @@ interface FetchOptions {
 }
 
 async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-  const url = new URL(path, API_URL);
-
+  const params = new URLSearchParams();
   if (options.params) {
     for (const [key, value] of Object.entries(options.params)) {
       if (value !== undefined && value !== "") {
-        url.searchParams.set(key, String(value));
+        params.set(key, String(value));
       }
     }
   }
+  const qs = params.toString();
+  const url = `${API_URL}${path}${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url);
 
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
