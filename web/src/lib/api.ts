@@ -49,12 +49,14 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
 
-  // Attempt to attach JWT for all requests
+  // Attempt to attach JWT for all requests (auth deferred — skips when Supabase not configured)
   if (typeof window !== "undefined") {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers.set("Authorization", `Bearer ${session.access_token}`);
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+      }
     }
   }
 
@@ -119,8 +121,10 @@ export async function deleteUserPokemon(id: string) {
   
   if (typeof window !== "undefined") {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
   }
 
   const res = await fetch(url, { method: "DELETE", headers });
@@ -199,8 +203,10 @@ export async function deleteTeam(id: string) {
   
   if (typeof window !== "undefined") {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
   }
 
   const res = await fetch(url, { method: "DELETE", headers });
@@ -292,8 +298,10 @@ export async function deleteMatchup(id: string) {
   
   if (typeof window !== "undefined") {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
   }
 
   const res = await fetch(url, { method: "DELETE", headers });

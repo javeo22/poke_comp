@@ -25,6 +25,8 @@ export function Nav() {
   const supabase = createClient();
 
   useEffect(() => {
+    if (!supabase) return;
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
@@ -34,9 +36,10 @@ export function Nav() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const handleSignOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();

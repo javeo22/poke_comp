@@ -9,6 +9,15 @@ export default function LoginPage() {
   const supabase = createClient();
 
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Auth not configured yet — show placeholder
+  if (!supabase) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6">
+        <p className="text-on-surface-muted font-display">Authentication coming soon.</p>
+      </div>
+    );
+  }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
