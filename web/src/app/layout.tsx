@@ -14,6 +14,10 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
+// All pages fetch data client-side; skip static prerendering to avoid
+// build-time fetch failures (relative API_URL is invalid on the server).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Pokemon Champions Companion",
   description: "Personal companion app for competitive Pokemon Champions",
