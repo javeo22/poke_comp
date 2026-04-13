@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "nextjs",
-  "installCommand": "npm i -g pnpm@10 && cd web && pnpm install",
-  "buildCommand": "cd web && pnpm build",
+  "installCommand": "cd web && npm install",
+  "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/.next",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" }
