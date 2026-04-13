@@ -93,6 +93,15 @@
 ## Phase 4: Stretch & Release (Week 8+ - May 29+)
 **Goal:** Stretch features, open source.
 
+### AI Team Cheatsheet -- IN PROGRESS
+- [x] Backend endpoint: POST /cheatsheet/{team_id}
+- [x] Pre-calculated data: roster with move categories (STAB/utility/priority), speed tiers with conditional abilities
+- [x] AI generation: game plan, key rules, lead matchups vs meta, weaknesses
+- [x] Caching: 7-day TTL in ai_analyses table, keyed by team composition
+- [ ] Frontend: React component rendering the cheatsheet (Antigravity design)
+- [ ] PDF export: downloadable version matching design/gengar-team-cheatsheet.html
+
+### Other Stretch
 - [ ] F3: Static reference pages (moves, items, abilities, type chart)
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements

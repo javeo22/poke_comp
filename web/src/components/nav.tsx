@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/teams", label: "Teams" },
   { href: "/meta", label: "Meta" },
   { href: "/draft", label: "Draft" },
+  { href: "/cheatsheet", label: "Cheatsheet" },
   { href: "/matches", label: "Matches" },
 ];
 

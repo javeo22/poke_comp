@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gengar Team — Cheat Sheet</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --purple: #8b5cf6;
+    --purple-dim: #4c1d95;
+    --ghost: #c084fc;
+    --poison: #a855f7;
+    --steel: #94a3b8;
+    --dark-type: #7c6b8c;
+    --fire: #f97316;
+    --fighting: #ef4444;
+    --grass: #22c55e;
+    --ice: #67e8f9;
+    --dragon: #818cf8;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #f0abfc;
+    --warn: #fbbf24;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 24px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,92,246,0.15), transparent),
+      radial-gradient(ellipse 40% 30% at 80% 80%, rgba(168,85,247,0.08), transparent);
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    letter-spacing: 2px;
+    color: var(--ghost);
+    text-shadow: 0 0 40px rgba(192,132,252,0.4);
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ghost);
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.3);
+    padding: 4px 10px;
+    letter-spacing: 1px;
+  }
+
+  /* LAYOUT */
+  .grid-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--purple), transparent);
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--ghost);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  /* ROSTER TABLE */
+  .roster-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .roster-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 4px 8px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .roster-table td {
+    padding: 7px 8px 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+  }
+
+  .roster-table tr:last-child td { border-bottom: none; }
+
+  .pokemon-name {
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .pokemon-name .mega { color: var(--ghost); font-size: 10px; }
+
+  .type-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    margin-right: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .t-ghost { background: rgba(192,132,252,0.15); color: var(--ghost); }
+  .t-poison { background: rgba(168,85,247,0.15); color: #d8b4fe; }
+  .t-fire { background: rgba(249,115,22,0.15); color: #fb923c; }
+  .t-dark { background: rgba(124,107,140,0.15); color: #c4b5fd; }
+  .t-fight { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .t-steel { background: rgba(148,163,184,0.15); color: #cbd5e1; }
+  .t-grass { background: rgba(34,197,94,0.15); color: #86efac; }
+  .t-dragon { background: rgba(129,140,248,0.15); color: #a5b4fc; }
+
+  .item-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--warn);
+  }
+
+  .nature-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .moves-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .move {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .move.stab { border-color: rgba(192,132,252,0.4); color: var(--ghost); }
+  .move.utility { border-color: rgba(251,191,36,0.3); color: var(--warn); }
+  .move.priority { border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+
+  .sp { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text-dim); }
+
+  /* GAME PLAN */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--purple);
+    line-height: 1;
+    min-width: 24px;
+    opacity: 0.7;
+  }
+
+  .step-content strong {
+    color: var(--ghost);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+  }
+
+  .step-content p {
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  /* LEADS */
+  .matchup {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .matchup:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .matchup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .threat-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--warn);
+    font-weight: 500;
+  }
+
+  .threat-tier {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    background: rgba(239,68,68,0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+
+  .lead-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+    align-items: center;
+  }
+
+  .lead-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    min-width: 30px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .lead-pokemon {
+    display: flex;
+    gap: 4px;
+  }
+
+  .pokemon-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.3);
+    color: var(--ghost);
+  }
+
+  .pokemon-chip.back {
+    background: rgba(148,163,184,0.08);
+    border-color: rgba(148,163,184,0.2);
+    color: var(--text-dim);
+  }
+
+  .matchup-note {
+    font-size: 10px;
+    color: var(--text-dim);
+    padding-left: 36px;
+    line-height: 1.4;
+  }
+
+  .matchup-note em {
+    color: var(--ghost);
+    font-style: normal;
+  }
+
+  /* SPEED TIERS */
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .speed-row:last-child { border-bottom: none; margin-bottom: 0; }
+
+  .speed-name {
+    font-weight: 600;
+    min-width: 110px;
+    font-size: 11px;
+  }
+
+  .speed-bar-wrap {
+    flex: 1;
+    background: var(--surface2);
+    height: 4px;
+    position: relative;
+  }
+
+  .speed-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--purple), var(--ghost));
+  }
+
+  .speed-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ghost);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .speed-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--fire);
+  }
+
+  /* WARNINGS */
+  .warnings { display: flex; flex-direction: column; gap: 8px; }
+
+  .warn-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    background: rgba(251,191,36,0.05);
+    border-left: 2px solid var(--warn);
+  }
+
+  .warn-icon {
+    font-size: 14px;
+    line-height: 1.3;
+    min-width: 18px;
+  }
+
+  .warn-text strong {
+    color: var(--warn);
+    display: block;
+    font-size: 11px;
+    margin-bottom: 1px;
+  }
+
+  .warn-text p {
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  /* RULES */
+  .rules { display: flex; flex-direction: column; gap: 7px; }
+
+  .rule {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    background: rgba(192,132,252,0.05);
+    border-left: 2px solid rgba(192,132,252,0.4);
+  }
+
+  .rule-icon { font-size: 12px; min-width: 16px; margin-top: 1px; }
+
+  .rule-text strong {
+    color: var(--ghost);
+    display: block;
+    font-size: 11px;
+    margin-bottom: 1px;
+  }
+
+  .rule-text p {
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* Ability tag */
+  .ability-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--ice);
+    background: rgba(103,232,249,0.08);
+    padding: 1px 5px;
+    border: 1px solid rgba(103,232,249,0.2);
+  }
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="title">GENGAR OFFENSE</div>
+    <div class="subtitle">Pokemon Champions — Season M-1 · Doubles · Mega Evolution Only</div>
+  </div>
+  <div style="text-align:right">
+    <div class="badge">FULL TEAM SHEET</div>
+    <div class="subtitle" style="margin-top:6px">All moves verified · Serebii.net</div>
+  </div>
+</div>
+
+<!-- TOP: ROSTER + GAME PLAN -->
+<div class="grid-main">
+
+  <!-- ROSTER -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <div class="card-title">Roster</div>
+    <table class="roster-table">
+      <thead>
+        <tr>
+          <th>Pokemon</th>
+          <th>Item</th>
+          <th>Ability</th>
+          <th>Nature / SP</th>
+          <th>Moves</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="pokemon-name">Gengar <span class="mega">MEGA</span></div>
+            <div style="margin-top:3px"><span class="type-tag t-ghost">Ghost</span><span class="type-tag t-poison">Poison</span></div>
+          </td>
+          <td><span class="item-name">Gengarite</span></td>
+          <td><span class="ability-tag">Shadow Tag</span></td>
+          <td>
+            <div class="nature-name">Timid</div>
+            <div class="sp">32 SpA / 32 Spd / 2 HP</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move stab">Shadow Ball</span>
+              <span class="move stab">Sludge Bomb</span>
+              <span class="move utility">Disable</span>
+              <span class="move utility">Protect</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pokemon-name">Incineroar</div>
+            <div style="margin-top:3px"><span class="type-tag t-fire">Fire</span><span class="type-tag t-dark">Dark</span></div>
+          </td>
+          <td><span class="item-name">Sitrus Berry</span></td>
+          <td><span class="ability-tag">Intimidate</span></td>
+          <td>
+            <div class="nature-name">Careful</div>
+            <div class="sp">32 HP / 32 SpD / 2 Spd</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move priority">Fake Out</span>
+              <span class="move utility">Parting Shot</span>
+              <span class="move utility">Snarl</span>
+              <span class="move stab">Flare Blitz</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pokemon-name">Sneasler</div>
+            <div style="margin-top:3px"><span class="type-tag t-fight">Fight</span><span class="type-tag t-poison">Poison</span></div>
+          </td>
+          <td><span class="item-name">White Herb</span></td>
+          <td><span class="ability-tag">Unburden</span></td>
+          <td>
+            <div class="nature-name">Jolly</div>
+            <div class="sp">32 Atk / 32 Spd / 2 HP</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move stab">Dire Claw</span>
+              <span class="move stab">Close Combat</span>
+              <span class="move priority">Fake Out</span>
+              <span class="move utility">Protect</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pokemon-name">Hydreigon</div>
+            <div style="margin-top:3px"><span class="type-tag t-dark">Dark</span><span class="type-tag t-dragon">Dragon</span></div>
+          </td>
+          <td><span class="item-name">Dragon Fang</span></td>
+          <td><span class="ability-tag">Levitate</span></td>
+          <td>
+            <div class="nature-name">Timid</div>
+            <div class="sp">32 SpA / 32 Spd / 2 HP</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move stab">Dark Pulse</span>
+              <span class="move stab">Dragon Pulse</span>
+              <span class="move utility">Tailwind</span>
+              <span class="move utility">Taunt</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pokemon-name">Meowscarada</div>
+            <div style="margin-top:3px"><span class="type-tag t-grass">Grass</span><span class="type-tag t-dark">Dark</span></div>
+          </td>
+          <td><span class="item-name">Scope Lens</span></td>
+          <td><span class="ability-tag">Protean</span></td>
+          <td>
+            <div class="nature-name">Jolly</div>
+            <div class="sp">32 Atk / 32 Spd / 2 HP</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move stab">Flower Trick</span>
+              <span class="move stab">Knock Off</span>
+              <span class="move priority">Sucker Punch</span>
+              <span class="move utility">U-turn</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pokemon-name">Kingambit</div>
+            <div style="margin-top:3px"><span class="type-tag t-dark">Dark</span><span class="type-tag t-steel">Steel</span></div>
+          </td>
+          <td><span class="item-name">Chople Berry</span></td>
+          <td><span class="ability-tag">Defiant</span></td>
+          <td>
+            <div class="nature-name">Adamant</div>
+            <div class="sp">32 Atk / 32 Def / 2 HP</div>
+          </td>
+          <td>
+            <div class="moves-list">
+              <span class="move stab">Kowtow Cleave</span>
+              <span class="move stab">Iron Head</span>
+              <span class="move priority">Sucker Punch</span>
+              <span class="move utility">Protect</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:5px"><span class="move stab" style="font-size:9px">STAB</span><span style="font-size:10px;color:var(--text-dim)">Same-type attack bonus</span></div>
+      <div style="display:flex;align-items:center;gap:5px"><span class="move utility" style="font-size:9px">Utility</span><span style="font-size:10px;color:var(--text-dim)">Support / control</span></div>
+      <div style="display:flex;align-items:center;gap:5px"><span class="move priority" style="font-size:9px">Priority</span><span style="font-size:10px;color:var(--text-dim)">Moves first or disrupts</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MIDDLE ROW: GAME PLAN + SPEED + LEADS -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+
+  <!-- GAME PLAN -->
+  <div class="card">
+    <div class="card-title">Game Plan</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong>Disrupt Turn 1</strong>
+          <p>Lead Incineroar or Sneasler Fake Out on the biggest threat. This flinches one target and gives your second Pokemon a free action to Mega Evolve or attack.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>Trap and Cripple</strong>
+          <p>Mega Evolve Gengar immediately. Shadow Tag locks both opponents in. Use Disable to remove their best move. Opponent now fights at a permanent disadvantage with no escape.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong>Clean Up</strong>
+          <p>Bring in Sneasler, Meowscarada, or Kingambit based on typing. Set Tailwind with Hydreigon if needed. Finish trapped targets with priority or boosted STAB.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEED TIERS -->
+  <div class="card">
+    <div class="card-title">Speed Tiers</div>
+    <div class="speed-row">
+      <div class="speed-name">Sneasler <span style="color:var(--fire);font-size:9px">×Unburden</span></div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:100%"></div></div>
+      <div class="speed-val">240</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Mega Gengar</div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:54%"></div></div>
+      <div class="speed-val">130</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Meowscarada</div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:51%"></div></div>
+      <div class="speed-val">123</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Sneasler <span style="color:var(--text-dim);font-size:9px">base</span></div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:50%"></div></div>
+      <div class="speed-val">120</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Hydreigon</div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:41%"></div></div>
+      <div class="speed-val">98</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Incineroar</div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:25%"></div></div>
+      <div class="speed-val">60</div>
+    </div>
+    <div class="speed-row">
+      <div class="speed-name">Kingambit</div>
+      <div class="speed-bar-wrap"><div class="speed-bar" style="width:21%"></div></div>
+      <div class="speed-val">50</div>
+    </div>
+    <div style="margin-top:10px;padding:6px 8px;background:rgba(249,115,22,0.08);border-left:2px solid var(--fire)">
+      <p style="font-size:10px;color:var(--text-dim)"><span style="color:var(--fire)">Unburden note:</span> Use Close Combat first after switch-in. White Herb restores the stat drop, triggering Unburden. Sneasler then outruns everything on the field.</p>
+    </div>
+  </div>
+
+  <!-- KEY RULES -->
+  <div class="card">
+    <div class="card-title">Key Rules</div>
+    <div class="rules">
+      <div class="rule">
+        <div class="rule-icon">⚡</div>
+        <div class="rule-text">
+          <strong>Never double Fake Out lead</strong>
+          <p>Incineroar and Sneasler both have Fake Out. Leading both wastes one — only one target gets flinched. Stagger them across turns for double disruption.</p>
+        </div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon">🎭</div>
+        <div class="rule-text">
+          <strong>Protean fires once per switch-in</strong>
+          <p>Plan Meowscarada's first move before switching in. Flower Trick into a Fairy-weak target, Knock Off to strip items, or Sucker Punch as priority Ghost.</p>
+        </div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon">⚔️</div>
+        <div class="rule-text">
+          <strong>Defiant wants Intimidate</strong>
+          <p>Opponent's Incineroar Intimidating Kingambit = free +2 Attack. Their best defensive tool becomes your setup. Always bring Kingambit vs Intimidate leads.</p>
+        </div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon">🔒</div>
+        <div class="rule-text">
+          <strong>Disable after Protect</strong>
+          <p>If the opponent Protects, Disable that move. They cannot Protect again for several turns and are now trapped by Shadow Tag with no defensive option.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM ROW: LEADS + WARNINGS -->
+<div class="grid-bottom">
+
+  <!-- LEAD MATCHUPS -->
+  <div class="card" style="grid-column: 1 / 3;">
+    <div class="card-title">Lead Matchups vs Meta</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+
+      <div class="matchup">
+        <div class="matchup-header">
+          <span class="threat-name">Rain — Pelipper + Archaludon</span>
+          <span class="threat-tier">S-TIER</span>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Lead</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip">Incineroar</span>
+            <span class="pokemon-chip">Hydreigon</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Back</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip back">Gengar</span>
+            <span class="pokemon-chip back">Kingambit</span>
+          </div>
+        </div>
+        <p class="matchup-note">Fake Out Pelipper to stop Drizzle. Taunt Archaludon before Electro Shot. <em>Hydreigon immune to Psychic, resists Water.</em></p>
+      </div>
+
+      <div class="matchup">
+        <div class="matchup-header">
+          <span class="threat-name">Trick Room — Farigiraf + slow attacker</span>
+          <span class="threat-tier">A-TIER</span>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Lead</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip">Hydreigon</span>
+            <span class="pokemon-chip">Incineroar</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Back</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip back">Sneasler</span>
+            <span class="pokemon-chip back">Meowscarada</span>
+          </div>
+        </div>
+        <p class="matchup-note"><em>Taunt Farigiraf immediately</em> — Psychic does zero to Hydreigon. Fake Out partner. Trick Room never goes up.</p>
+      </div>
+
+      <div class="matchup">
+        <div class="matchup-header">
+          <span class="threat-name">Incineroar + Kingambit core</span>
+          <span class="threat-tier">MOST COMMON</span>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Lead</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip">Gengar</span>
+            <span class="pokemon-chip">Sneasler</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Back</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip back">Hydreigon</span>
+            <span class="pokemon-chip back">Meowscarada</span>
+          </div>
+        </div>
+        <p class="matchup-note">Sneasler Fake Out hits their Incineroar first. Gengar Mega Evolves safely. <em>Disable Kingambit's Kowtow Cleave</em> — trapped and weaponless.</p>
+      </div>
+
+      <div class="matchup">
+        <div class="matchup-header">
+          <span class="threat-name">Sun — Charizard Y + Venusaur</span>
+          <span class="threat-tier">A-TIER</span>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Lead</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip">Incineroar</span>
+            <span class="pokemon-chip">Sneasler</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Back</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip back">Gengar</span>
+            <span class="pokemon-chip back">Kingambit</span>
+          </div>
+        </div>
+        <p class="matchup-note">Fake Out Torkoal or Zard to delay sun. Close Combat threatens Charizard. <em>Gengar's Sludge Bomb obliterates Venusaur.</em></p>
+      </div>
+
+      <div class="matchup">
+        <div class="matchup-header">
+          <span class="threat-name">Mega Froslass Snow</span>
+          <span class="threat-tier">HIGHEST WR</span>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Lead</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip">Incineroar</span>
+            <span class="pokemon-chip">Kingambit</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <span class="lead-label">Back</span>
+          <div class="lead-pokemon">
+            <span class="pokemon-chip back">Hydreigon</span>
+            <span class="pokemon-chip back">Sneasler</span>
+          </div>
+        </div>
+        <p class="matchup-note">Fake Out Froslass to stop Blizzard. <em>Iron Head hits Froslass 2x.</em> Defiant punishes Intimidate support. Hydreigon Taunts Aurora Veil.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- WARNINGS -->
+  <div class="card">
+    <div class="card-title">Weaknesses to Watch</div>
+    <div class="warnings">
+      <div class="warn-item">
+        <div class="warn-icon">⚠️</div>
+        <div class="warn-text">
+          <strong>Fighting + Psychic combo</strong>
+          <p>Sneasler takes 4× from Psychic. Kingambit takes 4× from Fighting. If opponent has both, your two physical attackers are compromised. Use Hydreigon vs Psychic, Incineroar's Flare Blitz vs Fighting.</p>
+        </div>
+      </div>
+      <div class="warn-item">
+        <div class="warn-icon">⚠️</div>
+        <div class="warn-text">
+          <strong>Fairy types wall Hydreigon</strong>
+          <p>Dragon moves do zero to Fairy. Always bring Kingambit against Gardevoir, Sylveon, or Primarina. Gengar's Sludge Bomb hits Fairy for 2× as backup.</p>
+        </div>
+      </div>
+      <div class="warn-item">
+        <div class="warn-icon">⚠️</div>
+        <div class="warn-text">
+          <strong>Bug moves 4× Meowscarada</strong>
+          <p>Vivillon with Compound Eyes Hurricane appears on ladder. If you see Vivillon in team preview, do not lead Meowscarada. Swap in Kingambit or Gengar instead.</p>
+        </div>
+      </div>
+      <div class="warn-item">
+        <div class="warn-icon">⚠️</div>
+        <div class="warn-text">
+          <strong>Ghost types ignore Shadow Tag</strong>
+          <p>Ghost-type Pokemon are immune to Shadow Tag and can switch out freely. U-turn, Volt Switch, and Flip Turn also escape. Gengar's trapping is not universal — check opponent typing before Mega Evolving.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-note">POKEMON CHAMPIONS · SEASON M-1 · REGULATION M-A · DOUBLES FORMAT · MEGA EVOLUTION ONLY</div>
+  <div class="footer-note">VERIFIED: SEREBII.NET · PIKALYTICS · GAME8 · CHAMPIONSLAB</div>
+</div>
+
+</body>
+</html>

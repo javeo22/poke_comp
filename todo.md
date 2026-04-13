@@ -2,6 +2,11 @@
 
 ## In Progress
 
+### AI Team Cheatsheet
+- [x] Backend endpoint: POST /cheatsheet/{team_id} with pre-calc + AI generation
+- [ ] Frontend component: render cheatsheet in Antigravity design system
+- [ ] PDF export: downloadable version matching reference design
+
 ### Phase 3 Remaining
 - [ ] Draft helper <-> matchup log integration (save outcomes from draft)
 - [ ] UI polish pass across all features

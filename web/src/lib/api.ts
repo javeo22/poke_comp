@@ -1,3 +1,4 @@
+import type { CheatsheetResponse } from "@/types/cheatsheet";
 import type { DraftRequest, DraftResponse } from "@/types/draft";
 import type { ItemListResponse } from "@/types/item";
 import type {
@@ -292,6 +293,17 @@ export async function analyzeDraft(body: DraftRequest): Promise<DraftResponse> {
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json() as Promise<DraftResponse>;
+}
+
+// ── Cheatsheet ──
+
+export async function generateCheatsheet(teamId: string): Promise<CheatsheetResponse> {
+  const res = await fetch(`${API_URL}/cheatsheet/${teamId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CheatsheetResponse>;
 }
 
 export { apiFetch };

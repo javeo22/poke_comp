@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import (
     abilities,
+    cheatsheet,
     draft,
     items,
     matchups,
@@ -34,6 +35,7 @@ app.include_router(teams.router)
 app.include_router(meta.router)
 app.include_router(usage.router)
 app.include_router(draft.router)
+app.include_router(cheatsheet.router)
 app.include_router(matchups.router)
 
 

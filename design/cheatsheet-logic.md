@@ -1,0 +1,42 @@
+Research Sources Used
+Every build decision was verified against at least one of these sources in priority order, matching your project file's instructions:
+Serebii.net was used for every single move legality check. Before locking any move onto any Pokemon, I fetched the Champions Pokedex page for that Pokemon and confirmed the move appeared in the Standard Moves table. This was non-negotiable — a move appearing in older games does not mean it is available in Champions.
+Pikalytics was used for usage data. The full Gengar page was fetched live, giving real ladder percentages for moves, items, and teammates. This is where the 71% Incineroar pairing rate came from, and where the offensive sweeper moveset was cross-referenced against actual tournament teams.
+Game8 was used for build context — why certain moves are preferred over others, what the standard sets look like in the current meta.
+ChampionsLab was referenced for win rate data — specifically the 52.4% Mega Blastoise win rate mentioned in your project file, and the Mega Froslass 63.8% win rate flagged in the search results when building the matchup section.
+
+Gengar Build Logic
+The first question was offensive sweeper versus Perish Trap. Pikalytics showed that while Perish Song appeared on more tournament teams by raw count, the offensive Shadow Ball + Sludge Bomb set appeared consistently on teams that were winning matches, and it fit your stated preference for aggression.
+Shadow Ball and Sludge Bomb were chosen because they are Gengar's two strongest STAB moves with no drawbacks — no accuracy issues, no recharge turns, no self-damage. Every competitive Gengar set across every source ran both of these.
+Will-O-Wisp was dropped for Disable because Will-O-Wisp has 85% accuracy, which is a meaningful miss rate in a high-stakes doubles game, and you confirmed you saw Disable on multiple tournament teams. The Serebii page confirmed both are legal. Disable also has better synergy with Shadow Tag — once a target is trapped they cannot switch out, so Disabling their best move creates a situation where they have no good options at all.
+Protect is mandatory in doubles. This is not a preference — it is a fundamental rule of doubles play that every competitive source confirms. It lets you stall turns, avoid damage on a dangerous turn, and coordinate with your partner.
+Timid nature with 32 SpAtk / 32 Spd was the universal recommendation across Game8, Pikalytics tournament teams, and Deltia's Gaming. Mega Gengar's base 170 SpAtk after evolving is high enough without a boosting nature — what matters is outspeeding threats, and Timid with max Speed investment achieves that.
+
+Incineroar Logic
+This was the most straightforward decision in the entire build. Pikalytics showed Incineroar pairing with Gengar at 71.4% — more than double the next most common partner. Your project file already had a verified build. The reasoning is mechanical: Fake Out flinches the biggest threat on turn 1, giving Gengar a free Mega Evolution. No other Pokemon in the format does this as reliably.
+The Careful nature and HP / SpDef investment was chosen over a faster or more offensive spread because Incineroar's role is support and survival, not damage. It needs to take hits and cycle Intimidate via Parting Shot. Sitrus Berry fits this because it extends Incineroar's longevity without requiring a specific setup.
+
+Sneasler Logic
+S-tier placement in the meta confirmed across multiple sources. The Unburden + White Herb interaction was the core decision point here. The way it works: Close Combat drops Defense and SpDef by one stage each, White Herb immediately restores both drops, and Unburden activates because the held item was consumed — doubling Speed from 120 to 240. This makes Sneasler the fastest Pokemon on the field after turn 1, faster even than Mega Gengar.
+Dire Claw was chosen over alternatives because of the 30% status chance — the Serebii page confirmed it can inflict poison, paralysis, or sleep, any of which disrupts the opponent significantly.
+Fake Out on Sneasler creates the double disruption option. The key rule added to the cheat sheet — never lead both Fake Out users — came directly from understanding how Fake Out works. It only fires on the first turn after entering battle. Leading Incineroar and Sneasler together means you flinch one target instead of two separate targets on two separate turns.
+
+Hydreigon Logic
+This decision was driven entirely by the Farigiraf problem. Farigiraf is a Normal/Psychic type. Ghost-type moves do zero damage to Normal types, meaning Gengar's Shadow Ball cannot touch it. Psychic moves do zero damage to Dark types, meaning Farigiraf's Psychic does zero to Hydreigon. Dark Pulse hits Farigiraf for 2x. This is a hard counter relationship that no other Pokemon in your owned roster matched as cleanly.
+Taunt over Protect was your decision based on the aggressive preference, and it was the right call. Taunt stops Trick Room at the source — Farigiraf cannot set it up if Taunted. Protect would only defend Hydreigon for one turn.
+Dragon Fang was chosen because Life Orb, Choice Specs, and Choice Band are all confirmed unavailable in your project file. Dragon Fang gives a 1.2x boost to Dragon Pulse, which is the next best available option. Dragon Pulse was chosen over Draco Meteor because the SpAtk drop from Draco Meteor cannot be offset by White Herb — White Herb is already assigned to Sneasler and the no-duplicate-items rule applies.
+
+Meowscarada Logic
+The Protean change from older games was flagged because it materially changes how the Pokemon plays. In previous generations Protean activated on every move. In Champions, confirmed on Serebii, it fires only once per switch-in. This means the first move after switching in gets STAB via the type change, but subsequent moves do not. This changes the optimal play pattern from "spam whichever move is best" to "plan your entry carefully."
+Flower Trick was the primary STAB choice because it never misses and always crits. With Scope Lens boosting crit rate and Flower Trick already guaranteed to crit, the damage output is extremely reliable. Knock Off removes items — relevant against Gengarite on opposing Gengar, Sitrus Berry on Incineroar, White Herb on Sneasler mirrors. Sucker Punch gives priority. U-turn creates the pivot synergy with Gengar — Meowscarada U-turns out and Gengar comes in, immediately activating Shadow Tag.
+
+Kingambit Logic
+The Defiant ability question from your project file was resolved by the meta context. Incineroar runs on over 60% of ladder teams confirmed across multiple sources. Every opponent running Incineroar gives Kingambit a free +2 Attack through Defiant when Intimidate activates. This means Kingambit's best counterplay against the most common Pokemon in the format is to simply enter the field. Supreme Overlord only activates when your own Pokemon have fainted, which is reactive and less reliable.
+Chople Berry was confirmed available in your project file and addresses Kingambit's single largest weakness — the 4x Fighting vulnerability. It halves damage from one Fighting-type hit, which often means the difference between surviving and being knocked out in one turn.
+Low Kick was considered for the fourth slot as a mirror Kingambit counter, but Protect was chosen to give Kingambit a defensive turn option on a team that otherwise has very little survivability built in.
+
+Cheat Sheet Design Logic
+The layout was built around one question: what does someone need to read in the 30 seconds before a match? The answer is the lead matchup table and the key rules, so those were given the most visual weight and space.
+The move color coding — purple for STAB, yellow for utility, red for priority — lets you read a moveset at a glance without parsing individual move names.
+The speed bar chart was included because in doubles, knowing who moves first is often more important than damage calculations. Sneasler's post-Unburden speed of 240 is visually dramatic compared to Kingambit's 50, which makes the point immediately clear.
+The matchup section leads with the most threatening archetypes first based on actual win rate and ladder prevalence data from the sources fetched during the build. Rain was listed first because it is the dominant archetype confirmed across every source. Incineroar + Kingambit was listed as most common because Pikalytics confirmed it at over 60% team usage.

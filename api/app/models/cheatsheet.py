@@ -1,0 +1,72 @@
+from pydantic import BaseModel
+
+# ── Pre-calculated (deterministic) ──────────────────────────────
+
+
+class CheatsheetMove(BaseModel):
+    name: str
+    category: str  # "stab" | "utility" | "priority"
+
+
+class RosterEntry(BaseModel):
+    name: str
+    types: list[str]
+    item: str | None = None
+    ability: str | None = None
+    nature: str | None = None
+    stat_points: str | None = None  # formatted: "32 SpA / 32 Spd / 2 HP"
+    moves: list[CheatsheetMove]
+    is_mega: bool = False
+
+
+class SpeedTier(BaseModel):
+    pokemon: str
+    speed: int
+    note: str | None = None  # e.g. "x Unburden"
+
+
+# ── AI-generated ────────────────────────────────────────────────
+
+
+class GamePlanStep(BaseModel):
+    step: int
+    title: str
+    description: str
+
+
+class KeyRule(BaseModel):
+    title: str
+    description: str
+
+
+class LeadMatchup(BaseModel):
+    archetype: str
+    example: str
+    threat_tier: str  # "S-TIER", "A-TIER", "MOST COMMON", "HIGHEST WR"
+    lead: list[str]
+    back: list[str]
+    note: str
+
+
+class Weakness(BaseModel):
+    title: str
+    description: str
+
+
+# ── Combined response ───────────────────────────────────────────
+
+
+class CheatsheetResponse(BaseModel):
+    team_id: str
+    team_name: str
+    team_title: str  # AI-generated punchy title, e.g. "GENGAR OFFENSE"
+    archetype: str  # AI-determined, e.g. "Trap / Offense"
+    format: str
+    roster: list[RosterEntry]
+    speed_tiers: list[SpeedTier]
+    game_plan: list[GamePlanStep]
+    key_rules: list[KeyRule]
+    lead_matchups: list[LeadMatchup]
+    weaknesses: list[Weakness]
+    cached: bool = False
+    estimated_cost_usd: float = 0.0
