@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd web && npm install --legacy-peer-deps && npx next build",
   "outputDirectory": "web/.next",
-  "installCommand": "echo 'skip'",
-  "framework": "nextjs",
+  "installCommand": "npm install",
+  "framework": null,
   "regions": ["iad1"],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }

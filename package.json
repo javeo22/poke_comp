@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "poke-comp",
+  "scripts": {
+    "build": "cd web && npm install --legacy-peer-deps && npx next build",
+    "dev": "cd web && npm run dev"
+  }
+}
