@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
-from app.main import limiter
+from app.limiter import limiter
 from app.models.cheatsheet import (
     CheatsheetMove,
     CheatsheetResponse,
