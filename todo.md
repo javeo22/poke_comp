@@ -2,22 +2,23 @@
 
 ## In Progress
 
-### AI Team Cheatsheet
-- [x] Backend endpoint: POST /cheatsheet/{team_id} with pre-calc + AI generation
-- [ ] Frontend component: render cheatsheet in Antigravity design system
-- [ ] PDF export: downloadable version matching reference design
+### Deployment
+- [x] Vercel config (web/vercel.json, pokecomp.app domain)
+- [x] Cloud Run Dockerfile + service YAML
+- [x] GitHub Actions CI/CD workflow
+- [ ] Connect Vercel to repo + configure domain
+- [ ] Set up GCP project, secrets, and deploy API
+- [ ] Set NEXT_PUBLIC_API_URL to Cloud Run URL
 
-### Phase 3 Remaining
-- [ ] Draft helper <-> matchup log integration (save outcomes from draft)
+### Polish
 - [ ] UI polish pass across all features
 - [ ] Supabase Auth (deferred -- using hardcoded dev user ID)
 
 ---
 
-## Up Next (Phase 4 - Week 8+)
-- [ ] F3: Static reference pages (moves, items, abilities, type chart)
-- [ ] Deploy to Cloud Run + Vercel
+## Up Next
 - [ ] Open source release (MIT or Apache 2.0)
+- [ ] README with setup instructions
 
 ---
 
@@ -63,3 +64,7 @@
 - [x] Automated multi-source ingestion pipelines (Smogon & Limitless APIs)
 - [x] F6: Matchup Log -- CRUD endpoints, /matches page with log form, match cards, filters (outcome/team), stats view (overall/by team/by opponent Pokemon win rates)
 - [x] Data pipeline consolidation -- single pokemon_usage table, removed redundant seed scripts, documented three-layer pipeline
+- [x] AI Team Cheatsheet -- backend endpoint + frontend page + PDF export utility
+- [x] Draft helper <-> matchup log integration (save Win/Loss from draft results)
+- [x] F3: Static reference pages -- moves table, items cards, 18x18 type chart
+- [x] Deployment configs -- Vercel, Cloud Run Dockerfile, GitHub Actions CI/CD

@@ -101,10 +101,26 @@
 - [ ] Frontend: React component rendering the cheatsheet (Antigravity design)
 - [ ] PDF export: downloadable version matching design/gengar-team-cheatsheet.html
 
-### Other Stretch
-- [ ] F3: Static reference pages (moves, items, abilities, type chart)
+### F3: Static Reference Pages -- COMPLETE
+- [x] Moves page: filterable table with type/category badges, pagination
+- [x] Items page: card grid with VP cost, shop availability, category filters
+- [x] Type chart: full 18x18 effectiveness matrix, color-coded, sticky headers
+- [x] Navigation links added (Moves, Items, Types)
+
+### Draft <-> Matchup Log Integration -- COMPLETE
+- [x] Win/Loss buttons on draft results save to matchup log
+- [x] Saves opponent team, lead pair, and AI summary as notes
+
+### Deployment Setup -- COMPLETE
+- [x] Vercel config (pokecomp.app domain, IAD1 region, security headers)
+- [x] Cloud Run Dockerfile (Python 3.14, uv, port 8080)
+- [x] Knative service YAML (scale-to-zero, secrets from Secret Manager)
+- [x] GitHub Actions CI/CD (lint gate + deploy on push to main)
+
+### Remaining
+- [ ] Connect Vercel to repo + configure pokecomp.app domain
+- [ ] Set up GCP project, secrets, deploy API to Cloud Run
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
-- [ ] Deploy to Cloud Run + Vercel
 - [ ] Open source release (MIT or Apache 2.0)
 - [ ] README with setup instructions
