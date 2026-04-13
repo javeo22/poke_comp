@@ -1,7 +1,6 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryStreamedHydration } from "@tanstack/react-query-next-experimental";
 import { useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -23,9 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactQueryStreamedHydration>
-        {children}
-      </ReactQueryStreamedHydration>
+      {children}
     </QueryClientProvider>
   );
 }

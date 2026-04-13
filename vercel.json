@@ -5,11 +5,6 @@
   "installCommand": "cd web && pnpm install",
   "buildCommand": "cd web && pnpm build",
   "outputDirectory": "web/.next",
-  "functions": {
-    "api/index.py": {
-      "runtime": "@vercel/python"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" }
   ],
