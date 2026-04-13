@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, startTransition, useRef } from "react";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary } from "@/components/error-boundary";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePokemonSuspense } from "../api";
