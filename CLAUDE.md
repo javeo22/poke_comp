@@ -7,7 +7,7 @@ Personal companion app for Pokemon Champions (competitive battling game, launche
 - **Frontend:** Next.js 14 with App Router, Tailwind CSS v4
 - **Backend:** Python FastAPI
 - **Database:** Supabase (PostgreSQL) with Row Level Security
-- **Deployment:** Cloud Run (API), Vercel (web)
+- **Deployment:** Vercel (web + API as Python function), Supabase (database)
 - **AI:** Anthropic Claude API (claude-sonnet-4-6)
 - **Package managers:** uv (Python), pnpm (JavaScript)
 - **Data sources:** PokeAPI for bulk import, targeted scraping for Champions meta

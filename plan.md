@@ -93,7 +93,7 @@
 ## Phase 4: Stretch & Release (Week 8+ - May 29+)
 **Goal:** Stretch features, open source.
 
-### AI Team Cheatsheet -- IN PROGRESS
+### AI Team Cheatsheet -- BACKEND COMPLETE
 - [x] Backend endpoint: POST /cheatsheet/{team_id}
 - [x] Pre-calculated data: roster with move categories (STAB/utility/priority), speed tiers with conditional abilities
 - [x] AI generation: game plan, key rules, lead matchups vs meta, weaknesses
@@ -111,15 +111,14 @@
 - [x] Win/Loss buttons on draft results save to matchup log
 - [x] Saves opponent team, lead pair, and AI summary as notes
 
-### Deployment Setup -- COMPLETE
-- [x] Vercel config (pokecomp.app domain, IAD1 region, security headers)
-- [x] Cloud Run Dockerfile (Python 3.14, uv, port 8080)
-- [x] Knative service YAML (scale-to-zero, secrets from Secret Manager)
+### Deployment -- COMPLETE
+- [x] Vercel config (monorepo: Next.js web + Python API function, IAD1 region, security headers)
 - [x] GitHub Actions CI/CD (lint gate + deploy on push to main)
+- [x] Connected Vercel to repo, pokecomp.app domain live
+- [x] API deployed as Vercel Python function (replaced Cloud Run plan)
+- [x] Vercel env vars configured (NEXT_PUBLIC_API_URL, Supabase, Anthropic)
 
 ### Remaining
-- [ ] Connect Vercel to repo + configure pokecomp.app domain
-- [ ] Set up GCP project, secrets, deploy API to Cloud Run
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
 - [ ] Open source release (MIT or Apache 2.0)

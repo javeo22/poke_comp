@@ -3,12 +3,11 @@
 ## In Progress
 
 ### Deployment
-- [x] Vercel config (web/vercel.json, pokecomp.app domain)
-- [x] Cloud Run Dockerfile + service YAML
+- [x] Vercel config (vercel.json monorepo, pokecomp.app domain)
 - [x] GitHub Actions CI/CD workflow
-- [ ] Connect Vercel to repo + configure domain
-- [ ] Set up GCP project, secrets, and deploy API
-- [ ] Set NEXT_PUBLIC_API_URL to Cloud Run URL
+- [x] Connect Vercel to repo + configure domain
+- [x] Deploy API as Vercel Python function (replaced Cloud Run)
+- [x] Set Vercel env vars (NEXT_PUBLIC_API_URL, Supabase, Anthropic)
 
 ### Polish
 - [ ] UI polish pass across all features
@@ -67,4 +66,5 @@
 - [x] AI Team Cheatsheet -- backend endpoint + frontend page + PDF export utility
 - [x] Draft helper <-> matchup log integration (save Win/Loss from draft results)
 - [x] F3: Static reference pages -- moves table, items cards, 18x18 type chart
-- [x] Deployment configs -- Vercel, Cloud Run Dockerfile, GitHub Actions CI/CD
+- [x] Deployment configs -- Vercel, GitHub Actions CI/CD
+- [x] Full deployment: Vercel (web + API as Python function), Supabase, pokecomp.app live

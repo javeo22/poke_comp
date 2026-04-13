@@ -4,6 +4,12 @@ Wraps the FastAPI app with prefix stripping so routes defined as
 /pokemon, /teams, etc. work when served under /api/* by Vercel.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure the api/ directory is on sys.path so `app` package is importable
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from app.main import app as fastapi_app
 
 
