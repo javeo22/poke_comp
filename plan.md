@@ -93,13 +93,13 @@
 ## Phase 4: Stretch & Release (Week 8+ - May 29+)
 **Goal:** Stretch features, open source.
 
-### AI Team Cheatsheet -- BACKEND COMPLETE
+### AI Team Cheatsheet -- COMPLETE
 - [x] Backend endpoint: POST /cheatsheet/{team_id}
 - [x] Pre-calculated data: roster with move categories (STAB/utility/priority), speed tiers with conditional abilities
 - [x] AI generation: game plan, key rules, lead matchups vs meta, weaknesses
 - [x] Caching: 7-day TTL in ai_analyses table, keyed by team composition
-- [ ] Frontend: React component rendering the cheatsheet (Antigravity design)
-- [ ] PDF export: downloadable version matching design/gengar-team-cheatsheet.html
+- [x] Frontend: React component rendering the cheatsheet (Battle Station design)
+- [x] PDF export: Export PDF button triggers browser print dialog (landscape, colors preserved)
 
 ### F3: Static Reference Pages -- COMPLETE
 - [x] Moves page: filterable table with type/category badges, pagination
@@ -148,11 +148,11 @@
 - [x] 5-step modal tour on first visit (localStorage persistence)
 - [x] "?" button in nav to restart tour
 
-### Showdown Import/Export -- BACKEND COMPLETE
+### Showdown Import/Export -- COMPLETE
 - [x] Showdown paste parser (api/app/services/showdown_parser.py)
 - [x] POST /teams/import endpoint
 - [x] GET /teams/{id}/export endpoint
-- [ ] Frontend UI: import modal + export button on teams page
+- [x] Frontend UI: import modal + export button on teams page
 
 ### Data Quality Overhaul -- COMPLETE
 - [x] Phase 1: Fixed Smogon URL (gen9doublesou -> gen9vgc2026), added ingest validation

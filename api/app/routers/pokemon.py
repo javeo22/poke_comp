@@ -16,6 +16,24 @@ from app.models.pokemon import (
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
 
 
+def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
+    """Extract Pokemon/move/item names from usage data.
+
+    Handles both legacy dict format ({"Name": count, ...}) and current
+    list format ([{"name": "Name", "percent": 50.0}, ...]) stored by the
+    Smogon ingest pipeline.
+    """
+    if not data:
+        return []
+    if isinstance(data, list):
+        return [
+            entry["name"]
+            for entry in data[:limit]
+            if isinstance(entry, dict) and "name" in entry
+        ]
+    return list(data.keys())[:limit]
+
+
 @router.get("", response_model=PokemonList)
 def list_pokemon(
     name: str | None = Query(None, description="Filter by name (case-insensitive contains)"),
@@ -45,18 +63,22 @@ def list_pokemon(
 
 @router.get("/{pokemon_id}", response_model=PokemonBase)
 def get_pokemon(pokemon_id: int):
-    result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+    try:
+        result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Pokemon not found") from exc
     return PokemonBase.model_validate(result.data)
 
 
 @router.get("/{pokemon_id}/detail", response_model=PokemonDetail)
 def get_pokemon_detail(pokemon_id: int):
     """Enriched Pokemon data: base info + move details + ability descriptions + usage."""
-    # Fetch base Pokemon
-    poke_result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
-    poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
-    if not poke_row:
-        raise HTTPException(status_code=404, detail="Pokemon not found")
+    # Fetch base Pokemon — .single() raises on zero rows; treat as 404
+    try:
+        poke_result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+        poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Pokemon not found") from exc
 
     base = PokemonBase.model_validate(poke_row)
 
@@ -98,18 +120,14 @@ def get_pokemon_detail(pokemon_id: int):
         )
         usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
         for u in usage_rows:
-            moves_list: list[dict] = u.get("moves") or []
-            items_list: list[dict] = u.get("items") or []
-            ab_list: list[dict] = u.get("abilities") or []
-            mates_list: list[dict] = u.get("teammates") or []
             usage.append(
                 PokemonUsageSummary(
                     format=u.get("format", ""),
                     usage_percent=u.get("usage_percent", 0),
-                    top_moves=[m["name"] for m in moves_list[:6]],
-                    top_items=[i["name"] for i in items_list[:4]],
-                    top_abilities=[a["name"] for a in ab_list[:3]],
-                    top_teammates=[t["name"] for t in mates_list[:4]],
+                    top_moves=_extract_usage_names(u.get("moves"), 6),
+                    top_items=_extract_usage_names(u.get("items"), 4),
+                    top_abilities=_extract_usage_names(u.get("abilities"), 3),
+                    top_teammates=_extract_usage_names(u.get("teammates"), 4),
                 )
             )
 

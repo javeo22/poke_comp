@@ -5,16 +5,23 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { resetOnboardingTour } from "@/components/onboarding-tour";
+import { PokeballLogo } from "@/components/pokeball-logo";
 import type { User } from "@supabase/supabase-js";
 
-const NAV_GROUPS = [
+const NAV_GROUPS: { label: string; links: { href: string; label: string }[]; dim?: boolean }[] = [
   {
     label: "Game Data",
     links: [
       { href: "/pokemon", label: "Pokedex" },
+      { href: "/type-chart", label: "Types" },
+    ],
+  },
+  {
+    label: "Reference",
+    dim: true,
+    links: [
       { href: "/moves", label: "Moves" },
       { href: "/items", label: "Items" },
-      { href: "/type-chart", label: "Types" },
     ],
   },
   {
@@ -74,8 +81,9 @@ export function Nav() {
         <div className="flex items-center gap-1">
           <Link
             href="/"
-            className="mr-6 font-display text-lg font-bold tracking-tight text-primary"
+            className="mr-6 flex items-center gap-2 font-display text-lg font-bold tracking-tight text-primary"
           >
+            <PokeballLogo className="h-5 w-5 shrink-0" />
             PokeComp
           </Link>
           <button
@@ -90,11 +98,11 @@ export function Nav() {
           <div className="hidden lg:flex lg:items-center lg:gap-1">
             {NAV_GROUPS.map((group) => (
               <div key={group.label} className="flex items-center gap-1">
-                <span className="mr-1 font-display text-[0.5rem] uppercase tracking-widest text-on-surface-muted/50">
+                <span className={`mr-1 font-display text-[0.5rem] uppercase tracking-widest ${group.dim ? "text-on-surface-muted/30" : "text-on-surface-muted/50"}`}>
                   {group.label}
                 </span>
                 {group.links.map(({ href, label }) => (
-                  <NavLink key={href} href={href} label={label} active={pathname.startsWith(href)} />
+                  <NavLink key={href} href={href} label={label} active={pathname.startsWith(href)} dim={group.dim} />
                 ))}
                 <div className="mx-2 h-4 w-px bg-outline-variant/50" />
               </div>
@@ -138,12 +146,12 @@ export function Nav() {
         <div className="lg:hidden border-t border-outline-variant bg-surface-low px-6 pb-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label} className="mt-3">
-              <p className="mb-1.5 font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted/50">
+              <p className={`mb-1.5 font-display text-[0.55rem] uppercase tracking-widest ${group.dim ? "text-on-surface-muted/30" : "text-on-surface-muted/50"}`}>
                 {group.label}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {group.links.map(({ href, label }) => (
-                  <NavLink key={href} href={href} label={label} active={pathname.startsWith(href)} onClick={closeMobile} />
+                  <NavLink key={href} href={href} label={label} active={pathname.startsWith(href)} dim={group.dim} onClick={closeMobile} />
                 ))}
               </div>
             </div>
@@ -161,21 +169,24 @@ function NavLink({
   href,
   label,
   active,
+  dim,
   onClick,
 }: {
   href: string;
   label: string;
   active: boolean;
+  dim?: boolean;
   onClick?: () => void;
 }) {
+  const inactiveClass = dim
+    ? "text-on-surface-muted/60 hover:text-on-surface-muted hover:bg-surface-high"
+    : "text-on-surface-muted hover:text-on-surface hover:bg-surface-high";
   return (
     <Link
       href={href}
       onClick={onClick}
       className={`rounded-lg px-3 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${
-        active
-          ? "bg-primary text-surface"
-          : "text-on-surface-muted hover:text-on-surface hover:bg-surface-high"
+        active ? "bg-primary text-surface" : inactiveClass
       }`}
     >
       {label}

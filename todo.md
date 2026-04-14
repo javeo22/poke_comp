@@ -4,7 +4,6 @@
 
 ### Visual Polish
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
-- [ ] Cheatsheet frontend component completion
 
 ### Data
 - [ ] Run Pikalytics ingest for full usage data (scripts/ingest/pikalytics_usage.py)
@@ -23,8 +22,6 @@
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
 - [ ] Speed tier reference page (/speed-tiers)
-- [ ] Showdown import UI on teams page (frontend for POST /teams/import)
-- [ ] Showdown export button on teams page (frontend for GET /teams/{id}/export)
 
 ---
 
@@ -86,6 +83,9 @@
 - [x] POST /teams/import and GET /teams/{id}/export endpoints
 - [x] Pre-existing CI lint/format/pyright errors fixed (auth.py, draft.py, teams.py, seed_auth_user.py)
 - [x] Added pnpm-lock.yaml for CI cache resolution
+- [x] Cheatsheet PDF export button (Export PDF button triggers browser print to PDF)
+- [x] Showdown import modal on teams page (paste + team name + format, warnings display)
+- [x] Showdown export button on team cards (downloads .txt file)
 - [x] Data quality overhaul: Smogon URL fix (gen9vgc2026), ingest validation, API format filtering
 - [x] Real Limitless VGC API integration (replaced mock data)
 - [x] Pikalytics Champions scraper (scripts/ingest/pikalytics_usage.py)

@@ -167,6 +167,22 @@ def ingest_smogon_data(sb: Client) -> None:
     local_roster: dict[str, str] = {
         row["name"].lower().replace("-", "").replace(" ", ""): row["name"] for row in rows
     }
+    champions_names = set(local_roster.values())
+
+    # Remove stale non-Champions usage rows (e.g. old VGC data that leaked in)
+    existing_result = (
+        sb.table("pokemon_usage").select("pokemon_name").eq("format", FORMAT_KEY).execute()
+    )
+    existing_rows: list[dict] = existing_result.data  # type: ignore[assignment]
+    stale_names = [r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names]
+    if stale_names:
+        print(f"  Removing {len(stale_names)} non-Champions entries from pokemon_usage...")
+        batch_size = 100
+        for i in range(0, len(stale_names), batch_size):
+            chunk = stale_names[i : i + batch_size]
+            sb.table("pokemon_usage").delete().eq("format", FORMAT_KEY).in_(
+                "pokemon_name", chunk
+            ).execute()
 
     # Build legality sets for validation during ingest
     legal_items = _build_legal_items(sb)
@@ -186,7 +202,7 @@ def ingest_smogon_data(sb: Client) -> None:
 
         mapped_count += 1
 
-        usage_val = stats.usage.get("weight", stats.usage.get("real", 0))
+        usage_val = stats.usage.get("weighted", stats.usage.get("real", 0))
 
         record = {
             "pokemon_name": display_name,

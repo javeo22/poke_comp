@@ -31,7 +31,16 @@ export default function PokemonDetailPage() {
 
     fetchPokemonDetail(pokemonId)
       .then(setPokemon)
-      .catch(() => setError("Pokemon not found"))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("404") || /not found/i.test(msg)) {
+          setError("Pokemon not found.");
+        } else if (/5\d\d/.test(msg)) {
+          setError("Server error — please try again.");
+        } else {
+          setError(`Could not load Pokemon data. Check your connection.`);
+        }
+      })
       .finally(() => setLoading(false));
   }, [pokemonId, isValidId]);
 
