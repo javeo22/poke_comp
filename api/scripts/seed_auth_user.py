@@ -1,6 +1,8 @@
 import os
-from supabase import create_client, Client
+
 from dotenv import load_dotenv
+from supabase import Client, create_client
+
 
 def seed_user():
     # Load .env explicitly
@@ -27,21 +29,24 @@ def seed_user():
         print("You can log in at /login with:")
         print(f"Email: {user.user.email}")
         print("Password: [whatever was previously set, or we can update it]")
-    except Exception as e:
+    except Exception:
         print("User does not exist, creating...")
         try:
-            res = supabase.auth.admin.create_user({
-                "id": uuid,
-                "email": email,
-                "password": password,
-                "email_confirm": True
-            })
+            res = supabase.auth.admin.create_user(
+                {
+                    "id": uuid,
+                    "email": email,
+                    "password": password,
+                    "email_confirm": True,
+                }
+            )
             print(f"Created user {res.user.email} with id {res.user.id}")
-            print("\n✅ Seeded Auth user successfully!")
+            print("\nSeeded Auth user successfully!")
             print(f"Email: {email}")
             print(f"Password: {password}")
         except Exception as create_err:
             print(f"Failed to create user: {create_err}")
+
 
 if __name__ == "__main__":
     seed_user()

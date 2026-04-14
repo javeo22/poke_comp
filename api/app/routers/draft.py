@@ -286,7 +286,12 @@ def _build_prompt(
         "You are a competitive Pokemon Champions VGC doubles analyst. "
         "Analyze this team preview matchup."
     )
-    my_team_section = f"## My Team (<team_name>{my_team['team_name']}</team_name>)\n{chr(10).join(my_lines)}{mega_note}"
+    team_name = my_team["team_name"]
+    my_pokemon_block = chr(10).join(my_lines)
+    my_team_section = (
+        f"## My Team (<team_name>{team_name}</team_name>)\n"
+        f"{my_pokemon_block}{mega_note}"
+    )
     opp_section = (
         "## Opponent's Team (6 shown in team preview)\n"
         f"{chr(10).join(opp_lines)}"
