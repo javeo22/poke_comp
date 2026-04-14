@@ -34,20 +34,26 @@ export default function DraftPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [teamsResult, pokemonResult] = await Promise.all([
+      const [teamsResult, pokemonResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchPokemon({ limit: 500, champions_only: true }),
       ]);
-      setTeams(teamsResult.data);
-      setPokemonOptions(
-        pokemonResult.data.map((p: Pokemon) => ({
-          value: p.name,
-          label: p.name,
-          sublabel: p.types.join("/"),
-        }))
-      );
-    } catch (err) {
-      console.error("Failed to load data:", err);
+      if (teamsResult.status === "fulfilled") {
+        setTeams(teamsResult.value.data);
+      } else {
+        console.error("Failed to load teams:", teamsResult.reason);
+      }
+      if (pokemonResult.status === "fulfilled") {
+        setPokemonOptions(
+          pokemonResult.value.data.map((p: Pokemon) => ({
+            value: p.name,
+            label: p.name,
+            sublabel: p.types.join("/"),
+          }))
+        );
+      } else {
+        console.error("Failed to load Pokemon list:", pokemonResult.reason);
+      }
     } finally {
       setIsLoading(false);
     }
