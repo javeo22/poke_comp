@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Query
 from postgrest.types import CountMethod
 
@@ -25,9 +27,36 @@ def list_items(
         query = query.eq("champions_shop_available", True)
 
     result = query.order("id").range(offset, offset + limit - 1).execute()
+    item_rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    # Compute top holders from usage data in one batch query
+    top_holders_map: dict[str, list[str]] = {}
+    if item_rows:
+        item_name_set = {row["name"] for row in item_rows}
+        usage_result = (
+            supabase.table("pokemon_usage")
+            .select("pokemon_name, items")
+            .execute()
+        )
+        usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
+        # item_name -> [(pokemon_name, usage_pct)]
+        item_usage: dict[str, list[tuple[str, float]]] = {}
+        for row in usage_rows:
+            items_data: dict[str, float] = row.get("items") or {}
+            pokemon_name_val: str = row.get("pokemon_name") or ""
+            for item_name, pct in items_data.items():
+                if item_name in item_name_set:
+                    item_usage.setdefault(item_name, []).append((pokemon_name_val, float(pct)))
+        for item_name, holders in item_usage.items():
+            holders.sort(key=lambda x: -x[1])
+            top_holders_map[item_name] = [h for h, _ in holders[:3]]
+        for row in item_rows:
+            holders_list = top_holders_map.get(row["name"])
+            row["top_holders"] = holders_list if holders_list else None
+
     return ItemList(
-        data=[ItemBase.model_validate(row) for row in result.data],
-        count=result.count or len(result.data),
+        data=[ItemBase.model_validate(row) for row in item_rows],
+        count=result.count or len(item_rows),
     )
 
 

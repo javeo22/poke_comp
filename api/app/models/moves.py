@@ -11,6 +11,7 @@ class MoveBase(BaseModel):
     target: str | None = None
     effect_text: str | None = None
     champions_available: bool
+    learner_count: int | None = None
 
 
 class MoveList(BaseModel):

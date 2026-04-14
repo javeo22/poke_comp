@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Query
 from postgrest.types import CountMethod
 
@@ -28,9 +30,29 @@ def list_moves(
         query = query.eq("champions_available", True)
 
     result = query.order("id").range(offset, offset + limit - 1).execute()
+    move_rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    # Compute learner counts via a single batch query over champions-eligible Pokemon
+    learner_counts: dict[str, int] = {}
+    if move_rows:
+        move_name_set = {row["name"] for row in move_rows}
+        poke_result = (
+            supabase.table("pokemon")
+            .select("movepool")
+            .eq("champions_eligible", True)
+            .execute()
+        )
+        poke_rows: list[dict[str, Any]] = poke_result.data  # type: ignore[assignment]
+        for poke in poke_rows:
+            for mn in poke.get("movepool") or []:
+                if mn in move_name_set:
+                    learner_counts[mn] = learner_counts.get(mn, 0) + 1
+        for row in move_rows:
+            row["learner_count"] = learner_counts.get(row["name"])
+
     return MoveList(
-        data=[MoveBase.model_validate(row) for row in result.data],
-        count=result.count or len(result.data),
+        data=[MoveBase.model_validate(row) for row in move_rows],
+        count=result.count or len(move_rows),
     )
 
 

@@ -187,6 +187,11 @@ export default function ItemsPage() {
                   {item.effect_text}
                 </p>
               )}
+              {item.top_holders && item.top_holders.length > 0 && (
+                <p className="mt-2 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted/70">
+                  Top holders: {item.top_holders.join(", ")}
+                </p>
+              )}
             </div>
           ))}
         </div>
