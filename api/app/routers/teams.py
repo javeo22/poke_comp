@@ -44,7 +44,7 @@ def get_team(team_id: str, user_id: str = Depends(get_current_user)):
     return TeamResponse.model_validate(result.data)
 
 
-def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
+def _validate_mega(pokemon_ids: list[int], mega_pokemon_id: int | None) -> None:
     """Validate that at most one mega is designated and it's in the team."""
     if mega_pokemon_id and mega_pokemon_id not in pokemon_ids:
         raise HTTPException(
