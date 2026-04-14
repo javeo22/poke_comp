@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team } from "@/types/team";
@@ -139,6 +140,22 @@ export function TeamCard({
           {team.notes}
         </p>
       )}
+
+      {/* Quick actions */}
+      <div className="mt-4 flex gap-2 border-t border-outline-variant pt-3">
+        <Link
+          href={`/draft?team=${team.id}`}
+          className="h-8 rounded-lg bg-surface-high px-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-primary/20 hover:text-primary flex items-center"
+        >
+          Draft
+        </Link>
+        <Link
+          href={`/cheatsheet?team=${team.id}`}
+          className="h-8 rounded-lg bg-surface-high px-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-primary/20 hover:text-primary flex items-center"
+        >
+          Cheatsheet
+        </Link>
+      </div>
     </div>
   );
 }

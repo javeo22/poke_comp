@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Item } from "@/types/item";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
@@ -17,6 +18,9 @@ import { RosterCard } from "@/components/roster/roster-card";
 import { RosterForm } from "@/components/roster/roster-form";
 
 export default function RosterPage() {
+  const searchParams = useSearchParams();
+  const addPokemonId = searchParams.get("add");
+
   const [entries, setEntries] = useState<UserPokemon[]>([]);
   const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
@@ -27,6 +31,9 @@ export default function RosterPage() {
   // Form modal state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<UserPokemon | null>(null);
+  const [preselectedPokemonId, setPreselectedPokemonId] = useState<number | undefined>(
+    addPokemonId ? Number(addPokemonId) : undefined
+  );
 
   const loadRoster = useCallback(async (status?: string) => {
     setIsLoading(true);
@@ -63,6 +70,14 @@ export default function RosterPage() {
   useEffect(() => {
     loadRoster(statusFilter);
   }, [statusFilter, loadRoster]);
+
+  // Auto-open form when ?add=pokemonId is in URL
+  useEffect(() => {
+    if (preselectedPokemonId && !isLoading && pokemonMap.size > 0) {
+      setEditing(null);
+      setShowForm(true);
+    }
+  }, [preselectedPokemonId, isLoading, pokemonMap]);
 
   const handleCreate = () => {
     setEditing(null);
@@ -208,10 +223,12 @@ export default function RosterPage() {
         <RosterForm
           editing={editing}
           pokemonLookup={pokemonMap}
+          preselectedPokemonId={!editing ? preselectedPokemonId : undefined}
           onSubmit={handleFormSubmit}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
+            setPreselectedPokemonId(undefined);
           }}
         />
       )}

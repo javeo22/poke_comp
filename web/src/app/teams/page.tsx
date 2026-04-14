@@ -250,6 +250,15 @@ export default function TeamsPage() {
           <p className="mt-1 text-sm text-on-surface-muted">
             {formatFilter ? "Try a different format" : "Build your first team to get started"}
           </p>
+          {!formatFilter && roster.length === 0 && (
+            <p className="mt-2 text-xs text-on-surface-muted">
+              Add Pokemon to your{" "}
+              <a href="/roster" className="text-primary hover:underline">
+                Roster
+              </a>{" "}
+              first, then build teams from them.
+            </p>
+          )}
           {!formatFilter && (
             <button
               onClick={handleCreate}
