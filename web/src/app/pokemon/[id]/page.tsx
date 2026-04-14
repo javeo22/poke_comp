@@ -109,6 +109,14 @@ export default function PokemonDetailPage() {
                   Champions
                 </span>
               )}
+              {pokemon.champions_eligible && (
+                <Link
+                  href={`/roster?add=${pokemon.id}`}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-4 py-1.5 font-display text-xs uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+                >
+                  Add to Roster
+                </Link>
+              )}
             </div>
           </div>
 

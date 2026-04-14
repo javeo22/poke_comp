@@ -188,9 +188,19 @@ export default function ItemsPage() {
                 </p>
               )}
               {item.top_holders && item.top_holders.length > 0 && (
-                <p className="mt-2 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted/70">
-                  Top holders: {item.top_holders.join(", ")}
-                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted/60">
+                    Holders
+                  </span>
+                  {item.top_holders.map((holder) => (
+                    <span
+                      key={holder}
+                      className="rounded-full bg-surface-mid px-2.5 py-0.5 font-display text-[0.6rem] text-on-surface-muted"
+                    >
+                      {holder}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           ))}

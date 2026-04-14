@@ -14,6 +14,7 @@ import { StatPointEditor } from "./stat-point-editor";
 interface RosterFormProps {
   editing: UserPokemon | null;
   pokemonLookup: Map<number, Pokemon>;
+  preselectedPokemonId?: number;
   onSubmit: (data: UserPokemonCreate | (UserPokemonUpdate & { id: string })) => void;
   onClose: () => void;
 }
@@ -22,7 +23,7 @@ const DEFAULT_STATS: Record<string, number> = {
   hp: 0, attack: 0, defense: 0, sp_attack: 0, sp_defense: 0, speed: 0,
 };
 
-export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: RosterFormProps) {
+export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSubmit, onClose }: RosterFormProps) {
   // Pokemon search (only for new entries)
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Pokemon[]>([]);
@@ -56,6 +57,18 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
       .then((res) => setItems(res.data))
       .catch(() => setItems([]));
   }, []);
+
+  // Auto-select preselected Pokemon (from deep link)
+  useEffect(() => {
+    if (preselectedPokemonId && !editing && !selectedPokemon) {
+      const fromLookup = pokemonLookup.get(preselectedPokemonId);
+      if (fromLookup) {
+        handleSelectPokemon(fromLookup);
+      }
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedPokemonId]);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
