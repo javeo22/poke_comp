@@ -132,12 +132,7 @@ def validate_champions_item(item_id: int) -> None:
 
 def validate_pokemon_ability(pokemon_id: int, ability: str) -> None:
     """Validate that the ability is in the Pokemon's ability list."""
-    result = (
-        supabase.table("pokemon")
-        .select("name, abilities")
-        .eq("id", pokemon_id)
-        .execute()
-    )
+    result = supabase.table("pokemon").select("name, abilities").eq("id", pokemon_id).execute()
     if not result.data:
         raise HTTPException(
             status_code=400,
@@ -157,12 +152,7 @@ def validate_pokemon_ability(pokemon_id: int, ability: str) -> None:
 
 def validate_pokemon_moves(pokemon_id: int, moves: list[str]) -> None:
     """Validate that all moves are in the Pokemon's movepool and Champions-available."""
-    result = (
-        supabase.table("pokemon")
-        .select("name, movepool")
-        .eq("id", pokemon_id)
-        .execute()
-    )
+    result = supabase.table("pokemon").select("name, movepool").eq("id", pokemon_id).execute()
     if not result.data:
         raise HTTPException(
             status_code=400,
@@ -201,9 +191,7 @@ def validate_champions_pokemon_batch(pokemon_ids: list[int]) -> None:
         )
 
     ineligible = [
-        f"{row['name']} (ID {row['id']})"
-        for row in rows
-        if not row.get("champions_eligible")
+        f"{row['name']} (ID {row['id']})" for row in rows if not row.get("champions_eligible")
     ]
     if ineligible:
         raise HTTPException(

@@ -14,7 +14,6 @@ from app.models.draft import DraftAnalysis, DraftRequest, DraftResponse
 router = APIRouter(prefix="/draft", tags=["draft"])
 
 
-
 CACHE_TTL_HOURS = 24
 
 
@@ -289,8 +288,7 @@ def _build_prompt(
     team_name = my_team["team_name"]
     my_pokemon_block = chr(10).join(my_lines)
     my_team_section = (
-        f"## My Team (<team_name>{team_name}</team_name>)\n"
-        f"{my_pokemon_block}{mega_note}"
+        f"## My Team (<team_name>{team_name}</team_name>)\n{my_pokemon_block}{mega_note}"
     )
     opp_section = (
         "## Opponent's Team (6 shown in team preview)\n"

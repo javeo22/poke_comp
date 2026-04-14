@@ -28,9 +28,7 @@ class _NatureStatsMixin:
         total = 0
         for key, value in v.items():
             if not isinstance(value, int) or value < 0 or value > MAX_PER_STAT:
-                raise ValueError(
-                    f"Stat '{key}' must be 0-{MAX_PER_STAT}, got {value}"
-                )
+                raise ValueError(f"Stat '{key}' must be 0-{MAX_PER_STAT}, got {value}")
             total += value
         if total > MAX_TOTAL:
             raise ValueError(f"Total stat points ({total}) exceed max of {MAX_TOTAL}")

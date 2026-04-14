@@ -45,13 +45,7 @@ def list_pokemon(
 
 @router.get("/{pokemon_id}", response_model=PokemonBase)
 def get_pokemon(pokemon_id: int):
-    result = (
-        supabase.table("pokemon")
-        .select("*")
-        .eq("id", pokemon_id)
-        .single()
-        .execute()
-    )
+    result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
     return PokemonBase.model_validate(result.data)
 
 
@@ -59,13 +53,7 @@ def get_pokemon(pokemon_id: int):
 def get_pokemon_detail(pokemon_id: int):
     """Enriched Pokemon data: base info + move details + ability descriptions + usage."""
     # Fetch base Pokemon
-    poke_result = (
-        supabase.table("pokemon")
-        .select("*")
-        .eq("id", pokemon_id)
-        .single()
-        .execute()
-    )
+    poke_result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
     poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
     if not poke_row:
         raise HTTPException(status_code=404, detail="Pokemon not found")
@@ -91,10 +79,7 @@ def get_pokemon_detail(pokemon_id: int):
     abilities = poke_row.get("abilities") or []
     if abilities:
         ab_result = (
-            supabase.table("abilities")
-            .select("name, effect_text")
-            .in_("name", abilities)
-            .execute()
+            supabase.table("abilities").select("name, effect_text").in_("name", abilities).execute()
         )
         ab_rows: list[dict[str, Any]] = ab_result.data  # type: ignore[assignment]
         ability_details = [AbilityDetail.model_validate(a) for a in ab_rows]
@@ -103,9 +88,7 @@ def get_pokemon_detail(pokemon_id: int):
     usage: list[PokemonUsageSummary] = []
     usage_result = (
         supabase.table("pokemon_usage")
-        .select(
-            "format, usage_percent, moves, items, abilities, teammates"
-        )
+        .select("format, usage_percent, moves, items, abilities, teammates")
         .eq("pokemon_name", base.name)
         .order("snapshot_date", desc=True)
         .limit(3)
@@ -132,12 +115,7 @@ def get_pokemon_detail(pokemon_id: int):
     mega_name: str | None = None
     mega_id = poke_row.get("mega_evolution_id")
     if mega_id:
-        mega_result = (
-            supabase.table("pokemon")
-            .select("name")
-            .eq("id", mega_id)
-            .execute()
-        )
+        mega_result = supabase.table("pokemon").select("name").eq("id", mega_id).execute()
         mega_rows: list[dict[str, Any]] = mega_result.data  # type: ignore[assignment]
         if mega_rows:
             mega_name = mega_rows[0]["name"]

@@ -177,9 +177,7 @@ def create_matchup(body: MatchupCreate, user_id: str = Depends(get_current_user)
 
 
 @router.put("/{matchup_id}", response_model=MatchupResponse)
-def update_matchup(
-    matchup_id: str, body: MatchupUpdate, user_id: str = Depends(get_current_user)
-):
+def update_matchup(matchup_id: str, body: MatchupUpdate, user_id: str = Depends(get_current_user)):
     data = body.model_dump(exclude_none=True, mode="json")
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")

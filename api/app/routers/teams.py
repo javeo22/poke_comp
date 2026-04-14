@@ -9,8 +9,6 @@ from app.validators import validate_champions_pokemon_batch
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 
-
-
 @router.get("", response_model=TeamList)
 def list_teams(
     format: str | None = Query(None, description="Filter by format (singles, doubles, megas)"),

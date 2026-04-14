@@ -24,6 +24,7 @@ app = FastAPI(title="Pokemon Champions Companion API", version="0.1.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
@@ -31,6 +32,7 @@ async def add_security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +53,7 @@ app.include_router(usage.router)
 app.include_router(draft.router)
 app.include_router(cheatsheet.router)
 app.include_router(matchups.router)
+
 
 @app.get("/health")
 def health():
