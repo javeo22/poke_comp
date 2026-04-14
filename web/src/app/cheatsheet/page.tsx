@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Team } from "@/types/team";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
 import { fetchTeams, generateCheatsheet } from "@/lib/api";
+import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 
@@ -156,6 +157,14 @@ export default function CheatsheetPage() {
         >
           {isGenerating ? "Generating..." : "Generate Cheatsheet"}
         </button>
+        {result && !isGenerating && (
+          <button
+            onClick={() => exportCheatsheetPDF(result.team_title)}
+            className="btn-ghost h-12 px-6 font-display text-sm font-medium uppercase tracking-wider"
+          >
+            Export PDF
+          </button>
+        )}
         {result?.cached && (
           <span className="font-display text-xs text-on-surface-muted">
             Cached result

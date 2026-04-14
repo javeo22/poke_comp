@@ -77,6 +77,36 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   return res.json();
 }
 
+async function apiFetchText(path: string): Promise<string> {
+  const url = `${API_URL}${path}`;
+  const headers = new Headers();
+
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+      }
+    }
+  }
+
+  const res = await fetch(url, { headers });
+
+  if (!res.ok) {
+    let detail = `API error: ${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      // not JSON
+    }
+    throw new Error(detail);
+  }
+
+  return res.text();
+}
+
 // ── Pokemon (Reference) ──
 
 export interface PokemonFilters {
@@ -335,6 +365,33 @@ export async function generateCheatsheet(teamId: string): Promise<CheatsheetResp
   return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`, {
     method: "POST",
   });
+}
+
+// ── Showdown Import / Export ──
+
+export interface ShowdownImportRequest {
+  paste: string;
+  team_name: string;
+  format: string;
+}
+
+export interface ShowdownImportResponse {
+  team: Team;
+  pokemon_created: number;
+  warnings: string[];
+}
+
+export async function importTeamFromShowdown(
+  body: ShowdownImportRequest
+): Promise<ShowdownImportResponse> {
+  return apiFetch<ShowdownImportResponse>("/teams/import", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function exportTeamToShowdown(teamId: string): Promise<string> {
+  return apiFetchText(`/teams/${teamId}/export`);
 }
 
 export { apiFetch };
