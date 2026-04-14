@@ -13,6 +13,7 @@ interface TeamCardProps {
   onEdit: (team: Team) => void;
   onDelete: (id: string) => void;
   onClone: (team: Team) => void;
+  onExport: (team: Team) => void;
 }
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -28,6 +29,7 @@ export function TeamCard({
   onEdit,
   onDelete,
   onClone,
+  onExport,
 }: TeamCardProps) {
   // Resolve team members
   const members = team.pokemon_ids
@@ -61,6 +63,12 @@ export function TeamCard({
           </div>
         </div>
         <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            onClick={() => onExport(team)}
+            className="btn-ghost h-7 px-3 font-display text-[0.6rem] uppercase tracking-wider"
+          >
+            Export
+          </button>
           <button
             onClick={() => onClone(team)}
             className="btn-ghost h-7 px-3 font-display text-[0.6rem] uppercase tracking-wider"
