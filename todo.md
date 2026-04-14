@@ -2,31 +2,29 @@
 
 ## In Progress
 
-### Deployment
-- [x] Vercel config (vercel.json monorepo, pokecomp.app domain)
-- [x] GitHub Actions CI/CD workflow
-- [x] Connect Vercel to repo + configure domain
-- [x] Deploy API as Vercel Python function (replaced Cloud Run)
-- [x] Set Vercel env vars (NEXT_PUBLIC_API_URL, Supabase, Anthropic)
+### Visual Polish
+- [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
+- [ ] Cheatsheet frontend component completion
 
-### Polish
-- [ ] UI polish pass across all features
-- [ ] Supabase Auth (deferred -- using hardcoded dev user ID)
+### Data
+- [ ] Limitless VGC real API integration (replace mock in limitless_teams.py)
 
 ---
 
 ## Up Next
 - [ ] Open source release (MIT or Apache 2.0)
 - [ ] README with setup instructions
+- [ ] Supabase Auth: enable email confirmation in dashboard, configure redirect URL
 
 ---
 
 ## Backlog
 - [ ] Decide on open source license (MIT vs Apache 2.0)
-- [ ] Push to GitHub remote
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
-- [ ] README with setup instructions
+- [ ] Speed tier reference page (/speed-tiers)
+- [ ] Showdown import UI on teams page (frontend for POST /teams/import)
+- [ ] Showdown export button on teams page (frontend for GET /teams/{id}/export)
 
 ---
 
@@ -68,3 +66,23 @@
 - [x] F3: Static reference pages -- moves table, items cards, 18x18 type chart
 - [x] Deployment configs -- Vercel, GitHub Actions CI/CD
 - [x] Full deployment: Vercel (web + API as Python function), Supabase, pokecomp.app live
+- [x] Champions data integrity validation layer (api/app/validators.py)
+- [x] Pydantic field validators for nature (25 valid) and stat_points (0-252/510)
+- [x] DB validators wired into user_pokemon and teams routers
+- [x] Supabase Auth: replaced hardcoded dev_user_id with JWT in matchups router
+- [x] Fixed login page React hooks ordering bug
+- [x] Profile page (/profile) with account info and activity stats
+- [x] RLS migration for user_pokemon, teams, matchup_log
+- [x] Pokemon detail page (/pokemon/[id]) with movepool, abilities, usage, stats
+- [x] Enriched GET /pokemon/{id}/detail endpoint (move details, ability descriptions)
+- [x] Pokemon cards clickable (link to detail page)
+- [x] Responsive hamburger nav for mobile
+- [x] Login page branding (PokeComp logo + tagline)
+- [x] Dual RAG: personal matchup history context in draft analysis prompt
+- [x] AI disclaimers on draft and cheatsheet responses
+- [x] User-friendly 429 rate limit error handling
+- [x] Onboarding tour (5-step modal, localStorage persistence, ? button)
+- [x] Showdown paste parser (api/app/services/showdown_parser.py)
+- [x] POST /teams/import and GET /teams/{id}/export endpoints
+- [x] Pre-existing CI lint/format/pyright errors fixed (auth.py, draft.py, teams.py, seed_auth_user.py)
+- [x] Added pnpm-lock.yaml for CI cache resolution

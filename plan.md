@@ -118,8 +118,46 @@
 - [x] API deployed as Vercel Python function (replaced Cloud Run plan)
 - [x] Vercel env vars configured (NEXT_PUBLIC_API_URL, Supabase, Anthropic)
 
+### Data Integrity & Auth -- COMPLETE
+- [x] Champions data integrity validators (api/app/validators.py)
+- [x] Pydantic field validators for nature and stat_points
+- [x] DB validators wired into user_pokemon and teams routers
+- [x] Replaced hardcoded dev_user_id with JWT auth in matchups router
+- [x] Fixed login page hooks ordering bug
+- [x] Profile page (/profile)
+- [x] RLS migration for user-scoped tables
+- [x] Removed dev_user_id from config
+
+### Pokemon Detail Page -- COMPLETE
+- [x] GET /pokemon/{id}/detail enriched endpoint
+- [x] Frontend detail page with stats, abilities, movepool, usage
+- [x] Pokemon cards clickable across the app
+
+### Visual Polish -- PARTIAL
+- [x] Responsive hamburger nav for mobile
+- [x] Login page branding
+- [x] Fixed pre-existing lint/format/pyright CI failures
+- [ ] Full visual consistency audit at all breakpoints
+
+### AI Strategy: Dual RAG -- COMPLETE
+- [x] Personal matchup history context in draft analysis prompt
+- [x] AI disclaimers on draft and cheatsheet responses
+- [x] User-friendly 429 rate limit error handling
+
+### Onboarding -- COMPLETE
+- [x] 5-step modal tour on first visit (localStorage persistence)
+- [x] "?" button in nav to restart tour
+
+### Showdown Import/Export -- BACKEND COMPLETE
+- [x] Showdown paste parser (api/app/services/showdown_parser.py)
+- [x] POST /teams/import endpoint
+- [x] GET /teams/{id}/export endpoint
+- [ ] Frontend UI: import modal + export button on teams page
+
 ### Remaining
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
+- [ ] Limitless VGC real API integration
+- [ ] Speed tier reference page
 - [ ] Open source release (MIT or Apache 2.0)
 - [ ] README with setup instructions
