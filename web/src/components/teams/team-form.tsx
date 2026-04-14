@@ -15,6 +15,7 @@ interface TeamFormProps {
   rosterLookup: Map<string, UserPokemon>;
   onSubmit: (data: TeamCreate | (TeamUpdate & { id: string })) => void;
   onClose: () => void;
+  onAddToRoster?: () => void;
 }
 
 export function TeamForm({
@@ -24,6 +25,7 @@ export function TeamForm({
   rosterLookup,
   onSubmit,
   onClose,
+  onAddToRoster,
 }: TeamFormProps) {
   const [name, setName] = useState(editing?.name ?? "");
   const [format, setFormat] = useState<string>(editing?.format ?? "doubles");
@@ -86,17 +88,17 @@ export function TeamForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-8">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-4 sm:py-8">
       <form
         onSubmit={handleSubmit}
-        className="card mx-4 w-full max-w-2xl p-8 shadow-2xl"
+        className="card mx-3 w-full max-w-2xl p-4 shadow-2xl sm:mx-4 sm:p-8"
       >
         <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
           {editing ? "Edit Team" : "Create Team"}
         </h2>
 
         {/* Name + Format row */}
-        <div className="mb-5 flex gap-3">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
               Team Name
@@ -110,7 +112,7 @@ export function TeamForm({
               autoFocus
             />
           </div>
-          <div className="w-36">
+          <div className="sm:w-36">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
               Format
             </label>
@@ -193,14 +195,36 @@ export function TeamForm({
 
         {/* Pokemon picker from roster */}
         <div className="mb-5">
-          <label className="mb-2 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-            Add from Roster
-          </label>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+              Add from Roster
+            </label>
+            {onAddToRoster && (
+              <button
+                type="button"
+                onClick={onAddToRoster}
+                className="font-display text-[0.65rem] uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
+              >
+                + Add New
+              </button>
+            )}
+          </div>
           <div className="max-h-48 overflow-y-auto rounded-lg bg-surface-lowest p-2">
             {roster.length === 0 ? (
-              <p className="py-4 text-center font-body text-sm text-on-surface-muted">
-                No Pokemon in roster yet
-              </p>
+              <div className="flex flex-col items-center gap-2 py-4">
+                <p className="font-body text-sm text-on-surface-muted">
+                  No Pokemon in roster yet
+                </p>
+                {onAddToRoster && (
+                  <button
+                    type="button"
+                    onClick={onAddToRoster}
+                    className="btn-ghost h-8 px-4 font-display text-[0.65rem] uppercase tracking-wider"
+                  >
+                    Add Your First Pokemon
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                 {roster.map((entry) => {
@@ -281,8 +305,8 @@ export function TeamForm({
         )}
 
         {/* Archetype tag + Notes */}
-        <div className="mb-5 flex gap-3">
-          <div className="w-40">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row">
+          <div className="sm:w-40">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
               Archetype Tag
             </label>

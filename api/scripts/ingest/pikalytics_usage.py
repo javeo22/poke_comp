@@ -275,6 +275,37 @@ def _build_roster(sb: Client) -> dict[str, str]:
 # =============================================================================
 
 
+def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
+    """Mark items found in tournament usage data as champions_shop_available.
+
+    If Pikalytics shows an item being used competitively, it should be
+    selectable in the roster builder. This auto-marks matching items in
+    the items table so they appear in the Champions item dropdown.
+    """
+    if not seen_item_names:
+        return
+
+    print(f"\nAuto-marking {len(seen_item_names)} items seen in usage data...")
+    marked = 0
+    for item_name in seen_item_names:
+        result = (
+            sb.table("items")
+            .select("id, champions_shop_available")
+            .ilike("name", item_name)
+            .execute()
+        )
+        rows: list[dict] = result.data  # type: ignore[assignment]
+        if rows and not rows[0].get("champions_shop_available"):
+            sb.table("items").update({"champions_shop_available": True}).eq(
+                "id", rows[0]["id"]
+            ).execute()
+            marked += 1
+            print(f"  Marked '{item_name}' as champions_shop_available")
+
+    print(f"  Auto-marked {marked} items.")
+
+
+
 def ingest_pikalytics(sb: Client) -> None:
     """Scrape Pikalytics Champions Tournaments usage data and upsert into pokemon_usage.
 
@@ -294,6 +325,8 @@ def ingest_pikalytics(sb: Client) -> None:
     today_date = date.today().isoformat()
     upsert_batch: list[dict] = []
     scraped = 0
+    # Track all item names seen in Pikalytics (before legality filter)
+    all_seen_items: set[str] = set()
 
     for entry in pokemon_list:
         raw_name = str(entry["name"])
@@ -313,6 +346,11 @@ def ingest_pikalytics(sb: Client) -> None:
         if detail:
             moves = detail["moves"]
             items = detail["items"]
+            # Collect all item names for auto-marking availability
+            for item_entry in items:
+                item_name = str(item_entry.get("name", ""))
+                if item_name:
+                    all_seen_items.add(item_name)
             abilities = detail["abilities"]
             teammates = detail["teammates"]
             spreads = detail["spreads"]
@@ -356,6 +394,9 @@ def ingest_pikalytics(sb: Client) -> None:
             ).execute()
         except Exception as e:
             print(f"  Warning: upsert chunk failed: {e}")
+
+    # Step 4: Auto-mark items seen in tournament data as available
+    _auto_mark_used_items(sb, all_seen_items)
 
     print(f"Pikalytics ingest complete: {scraped} Pokemon.")
 

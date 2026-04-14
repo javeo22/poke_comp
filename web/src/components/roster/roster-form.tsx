@@ -215,9 +215,9 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <form
         onSubmit={handleSubmit}
-        className="card mx-4 flex max-h-[90vh] w-full max-w-lg flex-col shadow-2xl"
+        className="card mx-3 flex max-h-[90vh] w-full max-w-lg flex-col shadow-2xl sm:mx-4"
       >
-        <div className="overflow-y-auto p-8">
+        <div className="overflow-y-auto p-4 sm:p-8">
           <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
             {editing ? "Edit Build" : "Add to Roster"}
           </h2>
@@ -324,7 +324,7 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
             <label className="mb-2 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
               Moves
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {moves.map((m, i) => (
                 <SearchableDropdown
                   key={i}
@@ -348,7 +348,7 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
           </div>
 
           {/* Status + VP row */}
-          <div className="mb-4 flex gap-3">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
             <div className="flex-1">
               <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
                 Status
@@ -365,7 +365,7 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
                 ))}
               </select>
             </div>
-            <div className="w-28">
+            <div className="sm:w-28">
               <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
                 VP Spent
               </label>
@@ -395,7 +395,7 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
         </div>
 
         {/* Sticky actions */}
-        <div className="flex gap-3 border-t border-outline-variant p-6">
+        <div className="flex gap-3 border-t border-outline-variant p-4 sm:p-6">
           <button
             type="submit"
             disabled={!editing && !selectedPokemon}
