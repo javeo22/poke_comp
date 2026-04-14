@@ -17,8 +17,8 @@ from supabase import Client, create_client
 
 from app.config import settings
 
-# gen9ou is the closest proxy for Champions singles until a dedicated ladder exists
-SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9ou.json"
+# Doubles OU is the best proxy for Champions doubles meta
+SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9doublesou.json"
 FORMAT_KEY = "doubles"
 
 # =============================================================================
