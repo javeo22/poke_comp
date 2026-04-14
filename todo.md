@@ -6,7 +6,7 @@
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
 
 ### Data
-- [ ] Limitless VGC real API integration (replace mock in limitless_teams.py)
+- [ ] Run Pikalytics ingest for full usage data (scripts/ingest/pikalytics_usage.py)
 
 ---
 
@@ -86,3 +86,10 @@
 - [x] Cheatsheet PDF export button (Export PDF button triggers browser print to PDF)
 - [x] Showdown import modal on teams page (paste + team name + format, warnings display)
 - [x] Showdown export button on team cards (downloads .txt file)
+- [x] Data quality overhaul: Smogon URL fix (gen9vgc2026), ingest validation, API format filtering
+- [x] Real Limitless VGC API integration (replaced mock data)
+- [x] Pikalytics Champions scraper (scripts/ingest/pikalytics_usage.py)
+- [x] Schema hardening: CHECK constraints, abilities.champions_available, tournament_teams dedup
+- [x] UI empty-state handling for partial/missing usage data
+- [x] Data validation agent (scripts/validate_data.py) with 7 checks + /admin/data-health endpoint
+- [x] Smoke test script (scripts/smoke_test.py)

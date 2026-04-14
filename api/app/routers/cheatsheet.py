@@ -132,8 +132,11 @@ def _fetch_move_types(move_names: list[str]) -> dict[str, str]:
     return {r["name"]: r["type"] for r in rows}
 
 
-def _fetch_meta_context() -> tuple[list[dict], list[dict]]:
-    """Fetch latest tier list + top usage data for prompt context."""
+def _fetch_meta_context(team_format: str = "doubles") -> tuple[list[dict], list[dict]]:
+    """Fetch latest tier list + top usage data for prompt context.
+
+    Filters usage data by the team's format to avoid mixing doubles/singles stats.
+    """
     # Latest tier snapshots
     tier_rows: list[dict] = []
     for fmt in ("singles", "doubles", "megas"):
@@ -149,10 +152,11 @@ def _fetch_meta_context() -> tuple[list[dict], list[dict]]:
         if rows:
             tier_rows.append(rows[0])
 
-    # Top usage data
+    # Top usage data -- filtered by team format
     usage_result = (
         supabase.table("pokemon_usage")
         .select("pokemon_name, usage_percent, moves, items, abilities, teammates")
+        .eq("format", team_format)
         .order("usage_percent", desc=True)
         .limit(15)
         .execute()
@@ -499,8 +503,8 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         cached["estimated_cost_usd"] = 0.0
         return CheatsheetResponse.model_validate(cached)
 
-    # 7. Fetch meta context
-    tier_data, usage_data = _fetch_meta_context()
+    # 7. Fetch meta context (filtered by team's format)
+    tier_data, usage_data = _fetch_meta_context(team["format"])
 
     # 8. Build prompt and call Claude
     prompt = _build_prompt(

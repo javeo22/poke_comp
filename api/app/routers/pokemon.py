@@ -27,9 +27,7 @@ def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
         return []
     if isinstance(data, list):
         return [
-            entry["name"]
-            for entry in data[:limit]
-            if isinstance(entry, dict) and "name" in entry
+            entry["name"] for entry in data[:limit] if isinstance(entry, dict) and "name" in entry
         ]
     return list(data.keys())[:limit]
 
@@ -106,28 +104,30 @@ def get_pokemon_detail(pokemon_id: int):
         ab_rows: list[dict[str, Any]] = ab_result.data  # type: ignore[assignment]
         ability_details = [AbilityDetail.model_validate(a) for a in ab_rows]
 
-    # Fetch usage data (all formats)
+    # Fetch usage data -- latest snapshot per Champions format
     usage: list[PokemonUsageSummary] = []
-    usage_result = (
-        supabase.table("pokemon_usage")
-        .select("format, usage_percent, moves, items, abilities, teammates")
-        .eq("pokemon_name", base.name)
-        .order("snapshot_date", desc=True)
-        .limit(3)
-        .execute()
-    )
-    usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
-    for u in usage_rows:
-        usage.append(
-            PokemonUsageSummary(
-                format=u.get("format", ""),
-                usage_percent=u.get("usage_percent", 0),
-                top_moves=_extract_usage_names(u.get("moves"), 6),
-                top_items=_extract_usage_names(u.get("items"), 4),
-                top_abilities=_extract_usage_names(u.get("abilities"), 3),
-                top_teammates=_extract_usage_names(u.get("teammates"), 4),
-            )
+    for fmt in ("doubles", "singles"):
+        usage_result = (
+            supabase.table("pokemon_usage")
+            .select("format, usage_percent, moves, items, abilities, teammates")
+            .eq("pokemon_name", base.name)
+            .eq("format", fmt)
+            .order("snapshot_date", desc=True)
+            .limit(1)
+            .execute()
         )
+        usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
+        for u in usage_rows:
+            usage.append(
+                PokemonUsageSummary(
+                    format=u.get("format", ""),
+                    usage_percent=u.get("usage_percent", 0),
+                    top_moves=_extract_usage_names(u.get("moves"), 6),
+                    top_items=_extract_usage_names(u.get("items"), 4),
+                    top_abilities=_extract_usage_names(u.get("abilities"), 3),
+                    top_teammates=_extract_usage_names(u.get("teammates"), 4),
+                )
+            )
 
     # Resolve mega evolution name if linked
     mega_name: str | None = None

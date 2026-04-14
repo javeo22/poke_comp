@@ -7,6 +7,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.routers import (
     abilities,
+    admin,
     cheatsheet,
     draft,
     items,
@@ -65,6 +66,7 @@ app.include_router(usage.router)
 app.include_router(draft.router)
 app.include_router(cheatsheet.router)
 app.include_router(matchups.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

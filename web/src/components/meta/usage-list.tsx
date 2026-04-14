@@ -48,16 +48,22 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
             <span className="mb-1 block font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
               Top Moves
             </span>
-            <div className="flex flex-wrap gap-1">
-              {(entry.moves ?? []).slice(0, 4).map((m) => (
-                <span
-                  key={m.name}
-                  className="rounded-full bg-surface-mid px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
-                >
-                  {m.name}
-                </span>
-              ))}
-            </div>
+            {(entry.moves ?? []).length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {entry.moves!.slice(0, 4).map((m) => (
+                  <span
+                    key={m.name}
+                    className="rounded-full bg-surface-mid px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
+                  >
+                    {m.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="font-body text-[0.6rem] italic text-on-surface-muted">
+                No move data
+              </span>
+            )}
           </div>
 
           {/* Top item */}

@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE TABLE IF NOT EXISTS abilities (
   id INT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
-  effect_text TEXT
+  effect_text TEXT,
+  champions_available BOOLEAN DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_pokemon_name ON pokemon(name);
@@ -100,7 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_teams_user ON teams(user_id);
 CREATE TABLE IF NOT EXISTS meta_snapshots (
   id SERIAL PRIMARY KEY,
   snapshot_date DATE NOT NULL,
-  format TEXT NOT NULL,
+  format TEXT NOT NULL CHECK (format IN ('doubles', 'singles', 'megas')),
   tier_data JSONB NOT NULL,
   source_url TEXT,
   source TEXT,
@@ -110,15 +111,15 @@ CREATE TABLE IF NOT EXISTS meta_snapshots (
 CREATE TABLE IF NOT EXISTS pokemon_usage (
   id SERIAL PRIMARY KEY,
   pokemon_name TEXT NOT NULL,
-  format TEXT NOT NULL,
-  usage_percent FLOAT NOT NULL,
+  format TEXT NOT NULL CHECK (format IN ('doubles', 'singles')),
+  usage_percent FLOAT NOT NULL CHECK (usage_percent >= 0 AND usage_percent <= 100),
   moves JSONB,
   items JSONB,
   abilities JSONB,
   teammates JSONB,
   spreads JSONB,
   snapshot_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  source TEXT DEFAULT 'pikalytics',
+  source TEXT DEFAULT 'pikalytics' CHECK (source IN ('smogon', 'pikalytics', 'manual')),
   UNIQUE (pokemon_name, format, snapshot_date)
 );
 
@@ -129,7 +130,8 @@ CREATE TABLE IF NOT EXISTS tournament_teams (
   pokemon_ids INT[] NOT NULL,
   archetype TEXT,
   source TEXT DEFAULT 'Limitless',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (tournament_name, placement)
 );
 
 CREATE TABLE IF NOT EXISTS matchup_log (
@@ -156,6 +158,7 @@ CREATE TABLE IF NOT EXISTS ai_analyses (
 CREATE INDEX IF NOT EXISTS idx_pokemon_usage_lookup ON pokemon_usage(format, snapshot_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pokemon_usage_name ON pokemon_usage(pokemon_name);
 CREATE INDEX IF NOT EXISTS idx_tournament_teams_placement ON tournament_teams(placement);
+CREATE INDEX IF NOT EXISTS idx_abilities_champions ON abilities(champions_available) WHERE champions_available = TRUE;
 CREATE INDEX IF NOT EXISTS idx_matchup_log_user ON matchup_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_matchup_log_played ON matchup_log(user_id, played_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_analyses_hash ON ai_analyses(request_hash);

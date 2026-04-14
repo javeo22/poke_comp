@@ -3,6 +3,10 @@ Ingest weekly meta statistics from Smogon/data.pkmn.cc.
 Pulls real usage percentages, item/ability breakdowns, and writes
 to the consolidated ``pokemon_usage`` table.
 
+Validates ingested items and abilities against Champions legality
+(items must exist in the Champions shop; abilities must belong to
+a Champions-eligible Pokemon).
+
 Usage:
     uv run python -m scripts.ingest.smogon_meta
 """
@@ -17,8 +21,10 @@ from supabase import Client, create_client
 
 from app.config import settings
 
-# Doubles OU is the best proxy for Champions doubles meta
-SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9doublesou.json"
+# VGC 2026 is the correct Champions competitive format
+SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9vgc2026.json"
+# Fallback if gen9vgc2026 is not yet available on pkmn.github.io
+SMOGON_FALLBACK_URL = "https://pkmn.github.io/smogon/data/stats/gen9vgc2025.json"
 FORMAT_KEY = "doubles"
 
 # =============================================================================
@@ -47,20 +53,27 @@ class SmogonStatsData(BaseModel):
 
 
 def fetch_smogon_data() -> dict[str, Any] | None:
-    """Fetch the raw JSON payload from the data.pkmn.cc endpoint."""
-    print(f"Fetching meta data from {SMOGON_STATS_URL}...")
+    """Fetch the raw JSON payload from data.pkmn.cc.
+
+    Tries gen9vgc2026 first; falls back to gen9vgc2025 if unavailable.
+    """
     headers = {"User-Agent": "poke_comp_companion/1.0"}
 
-    try:
-        resp = httpx.get(SMOGON_STATS_URL, headers=headers, timeout=20)
-        resp.raise_for_status()
-        return resp.json()
-    except httpx.HTTPStatusError as e:
-        print(f"  HTTP Error: {e.response.status_code}")
-        return None
-    except Exception as e:
-        print(f"  Network Error: {e}")
-        return None
+    for url in (SMOGON_STATS_URL, SMOGON_FALLBACK_URL):
+        print(f"Fetching meta data from {url}...")
+        try:
+            resp = httpx.get(url, headers=headers, timeout=20)
+            resp.raise_for_status()
+            print(f"  Success: {url}")
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            print(f"  HTTP Error {e.response.status_code} for {url}, trying next...")
+        except Exception as e:
+            print(f"  Network Error: {e}")
+            return None
+
+    print("All Smogon URLs failed.")
+    return None
 
 
 def _top_entries(raw_dict: dict[str, float], top_n: int = 5) -> list[dict[str, str | float]]:
@@ -84,8 +97,57 @@ def _smogon_name_to_title(name: str) -> str:
 # =============================================================================
 
 
+def _build_legal_items(sb: Client) -> set[str]:
+    """Build a set of normalized item names available in the Champions shop."""
+    result = sb.table("items").select("name").eq("champions_shop_available", True).execute()
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    return {row["name"].lower().replace(" ", "").replace("-", "") for row in rows}
+
+
+def _build_legal_abilities(sb: Client) -> set[str]:
+    """Build a set of normalized ability names used by Champions-eligible Pokemon."""
+    result = sb.table("pokemon").select("abilities").eq("champions_eligible", True).execute()
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    abilities: set[str] = set()
+    for row in rows:
+        for ab in row.get("abilities") or []:
+            abilities.add(ab.lower().replace(" ", "").replace("-", ""))
+    return abilities
+
+
+def _top_entries_filtered(
+    raw_dict: dict[str, float],
+    legal_set: set[str] | None,
+    top_n: int = 5,
+) -> list[dict[str, str | float]]:
+    """Like _top_entries, but drops entries not in legal_set (if provided)."""
+    total = sum(raw_dict.values())
+    if total == 0:
+        return []
+
+    items = []
+    dropped = 0
+    for k, v in raw_dict.items():
+        normalized = k.lower().replace(" ", "").replace("-", "")
+        if legal_set and normalized not in legal_set:
+            dropped += 1
+            continue
+        items.append({"name": k, "percent": round((v / total) * 100, 1)})
+
+    if dropped:
+        print(f"    Filtered {dropped} non-Champions entries")
+
+    items.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
+    return items[:top_n]
+
+
 def ingest_smogon_data(sb: Client) -> None:
-    """Validate, clean, and upsert Smogon usage stats into pokemon_usage."""
+    """Validate, clean, and upsert Smogon usage stats into pokemon_usage.
+
+    Items and abilities are validated against Champions legality:
+    - Items must exist in the Champions shop
+    - Abilities must belong to a Champions-eligible Pokemon
+    """
     raw_data = fetch_smogon_data()
     if not raw_data:
         print("Failed to fetch data. Aborting ingest.")
@@ -112,7 +174,9 @@ def ingest_smogon_data(sb: Client) -> None:
         sb.table("pokemon_usage").select("pokemon_name").eq("format", FORMAT_KEY).execute()
     )
     existing_rows: list[dict] = existing_result.data  # type: ignore[assignment]
-    stale_names = [r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names]
+    stale_names = [
+        r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names
+    ]
     if stale_names:
         print(f"  Removing {len(stale_names)} non-Champions entries from pokemon_usage...")
         batch_size = 100
@@ -121,6 +185,11 @@ def ingest_smogon_data(sb: Client) -> None:
             sb.table("pokemon_usage").delete().eq("format", FORMAT_KEY).in_(
                 "pokemon_name", chunk
             ).execute()
+
+    # Build legality sets for validation during ingest
+    legal_items = _build_legal_items(sb)
+    legal_abilities = _build_legal_abilities(sb)
+    print(f"Legality sets: {len(legal_items)} items, {len(legal_abilities)} abilities")
 
     today_date = date.today().isoformat()
     upsert_batch: list[dict] = []
@@ -142,8 +211,8 @@ def ingest_smogon_data(sb: Client) -> None:
             "format": FORMAT_KEY,
             "snapshot_date": today_date,
             "usage_percent": round(usage_val * 100, 2),
-            "items": _top_entries(stats.items, 5),
-            "abilities": _top_entries(stats.abilities, 3),
+            "items": _top_entries_filtered(stats.items, legal_items, 5),
+            "abilities": _top_entries_filtered(stats.abilities, legal_abilities, 3),
             "moves": [],  # not available from this Smogon endpoint
             "teammates": [],  # not available from this Smogon endpoint
             "source": "smogon",

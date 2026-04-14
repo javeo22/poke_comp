@@ -1,91 +1,152 @@
 """
 Ingest Limitless VGC tournament team data.
-This script fetches winning teams from recent Limitless tournaments
-to provide high-level contextual (Archetype/Team Composition) data.
+Fetches winning teams from recent Limitless tournaments via their
+public API and stores them in the ``tournament_teams`` table.
+
+Handles:
+  - Real API calls to play.limitlesstcg.com
+  - Pokemon name resolution against local Champions roster
+  - Archetype classification via team composition heuristics
+  - Deduplication via upsert on (tournament_name, placement)
 
 Usage:
     uv run python -m scripts.ingest.limitless_teams
+    uv run python -m scripts.ingest.limitless_teams --tournament-id abc123
 """
 
 import sys
+import time
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+import httpx
 from supabase import Client, create_client
 
 from app.config import settings
 
-# Example Limitless REST API Endpoint for tournaments
 LIMITLESS_API_BASE = "https://play.limitlesstcg.com/api"
+REQUEST_HEADERS = {
+    "User-Agent": "PokemonChampionsCompanion/1.0 (+github.com/javeo22/poke_comp)",
+    "Accept": "application/json",
+}
+
+# Delay between API calls to be respectful
+REQUEST_DELAY = 1.0
+
 
 # =============================================================================
-# Validation Schemas
+# API helpers
 # =============================================================================
 
 
-class LimitlessPokemon(BaseModel):
-    name: str
-
-
-class LimitlessTeam(BaseModel):
-    pokemon: list[LimitlessPokemon]
-
-
-class LimitlessStanding(BaseModel):
-    placing: int
-    team: LimitlessTeam
-
-
-class LimitlessTournamentResponse(BaseModel):
-    name: str
-    standings: list[LimitlessStanding]
-
-
-def fetch_limitless_tournament(tournament_id: str) -> dict[str, Any] | None:
-    """Fetch tournament standings from Limitless API."""
-    url = f"{LIMITLESS_API_BASE}/tournaments/{tournament_id}/standings"
-    print(f"Fetching Limitless tournament data from {url}...")
-
+def _fetch_json(url: str) -> dict[str, Any] | list[Any] | None:
+    """GET a JSON endpoint with error handling."""
+    print(f"  GET {url}")
     try:
-        # Mock response — real implementation would hit the Limitless API
-        team_1 = [
-            {"name": "Incineroar"},
-            {"name": "Garchomp"},
-            {"name": "Whimsicott"},
-            {"name": "Kingambit"},
-            {"name": "Primarina"},
-            {"name": "Ogerpon-Hearthflame"},
-        ]
-        team_2 = [
-            {"name": "Farigiraf"},
-            {"name": "Ursaluna-Bloodmoon"},
-            {"name": "Incineroar"},
-            {"name": "Urshifu-Rapid-Strike"},
-            {"name": "Tornadus"},
-            {"name": "Archaludon"},
-        ]
-        mock_response = {
-            "name": f"Champions VGC Regional {tournament_id}",
-            "standings": [
-                {"placing": 1, "team": {"pokemon": team_1}},
-                {"placing": 2, "team": {"pokemon": team_2}},
-            ],
-        }
-        return mock_response
-    except Exception as e:
-        print(f"  Network Error: {e}")
+        resp = httpx.get(url, headers=REQUEST_HEADERS, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as e:
+        print(f"    HTTP Error: {e.response.status_code}")
         return None
+    except Exception as e:
+        print(f"    Network Error: {e}")
+        return None
+
+
+def fetch_recent_tournament_ids(game: str = "VGC", limit: int = 5) -> list[dict[str, Any]]:
+    """Fetch recent completed tournament IDs from Limitless.
+
+    Returns a list of dicts with 'id' and 'name' keys.
+    """
+    params = f"game={game}&format=all&type=all&completed=true&limit={limit}"
+    url = f"{LIMITLESS_API_BASE}/tournaments?{params}"
+    data = _fetch_json(url)
+    if not data or not isinstance(data, list):
+        return []
+
+    tournaments = []
+    for t in data:
+        tid = t.get("id")
+        name = t.get("name", f"Tournament {tid}")
+        if tid:
+            tournaments.append({"id": str(tid), "name": name})
+    return tournaments
+
+
+def fetch_tournament_standings(tournament_id: str) -> list[dict[str, Any]]:
+    """Fetch top-cut standings for a tournament.
+
+    Returns a list of standing dicts with 'placing' and 'decklist' keys.
+    """
+    url = f"{LIMITLESS_API_BASE}/tournaments/{tournament_id}/standings"
+    data = _fetch_json(url)
+    if not data or not isinstance(data, list):
+        return []
+    return data
+
+
+def _extract_team_names(standing: dict[str, Any]) -> list[str]:
+    """Extract Pokemon names from a Limitless standing entry.
+
+    The Limitless API structure varies -- team data can be nested under
+    'decklist', 'team', or 'pokemon'. We try each path.
+    """
+    # Path 1: decklist.pokemon[]
+    decklist = standing.get("decklist") or {}
+    if isinstance(decklist, dict):
+        pokemon_list = decklist.get("pokemon") or decklist.get("team") or []
+        if isinstance(pokemon_list, list):
+            names = []
+            for p in pokemon_list:
+                if isinstance(p, dict):
+                    names.append(p.get("name", p.get("pokemon", "")))
+                elif isinstance(p, str):
+                    names.append(p)
+            if names:
+                return [n for n in names if n]
+
+    # Path 2: team.pokemon[]
+    team = standing.get("team") or {}
+    if isinstance(team, dict):
+        pokemon_list = team.get("pokemon") or []
+        if isinstance(pokemon_list, list):
+            names = []
+            for p in pokemon_list:
+                if isinstance(p, dict):
+                    names.append(p.get("name", ""))
+                elif isinstance(p, str):
+                    names.append(p)
+            if names:
+                return [n for n in names if n]
+
+    # Path 3: direct pokemon[] on the standing
+    pokemon_list = standing.get("pokemon") or []
+    if isinstance(pokemon_list, list):
+        names = []
+        for p in pokemon_list:
+            if isinstance(p, dict):
+                names.append(p.get("name", ""))
+            elif isinstance(p, str):
+                names.append(p)
+        return [n for n in names if n]
+
+    return []
+
+
+# =============================================================================
+# Archetype detection
+# =============================================================================
 
 
 def determine_archetype(team_names: list[str]) -> str:
     """Basic heuristic to determine team archetype based on composition."""
-    names_lower = [n.lower() for n in team_names]
+    names_lower = {n.lower() for n in team_names}
 
     if "pelipper" in names_lower or "politoed" in names_lower:
         return "Rain"
     if "torkoal" in names_lower or "mega charizard y" in names_lower:
         return "Sun"
-    if "farigiraf" in names_lower or "hatterene" in names_lower:
+    if "farigiraf" in names_lower or "hatterene" in names_lower or "porygon2" in names_lower:
         return "Trick Room"
     if "hippowdon" in names_lower or "tyranitar" in names_lower:
         return "Sand"
@@ -95,72 +156,139 @@ def determine_archetype(team_names: list[str]) -> str:
     return "Good Stuff / Balance"
 
 
-def ingest_limitless_tournament(sb: Client, tournament_id: str) -> None:
-    """Fetch, validate, and store Limitless tournament standings."""
-    raw_data = fetch_limitless_tournament(tournament_id)
-    if not raw_data:
-        print("Failed to fetch data. Aborting ingest.")
-        return
+# =============================================================================
+# Name resolution
+# =============================================================================
 
-    try:
-        validated_data = LimitlessTournamentResponse(**raw_data)
-    except ValidationError as e:
-        print(f"Data validation failed: {e}")
-        return
 
-    print(f"Found tournament: {validated_data.name}. Processing top placements...")
-
-    # Fetch local roster
+def _build_name_lookup(sb: Client) -> dict[str, int]:
+    """Build a normalized name -> Pokemon ID lookup for the Champions roster."""
     result = sb.table("pokemon").select("id, name").eq("champions_eligible", True).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
-    local_roster = {row["name"].lower().replace("-", ""): row["id"] for row in rows}
+    lookup: dict[str, int] = {}
+    for row in rows:
+        name: str = row["name"]
+        pid: int = row["id"]
+        # Index by multiple normalizations for fuzzy matching
+        lookup[name.lower()] = pid
+        lookup[name.lower().replace("-", "").replace(" ", "")] = pid
+        lookup[name.lower().replace(" ", "-")] = pid
+    return lookup
 
-    upsert_batch = []
 
-    # Process only top cut (e.g., Top 8)
-    for standing in validated_data.standings:
-        if standing.placing > 8:
+def _resolve_pokemon_ids(team_names: list[str], lookup: dict[str, int]) -> list[int]:
+    """Resolve a list of Pokemon names to IDs using the Champions roster lookup."""
+    ids = []
+    for name in team_names:
+        clean = name.lower().strip()
+        pid = lookup.get(clean)
+        if not pid:
+            pid = lookup.get(clean.replace("-", "").replace(" ", ""))
+        if not pid:
+            pid = lookup.get(clean.replace(" ", "-"))
+        if pid:
+            ids.append(pid)
+    return ids
+
+
+# =============================================================================
+# Core ingest
+# =============================================================================
+
+
+def ingest_limitless_tournaments(
+    sb: Client,
+    tournament_ids: list[str] | None = None,
+    top_cut: int = 8,
+) -> None:
+    """Fetch, validate, and store Limitless tournament standings.
+
+    If tournament_ids is None, fetches the 5 most recent completed
+    VGC tournaments automatically.
+    """
+    name_lookup = _build_name_lookup(sb)
+    print(f"Champions roster lookup: {len(name_lookup)} entries")
+
+    # Discover tournaments if none specified
+    if not tournament_ids:
+        print("Discovering recent VGC tournaments...")
+        tournaments = fetch_recent_tournament_ids("VGC", limit=5)
+        if not tournaments:
+            print("No tournaments found. Aborting.")
+            return
+        print(f"Found {len(tournaments)} tournaments:")
+        for t in tournaments:
+            print(f"  - {t['name']} (ID: {t['id']})")
+    else:
+        tournaments = [{"id": tid, "name": f"Tournament {tid}"} for tid in tournament_ids]
+
+    total_teams = 0
+
+    for tournament in tournaments:
+        tid = tournament["id"]
+        tname = tournament["name"]
+        print(f"\nProcessing: {tname}...")
+
+        standings = fetch_tournament_standings(tid)
+        if not standings:
+            print(f"  No standings data for {tname}")
+            time.sleep(REQUEST_DELAY)
             continue
 
-        team_names = [p.name for p in standing.team.pokemon]
-        team_ids = []
+        for standing in standings:
+            placing = standing.get("placing", standing.get("place", 0))
+            if not isinstance(placing, int) or placing > top_cut or placing < 1:
+                continue
 
-        for name in team_names:
-            clean_name = name.lower().replace("-", "").replace(" ", "")
-            poke_id = local_roster.get(clean_name)
-            if poke_id:
-                team_ids.append(poke_id)
+            team_names = _extract_team_names(standing)
+            if len(team_names) < 4:
+                continue
 
-        # Only add valid teams (usually 6, but we'll accept 4+ for flexibility)
-        if len(team_ids) >= 4:
+            team_ids = _resolve_pokemon_ids(team_names, name_lookup)
+            if len(team_ids) < 4:
+                resolved = f"{len(team_ids)}/{len(team_names)}"
+                print(f"    Placing {placing}: only resolved {resolved} Pokemon, skipping")
+                continue
+
+            archetype = determine_archetype(team_names)
+
             record = {
-                "tournament_name": validated_data.name,
-                "placement": standing.placing,
+                "tournament_name": tname,
+                "placement": placing,
                 "pokemon_ids": team_ids,
-                "archetype": determine_archetype(team_names),
+                "archetype": archetype,
                 "source": "Limitless",
             }
-            upsert_batch.append(record)
 
-    # Note: Assuming 'tournament_name' and 'placement' logic for unique identification
-    # In a real app we'd add unique constraints for these.
+            try:
+                # Use tournament_name + placement as dedup key
+                # Delete any existing record for this tournament/placement, then insert
+                sb.table("tournament_teams").delete().eq("tournament_name", tname).eq(
+                    "placement", placing
+                ).execute()
 
-    print(f"Upserting {len(upsert_batch)} top-cut teams to Database...")
-    for record in upsert_batch:
-        try:
-            # Simple insert for demonstration.
-            # In a real implementation we would want to check for existing records.
-            sb.table("tournament_teams").insert(record).execute()
-        except Exception as e:
-            print(f"  Warning: Database insert failed: {e}")
+                sb.table("tournament_teams").insert(record).execute()
+                total_teams += 1
+                print(f"    Placing {placing}: {', '.join(team_names[:6])} [{archetype}]")
+            except Exception as e:
+                print(f"    Warning: DB insert failed for placing {placing}: {e}")
 
-    print("Limitless Teams Ingest complete.")
+        time.sleep(REQUEST_DELAY)
+
+    print(f"\nLimitless ingest complete: {total_teams} teams stored.")
 
 
 def main() -> None:
     db = create_client(settings.supabase_url, settings.supabase_service_key)
-    # E.g. limitlesstcg VGC ID for a specific tournament week
-    ingest_limitless_tournament(db, "vgc-regional-2026-week1")
+
+    # Check for --tournament-id flag
+    tournament_ids = None
+    if "--tournament-id" in sys.argv:
+        idx = sys.argv.index("--tournament-id")
+        if idx + 1 < len(sys.argv):
+            tournament_ids = [sys.argv[idx + 1]]
+
+    ingest_limitless_tournaments(db, tournament_ids=tournament_ids)
 
 
 if __name__ == "__main__":
