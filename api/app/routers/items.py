@@ -38,11 +38,20 @@ def list_items(
         # item_name -> [(pokemon_name, usage_pct)]
         item_usage: dict[str, list[tuple[str, float]]] = {}
         for row in usage_rows:
-            items_data: dict[str, float] = row.get("items") or {}
+            raw_items = row.get("items") or {}
             pokemon_name_val: str = row.get("pokemon_name") or ""
-            for item_name, pct in items_data.items():
+            # Handle both list format [{"name": ..., "percent": ...}] and legacy dict {"name": pct}
+            if isinstance(raw_items, list):
+                items_iter: list[tuple[str, float]] = [
+                    (e["name"], float(e.get("percent", 0.0)))
+                    for e in raw_items
+                    if isinstance(e, dict) and "name" in e
+                ]
+            else:
+                items_iter = [(k, float(v)) for k, v in raw_items.items()]
+            for item_name, pct in items_iter:
                 if item_name in item_name_set:
-                    item_usage.setdefault(item_name, []).append((pokemon_name_val, float(pct)))
+                    item_usage.setdefault(item_name, []).append((pokemon_name_val, pct))
         for item_name, holders in item_usage.items():
             holders.sort(key=lambda x: -x[1])
             top_holders_map[item_name] = [h for h, _ in holders[:3]]
