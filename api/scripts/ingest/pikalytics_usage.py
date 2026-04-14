@@ -1,8 +1,8 @@
 """
 Ingest Champions usage stats from Pikalytics.
 
-Scrapes the Pikalytics VGC page for tournament-weighted usage data
-including moves, items, abilities, teammates, and spreads.
+Scrapes the Pikalytics Champions Tournaments page for tournament-weighted
+usage data including moves, items, abilities, teammates, and spreads.
 
 Validates all ingested data against Champions legality:
   - Only Champions-eligible Pokemon are ingested
@@ -19,13 +19,14 @@ import time
 from datetime import date
 
 import httpx
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Comment, Tag
 from supabase import Client, create_client
 
 from app.config import settings
 
-PIKALYTICS_BASE = "https://pikalytics.com/pokedex/vgc"
-PIKALYTICS_LIST_URL = "https://pikalytics.com/pokedex/vgc"
+# Champions tournament format -- NOT the generic VGC page
+PIKALYTICS_BASE = "https://pikalytics.com/pokedex/championstournaments"
+PIKALYTICS_LIST_URL = "https://pikalytics.com/pokedex/championstournaments"
 
 REQUEST_HEADERS = {
     "User-Agent": "PokemonChampionsCompanion/1.0 (+github.com/javeo22/poke_comp)",
@@ -72,9 +73,17 @@ def _parse_percent(text: str) -> float:
 
 
 def fetch_pokemon_list() -> list[dict[str, str | float]]:
-    """Fetch the top Pokemon usage list from Pikalytics.
+    """Fetch the top Pokemon usage list from Pikalytics Champions Tournaments.
 
-    Returns a list of dicts with 'name' and 'usage_percent' keys.
+    Returns a list of dicts with 'name', 'usage_percent', and 'slug' keys.
+
+    Pikalytics list entries use:
+      <a class="pokedex_entry" data-name="Incineroar" href="...">
+        <div class="pokedex-list-entry-body">
+          <span class="pokemon-name">Incineroar</span>
+          <!-- (<span style="color:red;">54.37%</span>) -->
+        </div>
+      </a>
     """
     print(f"Fetching Pokemon list from {PIKALYTICS_LIST_URL}...")
     html = _fetch_page(PIKALYTICS_LIST_URL)
@@ -84,27 +93,45 @@ def fetch_pokemon_list() -> list[dict[str, str | float]]:
     soup = BeautifulSoup(html, "html.parser")
     pokemon_list: list[dict[str, str | float]] = []
 
-    # Pikalytics lists Pokemon in rows/cards with name and usage %
-    # Try multiple selector patterns
-    for row in soup.select(".pokemon-row, .pokedex-pokemon-row, tr.pokemon"):
-        name_el = row.select_one(".pokemon-name, .name, td:first-child")
-        usage_el = row.select_one(".pokemon-usage, .usage, td:last-child")
-        if name_el and usage_el:
-            name = name_el.get_text(strip=True)
-            usage = _parse_percent(usage_el.get_text(strip=True))
-            if name and usage > 0:
-                pokemon_list.append({"name": name, "usage_percent": usage})
+    for entry in soup.select(".pokedex-list-entry-body"):
+        name_el = entry.select_one(".pokemon-name")
+        if not name_el:
+            continue
+        name = name_el.get_text(strip=True)
+        if not name:
+            continue
 
-    # Fallback: look for links with usage data
-    if not pokemon_list:
-        for link in soup.select("a[href*='/pokedex/']"):
-            text = link.get_text(strip=True)
-            parent = link.parent
-            if parent:
-                parent_text = parent.get_text(strip=True)
-                usage = _parse_percent(parent_text.replace(text, ""))
-                if text and usage > 0:
-                    pokemon_list.append({"name": text, "usage_percent": usage})
+        # Usage % is inside an HTML comment: <!-- (<span ...>54.37%</span>) -->
+        usage_pct = 0.0
+        for node in entry.children:
+            if isinstance(node, Comment):
+                pct_match = re.search(r"([\d.]+)%", str(node))
+                if pct_match:
+                    usage_pct = float(pct_match.group(1))
+                    break
+
+        if usage_pct <= 0:
+            continue
+
+        # Get the slug from parent <a> element's data-name or href
+        parent_a = entry.parent
+        slug = ""
+        if parent_a and isinstance(parent_a, Tag):
+            data_name = parent_a.get("data-name", "")
+            if isinstance(data_name, str):
+                slug = data_name
+            if not slug:
+                href = parent_a.get("href", "")
+                if isinstance(href, str) and "/" in href:
+                    slug = href.rstrip("/").split("/")[-1].split("?")[0]
+
+        pokemon_list.append(
+            {
+                "name": name,
+                "usage_percent": usage_pct,
+                "slug": slug or name,
+            }
+        )
 
     print(f"  Found {len(pokemon_list)} Pokemon on list page")
     return pokemon_list[:TOP_N_POKEMON]
@@ -115,25 +142,53 @@ def fetch_pokemon_list() -> list[dict[str, str | float]]:
 # =============================================================================
 
 
-def _parse_entry_list(soup: BeautifulSoup, section_class: str) -> list[dict[str, str | float]]:
-    """Parse a section (moves, items, abilities, teammates) from a detail page.
+def _parse_section_by_id(soup: BeautifulSoup, wrapper_id: str) -> list[dict[str, str | float]]:
+    """Parse a section identified by a wrapper div ID.
 
-    Returns [{name, percent}, ...] sorted by percent descending.
+    Pikalytics detail pages use wrapper IDs like 'moves_wrapper',
+    'items_wrapper', 'abilities_wrapper', 'dex_team_wrapper'.
+    Each contains rows with class 'pokedex-move-entry-new'.
     """
     entries: list[dict[str, str | float]] = []
 
-    section = soup.find(class_=section_class)
-    if not section or not isinstance(section, Tag):
+    wrapper = soup.find(id=wrapper_id)
+    if not wrapper or not isinstance(wrapper, Tag):
         return entries
 
-    for row in section.select(".pokemon-stat-row, .stat-row, tr, .entry"):
-        name_el = row.select_one(".pokemon-stat-name, .stat-name, .name, td:first-child")
-        pct_el = row.select_one(".pokemon-stat-percent, .stat-percent, .percent, td:last-child")
+    for row in wrapper.select(".pokedex-move-entry-new"):
+        # Name can be in .pokedex-inline-text or .pokedex-inline-text-offset
+        name_el = row.select_one(".pokedex-inline-text-offset, .pokedex-inline-text")
+        pct_el = row.select_one(".pokedex-inline-right")
         if name_el and pct_el:
             name = name_el.get_text(strip=True)
             pct = _parse_percent(pct_el.get_text(strip=True))
             if name and pct > 0:
                 entries.append({"name": name, "percent": pct})
+
+    entries.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
+    return entries
+
+
+def _parse_spreads_section(soup: BeautifulSoup) -> list[dict[str, str | float]]:
+    """Parse the spreads section into {spread, percent} entries.
+
+    Spreads rows have nature + EV spread, e.g. "Adamant" + "252/0/4/0/4/252".
+    """
+    entries: list[dict[str, str | float]] = []
+
+    wrapper = soup.find(id="dex_spreads_wrapper")
+    if not wrapper or not isinstance(wrapper, Tag):
+        return entries
+
+    for row in wrapper.select(".pokedex-move-entry-new"):
+        texts = row.select(".pokedex-inline-text-offset, .pokedex-inline-text")
+        pct_el = row.select_one(".pokedex-inline-right")
+        if texts and pct_el:
+            spread_parts = [t.get_text(strip=True) for t in texts]
+            spread_str = " ".join(spread_parts)
+            pct = _parse_percent(pct_el.get_text(strip=True))
+            if spread_str and pct > 0:
+                entries.append({"spread": spread_str, "percent": pct})
 
     entries.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
     return entries
@@ -151,32 +206,15 @@ def fetch_pokemon_detail(pokemon_slug: str) -> dict | None:
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # Try to parse each section with multiple class name patterns
-    moves = (
-        _parse_entry_list(soup, "moves-pokemon")
-        or _parse_entry_list(soup, "pokemon-moves")
-        or _parse_entry_list(soup, "moves")
+    # All sections use wrapper IDs
+    moves = _parse_section_by_id(soup, "moves_wrapper")
+    items = _parse_section_by_id(soup, "items_wrapper")
+    abilities = _parse_section_by_id(soup, "abilities_wrapper")
+    # Teammates wrapper can be either "teammate_wrapper" or "dex_team_wrapper"
+    teammates = _parse_section_by_id(soup, "teammate_wrapper") or _parse_section_by_id(
+        soup, "dex_team_wrapper"
     )
-    items = (
-        _parse_entry_list(soup, "items-pokemon")
-        or _parse_entry_list(soup, "pokemon-items")
-        or _parse_entry_list(soup, "items")
-    )
-    abilities = (
-        _parse_entry_list(soup, "abilities-pokemon")
-        or _parse_entry_list(soup, "pokemon-abilities")
-        or _parse_entry_list(soup, "abilities")
-    )
-    teammates = (
-        _parse_entry_list(soup, "teammates-pokemon")
-        or _parse_entry_list(soup, "pokemon-teammates")
-        or _parse_entry_list(soup, "teammates")
-    )
-    spreads = (
-        _parse_entry_list(soup, "spreads-pokemon")
-        or _parse_entry_list(soup, "pokemon-spreads")
-        or _parse_entry_list(soup, "spreads")
-    )
+    spreads = _parse_spreads_section(soup)
 
     return {
         "moves": moves[:10],
@@ -192,55 +230,49 @@ def fetch_pokemon_detail(pokemon_slug: str) -> dict | None:
 # =============================================================================
 
 
-def _build_legality_sets(sb: Client) -> tuple[dict[str, str], set[str], set[str]]:
-    """Build lookup structures for Champions legality validation.
+# Pikalytics may use short names; the DB may use full form names.
+# Map normalized Pikalytics names -> DB display names.
+PIKALYTICS_NAME_ALIASES: dict[str, str] = {
+    "basculegion": "Basculegion Male",
+    "maushold": "Maushold Family Of Four",
+}
 
-    Returns:
-        - roster: normalized_name -> display_name mapping
-        - legal_items: set of normalized Champions shop item names
-        - legal_abilities: set of normalized Champions ability names
+
+def _build_roster(sb: Client) -> dict[str, str]:
+    """Build a normalized_name -> display_name lookup for Champions-eligible Pokemon.
+
+    Also registers Pikalytics-specific name aliases.
     """
-    # Champions roster
-    result = sb.table("pokemon").select("name, abilities").eq("champions_eligible", True).execute()
+    result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
 
     roster: dict[str, str] = {}
-    legal_abilities: set[str] = set()
     for row in rows:
         name = row["name"]
         roster[name.lower().replace("-", "").replace(" ", "")] = name
         roster[name.lower()] = name
-        for ab in row.get("abilities") or []:
-            legal_abilities.add(ab.lower().replace("-", "").replace(" ", ""))
 
-    # Champions items
-    items_result = sb.table("items").select("name").eq("champions_shop_available", True).execute()
-    items_rows: list[dict] = items_result.data  # type: ignore[assignment]
-    legal_items = {row["name"].lower().replace("-", "").replace(" ", "") for row in items_rows}
+    # Register known Pikalytics name aliases
+    for alias, display in PIKALYTICS_NAME_ALIASES.items():
+        if display in {r for r in roster.values()}:
+            roster[alias] = display
 
-    return roster, legal_items, legal_abilities
+    # Handle Rotom forms: Pikalytics uses "Rotom-Wash" but DB might lack forms.
+    # If Rotom base form is eligible, accept "rotomwash", "rotomheat", etc.
+    if "rotom" in roster:
+        base_name = roster["rotom"]
+        for form in ["wash", "heat", "frost", "fan", "mow"]:
+            form_key = f"rotom{form}"
+            if form_key not in roster:
+                # Map to base Rotom since forms aren't separate DB entries
+                roster[form_key] = base_name
 
-
-def _filter_entries(
-    entries: list[dict[str, str | float]],
-    legal_set: set[str],
-) -> list[dict[str, str | float]]:
-    """Filter entries against a legality set, keeping only legal ones."""
-    return [
-        e
-        for e in entries
-        if e["name"].lower().replace("-", "").replace(" ", "") in legal_set  # type: ignore[union-attr]
-    ]
+    return roster
 
 
 # =============================================================================
 # Core ingest
 # =============================================================================
-
-
-def _pokemon_slug(name: str) -> str:
-    """Convert a Pokemon name to a URL slug for Pikalytics."""
-    return name.lower().replace(" ", "-").replace("'", "").replace(".", "")
 
 
 def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
@@ -273,17 +305,16 @@ def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
     print(f"  Auto-marked {marked} items.")
 
 
-def ingest_pikalytics(sb: Client) -> None:
-    """Scrape Pikalytics VGC usage data and upsert into pokemon_usage.
 
-    Only ingests Champions-eligible Pokemon. Items and abilities are
-    validated against Champions legality.
+def ingest_pikalytics(sb: Client) -> None:
+    """Scrape Pikalytics Champions Tournaments usage data and upsert into pokemon_usage.
+
+    Only ingests Champions-eligible Pokemon. Items and abilities are NOT
+    filtered because Pikalytics Champions tournament data already reflects
+    only items/abilities that are legal in Champions play.
     """
-    roster, legal_items, legal_abilities = _build_legality_sets(sb)
-    print(
-        f"Legality: {len(roster)} Pokemon, "
-        f"{len(legal_items)} items, {len(legal_abilities)} abilities"
-    )
+    roster = _build_roster(sb)
+    print(f"Roster: {len(roster)} name variants for Champions-eligible Pokemon")
 
     # Step 1: Get top Pokemon list
     pokemon_list = fetch_pokemon_list()
@@ -300,6 +331,7 @@ def ingest_pikalytics(sb: Client) -> None:
     for entry in pokemon_list:
         raw_name = str(entry["name"])
         usage_pct = float(entry["usage_percent"])
+        slug = str(entry.get("slug", raw_name))
 
         # Check Champions eligibility
         clean = raw_name.lower().replace("-", "").replace(" ", "")
@@ -308,19 +340,18 @@ def ingest_pikalytics(sb: Client) -> None:
             print(f"  Skipping {raw_name}: not Champions-eligible")
             continue
 
-        # Step 2: Fetch detail page
-        slug = _pokemon_slug(raw_name)
+        # Step 2: Fetch detail page using the slug from the list
         detail = fetch_pokemon_detail(slug)
 
         if detail:
             moves = detail["moves"]
-            # Collect all raw item names before filtering
-            for item_entry in detail["items"]:
+            items = detail["items"]
+            # Collect all item names for auto-marking availability
+            for item_entry in items:
                 item_name = str(item_entry.get("name", ""))
                 if item_name:
                     all_seen_items.add(item_name)
-            items = _filter_entries(detail["items"], legal_items)
-            abilities = _filter_entries(detail["abilities"], legal_abilities)
+            abilities = detail["abilities"]
             teammates = detail["teammates"]
             spreads = detail["spreads"]
         else:

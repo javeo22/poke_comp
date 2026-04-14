@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { DraftResponse } from "@/types/draft";
@@ -15,12 +16,15 @@ const THREAT_COLORS: Record<string, string> = {
 };
 
 export default function DraftPage() {
+  const searchParams = useSearchParams();
+  const preselectedTeamId = searchParams.get("team") ?? "";
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Form state
-  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedTeamId, setSelectedTeamId] = useState(preselectedTeamId);
   const [opponentSlots, setOpponentSlots] = useState<string[]>(["", "", "", "", "", ""]);
 
   // Analysis state
@@ -30,24 +34,33 @@ export default function DraftPage() {
   const [saveOutcome, setSaveOutcome] = useState<"win" | "loss" | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [pendingOutcome, setPendingOutcome] = useState<"win" | "loss" | null>(null);
+  const [saveLeads, setSaveLeads] = useState<[string, string]>(["", ""]);
+  const [saveNotes, setSaveNotes] = useState("");
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [teamsResult, pokemonResult] = await Promise.all([
+      const [teamsResult, pokemonResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchPokemon({ limit: 500, champions_only: true }),
       ]);
-      setTeams(teamsResult.data);
-      setPokemonOptions(
-        pokemonResult.data.map((p: Pokemon) => ({
-          value: p.name,
-          label: p.name,
-          sublabel: p.types.join("/"),
-        }))
-      );
-    } catch (err) {
-      console.error("Failed to load data:", err);
+      if (teamsResult.status === "fulfilled") {
+        setTeams(teamsResult.value.data);
+      } else {
+        console.error("Failed to load teams:", teamsResult.reason);
+      }
+      if (pokemonResult.status === "fulfilled") {
+        setPokemonOptions(
+          pokemonResult.value.data.map((p: Pokemon) => ({
+            value: p.name,
+            label: p.name,
+            sublabel: p.types.join("/"),
+          }))
+        );
+      } else {
+        console.error("Failed to load Pokemon list:", pokemonResult.reason);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +80,14 @@ export default function DraftPage() {
 
   const filledOpponents = opponentSlots.filter((s) => s.trim() !== "");
   const canAnalyze = selectedTeamId && filledOpponents.length >= 1;
+
+  // Filter out already-selected Pokemon from each slot's dropdown options
+  const getSlotOptions = (slotIndex: number) => {
+    const selectedInOtherSlots = opponentSlots.filter(
+      (s, i) => i !== slotIndex && s.trim() !== ""
+    );
+    return pokemonOptions.filter((o) => !selectedInOtherSlots.includes(o.value));
+  };
 
   const handleAnalyze = async () => {
     if (!canAnalyze) return;
@@ -88,19 +109,34 @@ export default function DraftPage() {
     }
   };
 
-  const handleSave = async (outcome: "win" | "loss") => {
-    if (!selectedTeamId || !result) return;
+  const handleStartSave = (outcome: "win" | "loss") => {
+    setPendingOutcome(outcome);
+    // Pre-fill with AI-recommended leads
+    if (result) {
+      setSaveLeads([
+        result.analysis.lead_pair[0] ?? "",
+        result.analysis.lead_pair[1] ?? "",
+      ]);
+      setSaveNotes("");
+    }
+  };
+
+  const handleConfirmSave = async () => {
+    if (!selectedTeamId || !result || !pendingOutcome) return;
     setIsSaving(true);
     try {
+      const leads =
+        saveLeads[0] && saveLeads[1] ? saveLeads : undefined;
       const matchup = await createMatchup({
         my_team_id: selectedTeamId,
         opponent_team_data: filledOpponents.map((name) => ({ name })),
-        lead_pair: result.analysis.lead_pair,
-        outcome,
-        notes: `AI Draft Analysis: ${result.analysis.summary}`,
+        lead_pair: leads,
+        outcome: pendingOutcome,
+        notes: saveNotes || undefined,
       });
       setSavedId(matchup.id);
-      setSaveOutcome(outcome);
+      setSaveOutcome(pendingOutcome);
+      setPendingOutcome(null);
     } catch (err) {
       console.error("Failed to save matchup:", err);
     } finally {
@@ -191,7 +227,7 @@ export default function DraftPage() {
                 placeholder={`Slot ${i + 1}`}
                 value={slot}
                 onChange={(v) => updateOpponentSlot(i, v)}
-                options={pokemonOptions}
+                options={getSlotOptions(i)}
               />
             ))}
           </div>
@@ -427,25 +463,107 @@ export default function DraftPage() {
                   View match log →
                 </a>
               </div>
-            ) : (
+            ) : !pendingOutcome ? (
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => handleSave("win")}
-                  disabled={isSaving}
-                  className="h-10 rounded-lg bg-secondary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-secondary transition-all hover:bg-secondary/30 disabled:opacity-40"
+                  onClick={() => handleStartSave("win")}
+                  className="h-10 rounded-lg bg-secondary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-secondary transition-all hover:bg-secondary/30"
                 >
-                  {isSaving ? "Saving..." : "Win"}
+                  Win
                 </button>
                 <button
-                  onClick={() => handleSave("loss")}
-                  disabled={isSaving}
-                  className="h-10 rounded-lg bg-tertiary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-tertiary transition-all hover:bg-tertiary/30 disabled:opacity-40"
+                  onClick={() => handleStartSave("loss")}
+                  className="h-10 rounded-lg bg-tertiary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-tertiary transition-all hover:bg-tertiary/30"
                 >
-                  {isSaving ? "Saving..." : "Loss"}
+                  Loss
                 </button>
                 <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
                   Save this matchup to your match log
                 </span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {/* Outcome indicator */}
+                <div className="flex items-center gap-3">
+                  <span className={`rounded-lg px-4 py-2 font-display text-sm font-bold uppercase tracking-wider ${
+                    pendingOutcome === "win"
+                      ? "bg-secondary/20 text-secondary"
+                      : "bg-tertiary/20 text-tertiary"
+                  }`}>
+                    {pendingOutcome === "win" ? "Victory" : "Defeat"}
+                  </span>
+                  <button
+                    onClick={() => setPendingOutcome(null)}
+                    className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted hover:text-on-surface"
+                  >
+                    Change
+                  </button>
+                </div>
+
+                {/* My leads */}
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    My Leads (optional)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-w-md">
+                    {(() => {
+                      const bringFourOptions: DropdownOption[] =
+                        result?.analysis.bring_four.map((rec) => ({
+                          value: rec.pokemon,
+                          label: rec.pokemon,
+                          sublabel: rec.role,
+                        })) ?? [];
+                      return (
+                        <>
+                          <SearchableDropdown
+                            placeholder="Lead 1"
+                            value={saveLeads[0]}
+                            onChange={(v) => setSaveLeads([v, saveLeads[1]])}
+                            options={bringFourOptions}
+                          />
+                          <SearchableDropdown
+                            placeholder="Lead 2"
+                            value={saveLeads[1]}
+                            onChange={(v) => setSaveLeads([saveLeads[0], v])}
+                            options={bringFourOptions}
+                          />
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    value={saveNotes}
+                    onChange={(e) => setSaveNotes(e.target.value)}
+                    placeholder="What happened? Key turns, misplays..."
+                    rows={2}
+                    className="input-field w-full max-w-md rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+
+                {/* Confirm */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleConfirmSave}
+                    disabled={isSaving}
+                    className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "Saving..." : "Save to Match Log"}
+                  </button>
+                  <button
+                    onClick={() => setPendingOutcome(null)}
+                    disabled={isSaving}
+                    className="h-10 rounded-lg px-4 font-display text-xs uppercase tracking-wider text-on-surface-muted hover:bg-surface-high transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

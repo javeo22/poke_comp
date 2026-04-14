@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
 import { fetchTeams, generateCheatsheet } from "@/lib/api";
@@ -56,8 +57,11 @@ function renderNoteWithBold(text: string) {
 }
 
 export default function CheatsheetPage() {
+  const searchParams = useSearchParams();
+  const preselectedTeamId = searchParams.get("team") ?? "";
+
   const [teams, setTeams] = useState<Team[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedTeamId, setSelectedTeamId] = useState(preselectedTeamId);
   const [result, setResult] = useState<CheatsheetResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
