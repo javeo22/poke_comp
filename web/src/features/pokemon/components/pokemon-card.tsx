@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { Pokemon } from "@/features/pokemon/types";
 import { TypeBadge } from "./type-badge";
 import { StatBar } from "./stat-bar";
@@ -14,6 +15,7 @@ export function PokemonCard({ pokemon }: { pokemon: Pokemon }) {
   const primaryTypeColor = `var(--color-type-${pokemon.types[0]})`;
 
   return (
+    <Link href={`/pokemon/${pokemon.id}`} className="block">
     <div className="card-interactive p-5">
       {/* Champions indicator */}
       {pokemon.champions_eligible && (
@@ -70,5 +72,6 @@ export function PokemonCard({ pokemon }: { pokemon: Pokemon }) {
         </span>
       </div>
     </div>
+    </Link>
   );
 }

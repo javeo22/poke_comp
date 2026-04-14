@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from postgrest.types import CountMethod
 
 from app.auth import get_current_user
-from app.config import settings
 from app.database import supabase
 from app.models.team import TeamCreate, TeamList, TeamResponse, TeamUpdate
+from app.validators import validate_champions_pokemon_batch
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -57,6 +57,7 @@ def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
 
 @router.post("", response_model=TeamResponse, status_code=201)
 def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
+    validate_champions_pokemon_batch(body.pokemon_ids)
     _validate_mega(body.pokemon_ids, body.mega_pokemon_id)
 
     data = body.model_dump(exclude_none=True)
@@ -74,7 +75,11 @@ def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_curre
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # If updating pokemon_ids or mega, validate
+    # Validate Champions eligibility when pokemon_ids change
+    if body.pokemon_ids is not None:
+        validate_champions_pokemon_batch(body.pokemon_ids)
+
+    # If updating pokemon_ids or mega, validate mega membership
     if body.pokemon_ids is not None or body.mega_pokemon_id is not None:
         # Need current team state if partial update
         if body.pokemon_ids is None or body.mega_pokemon_id is None:

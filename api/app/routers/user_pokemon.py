@@ -1,14 +1,21 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from postgrest.types import CountMethod
 
 from app.auth import get_current_user
-from app.config import settings
 from app.database import supabase
 from app.models.user_pokemon import (
     UserPokemonCreate,
     UserPokemonList,
     UserPokemonResponse,
     UserPokemonUpdate,
+)
+from app.validators import (
+    validate_champions_item,
+    validate_champions_pokemon,
+    validate_pokemon_ability,
+    validate_pokemon_moves,
 )
 
 router = APIRouter(prefix="/user-pokemon", tags=["user_pokemon"])
@@ -53,6 +60,15 @@ def get_user_pokemon(user_pokemon_id: str, user_id: str = Depends(get_current_us
 
 @router.post("", response_model=UserPokemonResponse, status_code=201)
 def create_user_pokemon(body: UserPokemonCreate, user_id: str = Depends(get_current_user)):
+    # Champions data integrity checks
+    validate_champions_pokemon(body.pokemon_id)
+    if body.item_id is not None:
+        validate_champions_item(body.item_id)
+    if body.ability is not None:
+        validate_pokemon_ability(body.pokemon_id, body.ability)
+    if body.moves is not None:
+        validate_pokemon_moves(body.pokemon_id, body.moves)
+
     data = body.model_dump(exclude_none=True)
     data["user_id"] = user_id
 
@@ -63,10 +79,33 @@ def create_user_pokemon(body: UserPokemonCreate, user_id: str = Depends(get_curr
 
 
 @router.put("/{user_pokemon_id}", response_model=UserPokemonResponse)
-def update_user_pokemon(user_pokemon_id: str, body: UserPokemonUpdate, user_id: str = Depends(get_current_user)):
+def update_user_pokemon(
+    user_pokemon_id: str, body: UserPokemonUpdate, user_id: str = Depends(get_current_user)
+):
     data = body.model_dump(exclude_none=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
+
+    # For updates, we need the current pokemon_id to validate ability/moves against
+    pokemon_id: int | None = None
+    if body.ability is not None or body.moves is not None:
+        current = (
+            supabase.table("user_pokemon")
+            .select("pokemon_id")
+            .eq("id", user_pokemon_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+        row: dict[str, Any] = current.data  # type: ignore[assignment]
+        pokemon_id = row["pokemon_id"]
+
+    if body.item_id is not None:
+        validate_champions_item(body.item_id)
+    if body.ability is not None and pokemon_id is not None:
+        validate_pokemon_ability(pokemon_id, body.ability)
+    if body.moves is not None and pokemon_id is not None:
+        validate_pokemon_moves(pokemon_id, body.moves)
 
     result = (
         supabase.table("user_pokemon")

@@ -26,8 +26,6 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     supabase_jwt_secret: str = ""
     cors_origins: str = "http://localhost:3000,https://pokecomp.app"
-    # Hardcoded dev user ID — replace with Supabase Auth later
-    dev_user_id: str = "00000000-0000-0000-0000-000000000001"
 
     model_config = {"env_file": ".env"}
 

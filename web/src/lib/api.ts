@@ -10,7 +10,7 @@ import type {
 } from "@/types/matchup";
 import type { MetaSnapshot } from "@/types/meta";
 import type { MoveListResponse } from "@/types/move";
-import type { PokemonListResponse } from "@/features/pokemon/types";
+import type { PokemonDetail, PokemonListResponse } from "@/features/pokemon/types";
 import type { PokemonUsage, PokemonUsageList } from "@/types/usage";
 import type {
   Team,
@@ -84,6 +84,10 @@ export async function fetchPokemon(filters: PokemonFilters = {}) {
   return apiFetch<PokemonListResponse>("/pokemon", {
     params: filters as Record<string, string | number | boolean | undefined>,
   });
+}
+
+export async function fetchPokemonDetail(pokemonId: number) {
+  return apiFetch<PokemonDetail>(`/pokemon/${pokemonId}/detail`);
 }
 
 // ── User Pokemon (Roster) ──

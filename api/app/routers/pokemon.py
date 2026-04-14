@@ -1,8 +1,17 @@
-from fastapi import APIRouter, Query
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
 from postgrest.types import CountMethod
 
 from app.database import supabase
-from app.models.pokemon import PokemonBase, PokemonList
+from app.models.pokemon import (
+    AbilityDetail,
+    MoveDetail,
+    PokemonBase,
+    PokemonDetail,
+    PokemonList,
+    PokemonUsageSummary,
+)
 
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
 
@@ -36,5 +45,107 @@ def list_pokemon(
 
 @router.get("/{pokemon_id}", response_model=PokemonBase)
 def get_pokemon(pokemon_id: int):
-    result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+    result = (
+        supabase.table("pokemon")
+        .select("*")
+        .eq("id", pokemon_id)
+        .single()
+        .execute()
+    )
     return PokemonBase.model_validate(result.data)
+
+
+@router.get("/{pokemon_id}/detail", response_model=PokemonDetail)
+def get_pokemon_detail(pokemon_id: int):
+    """Enriched Pokemon data: base info + move details + ability descriptions + usage."""
+    # Fetch base Pokemon
+    poke_result = (
+        supabase.table("pokemon")
+        .select("*")
+        .eq("id", pokemon_id)
+        .single()
+        .execute()
+    )
+    poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
+    if not poke_row:
+        raise HTTPException(status_code=404, detail="Pokemon not found")
+
+    base = PokemonBase.model_validate(poke_row)
+
+    # Fetch move details for the movepool (batch by name)
+    move_details: list[MoveDetail] = []
+    movepool = poke_row.get("movepool") or []
+    if movepool:
+        moves_result = (
+            supabase.table("moves")
+            .select("name, type, category, power, accuracy, effect_text")
+            .in_("name", movepool)
+            .order("name")
+            .execute()
+        )
+        move_rows: list[dict[str, Any]] = moves_result.data  # type: ignore[assignment]
+        move_details = [MoveDetail.model_validate(m) for m in move_rows]
+
+    # Fetch ability details (batch by name)
+    ability_details: list[AbilityDetail] = []
+    abilities = poke_row.get("abilities") or []
+    if abilities:
+        ab_result = (
+            supabase.table("abilities")
+            .select("name, effect_text")
+            .in_("name", abilities)
+            .execute()
+        )
+        ab_rows: list[dict[str, Any]] = ab_result.data  # type: ignore[assignment]
+        ability_details = [AbilityDetail.model_validate(a) for a in ab_rows]
+
+    # Fetch usage data (all formats)
+    usage: list[PokemonUsageSummary] = []
+    usage_result = (
+        supabase.table("pokemon_usage")
+        .select(
+            "format, usage_percent, moves, items, abilities, teammates"
+        )
+        .eq("pokemon_name", base.name)
+        .order("snapshot_date", desc=True)
+        .limit(3)
+        .execute()
+    )
+    usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
+    for u in usage_rows:
+        moves_data = u.get("moves") or {}
+        items_data = u.get("items") or {}
+        ab_data = u.get("abilities") or {}
+        teammates_data = u.get("teammates") or {}
+        usage.append(
+            PokemonUsageSummary(
+                format=u.get("format", ""),
+                usage_percent=u.get("usage_percent", 0),
+                top_moves=list(moves_data.keys())[:6],
+                top_items=list(items_data.keys())[:4],
+                top_abilities=list(ab_data.keys())[:3],
+                top_teammates=list(teammates_data.keys())[:4],
+            )
+        )
+
+    # Resolve mega evolution name if linked
+    mega_name: str | None = None
+    mega_id = poke_row.get("mega_evolution_id")
+    if mega_id:
+        mega_result = (
+            supabase.table("pokemon")
+            .select("name")
+            .eq("id", mega_id)
+            .execute()
+        )
+        mega_rows: list[dict[str, Any]] = mega_result.data  # type: ignore[assignment]
+        if mega_rows:
+            mega_name = mega_rows[0]["name"]
+
+    return PokemonDetail(
+        **base.model_dump(),
+        move_details=move_details,
+        ability_details=ability_details,
+        usage=usage,
+        mega_evolution_name=mega_name,
+    )

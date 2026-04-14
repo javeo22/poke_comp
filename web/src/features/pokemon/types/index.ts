@@ -23,6 +23,36 @@ export interface PokemonListResponse {
   count: number;
 }
 
+export interface MoveDetail {
+  name: string;
+  type: string;
+  category: string;
+  power: number | null;
+  accuracy: number | null;
+  effect_text: string | null;
+}
+
+export interface AbilityDetail {
+  name: string;
+  effect_text: string | null;
+}
+
+export interface PokemonUsageSummary {
+  format: string;
+  usage_percent: number;
+  top_moves: string[];
+  top_items: string[];
+  top_abilities: string[];
+  top_teammates: string[];
+}
+
+export interface PokemonDetail extends Pokemon {
+  move_details: MoveDetail[];
+  ability_details: AbilityDetail[];
+  usage: PokemonUsageSummary[];
+  mega_evolution_name: string | null;
+}
+
 export const POKEMON_TYPES = [
   "normal",
   "fire",

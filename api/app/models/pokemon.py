@@ -17,3 +17,41 @@ class PokemonBase(BaseModel):
 class PokemonList(BaseModel):
     data: list[PokemonBase]
     count: int
+
+
+class MoveDetail(BaseModel):
+    """Subset of MoveBase for the detail view -- only fields useful inline."""
+
+    name: str
+    type: str
+    category: str
+    power: int | None = None
+    accuracy: int | None = None
+    effect_text: str | None = None
+
+
+class AbilityDetail(BaseModel):
+    """Ability with description for the detail view."""
+
+    name: str
+    effect_text: str | None = None
+
+
+class PokemonUsageSummary(BaseModel):
+    """Lightweight usage stats for the detail view."""
+
+    format: str
+    usage_percent: float
+    top_moves: list[str] = []
+    top_items: list[str] = []
+    top_abilities: list[str] = []
+    top_teammates: list[str] = []
+
+
+class PokemonDetail(PokemonBase):
+    """Enriched Pokemon data with move details, ability descriptions, and usage."""
+
+    move_details: list[MoveDetail] = []
+    ability_details: list[AbilityDetail] = []
+    usage: list[PokemonUsageSummary] = []
+    mega_evolution_name: str | None = None

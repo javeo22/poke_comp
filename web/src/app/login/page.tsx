@@ -9,8 +9,13 @@ export default function LoginPage() {
   const supabase = createClient();
 
   const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Auth not configured yet — show placeholder
+  // Auth not configured yet -- show placeholder
   if (!supabase) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -18,11 +23,6 @@ export default function LoginPage() {
       </div>
     );
   }
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,12 +61,24 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
+        {/* Branding */}
+        <div className="mb-8 text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-primary">
+            PokeComp
+          </h2>
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
+            Your competitive Pokemon Champions companion
+          </p>
+        </div>
+
         <div className="card p-8 shadow-2xl rounded-xl relative overflow-hidden">
-          <h1 className="text-3xl font-display font-bold tracking-tight text-on-surface mb-2 text-center">
-            {isSignUp ? "Sign Up" : "Welcome Back"}
+          <h1 className="text-2xl font-display font-bold tracking-tight text-on-surface mb-2 text-center">
+            {isSignUp ? "Create Account" : "Welcome Back"}
           </h1>
           <p className="text-sm font-body text-on-surface-muted text-center mb-8">
-            {isSignUp ? "Create your account" : "Log in to your account"}
+            {isSignUp
+              ? "Sign up to save teams, track matches, and get AI draft help"
+              : "Sign in to continue"}
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">

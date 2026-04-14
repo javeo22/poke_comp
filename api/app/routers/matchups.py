@@ -1,9 +1,9 @@
 from collections import defaultdict
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from postgrest.types import CountMethod
 
-from app.config import settings
+from app.auth import get_current_user
 from app.database import supabase
 from app.models.matchup import (
     MatchupCreate,
@@ -16,8 +16,6 @@ from app.models.matchup import (
 
 router = APIRouter(prefix="/matchups", tags=["matchups"])
 
-USER_ID = settings.dev_user_id
-
 
 @router.get("", response_model=MatchupList)
 def list_matchups(
@@ -28,9 +26,10 @@ def list_matchups(
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_current_user),
 ):
     query = (
-        supabase.table("matchup_log").select("*", count=CountMethod.exact).eq("user_id", USER_ID)
+        supabase.table("matchup_log").select("*", count=CountMethod.exact).eq("user_id", user_id)
     )
 
     if outcome:
@@ -59,12 +58,12 @@ def list_matchups(
 
 
 @router.get("/stats", response_model=MatchupStats)
-def get_stats():
+def get_stats(user_id: str = Depends(get_current_user)):
     """Win rate analytics: overall, by team, by opponent Pokemon."""
     result = (
         supabase.table("matchup_log")
         .select("outcome, my_team_id, opponent_team_data")
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .execute()
     )
     all_rows: list[dict] = result.data  # type: ignore[assignment]
@@ -153,12 +152,12 @@ def get_stats():
 
 
 @router.get("/{matchup_id}", response_model=MatchupResponse)
-def get_matchup(matchup_id: str):
+def get_matchup(matchup_id: str, user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("matchup_log")
         .select("*")
         .eq("id", matchup_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .single()
         .execute()
     )
@@ -166,9 +165,9 @@ def get_matchup(matchup_id: str):
 
 
 @router.post("", response_model=MatchupResponse, status_code=201)
-def create_matchup(body: MatchupCreate):
+def create_matchup(body: MatchupCreate, user_id: str = Depends(get_current_user)):
     data = body.model_dump(exclude_none=True, mode="json")
-    data["user_id"] = USER_ID
+    data["user_id"] = user_id
 
     result = supabase.table("matchup_log").insert(data).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
@@ -178,7 +177,9 @@ def create_matchup(body: MatchupCreate):
 
 
 @router.put("/{matchup_id}", response_model=MatchupResponse)
-def update_matchup(matchup_id: str, body: MatchupUpdate):
+def update_matchup(
+    matchup_id: str, body: MatchupUpdate, user_id: str = Depends(get_current_user)
+):
     data = body.model_dump(exclude_none=True, mode="json")
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -187,7 +188,7 @@ def update_matchup(matchup_id: str, body: MatchupUpdate):
         supabase.table("matchup_log")
         .update(data)
         .eq("id", matchup_id)
-        .eq("user_id", USER_ID)
+        .eq("user_id", user_id)
         .execute()
     )
     rows: list[dict] = result.data  # type: ignore[assignment]
@@ -197,9 +198,9 @@ def update_matchup(matchup_id: str, body: MatchupUpdate):
 
 
 @router.delete("/{matchup_id}", status_code=204)
-def delete_matchup(matchup_id: str):
+def delete_matchup(matchup_id: str, user_id: str = Depends(get_current_user)):
     result = (
-        supabase.table("matchup_log").delete().eq("id", matchup_id).eq("user_id", USER_ID).execute()
+        supabase.table("matchup_log").delete().eq("id", matchup_id).eq("user_id", user_id).execute()
     )
     rows: list[dict] = result.data  # type: ignore[assignment]
     if not rows:
