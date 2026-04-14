@@ -37,10 +37,7 @@ def list_moves(
     if move_rows:
         move_name_set = {row["name"] for row in move_rows}
         poke_result = (
-            supabase.table("pokemon")
-            .select("movepool")
-            .eq("champions_eligible", True)
-            .execute()
+            supabase.table("pokemon").select("movepool").eq("champions_eligible", True).execute()
         )
         poke_rows: list[dict[str, Any]] = poke_result.data  # type: ignore[assignment]
         for poke in poke_rows:

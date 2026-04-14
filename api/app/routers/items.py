@@ -33,11 +33,7 @@ def list_items(
     top_holders_map: dict[str, list[str]] = {}
     if item_rows:
         item_name_set = {row["name"] for row in item_rows}
-        usage_result = (
-            supabase.table("pokemon_usage")
-            .select("pokemon_name, items")
-            .execute()
-        )
+        usage_result = supabase.table("pokemon_usage").select("pokemon_name, items").execute()
         usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
         # item_name -> [(pokemon_name, usage_pct)]
         item_usage: dict[str, list[tuple[str, float]]] = {}
