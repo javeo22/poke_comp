@@ -5,17 +5,32 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
-const LINKS = [
-  { href: "/pokemon", label: "Pokedex" },
-  { href: "/roster", label: "Roster" },
-  { href: "/teams", label: "Teams" },
-  { href: "/meta", label: "Meta" },
-  { href: "/moves", label: "Moves" },
-  { href: "/items", label: "Items" },
-  { href: "/type-chart", label: "Types" },
-  { href: "/draft", label: "Draft" },
-  { href: "/cheatsheet", label: "Cheatsheet" },
-  { href: "/matches", label: "Matches" },
+const NAV_GROUPS = [
+  {
+    label: "Game Data",
+    links: [
+      { href: "/pokemon", label: "Pokedex" },
+      { href: "/moves", label: "Moves" },
+      { href: "/items", label: "Items" },
+      { href: "/type-chart", label: "Types" },
+    ],
+  },
+  {
+    label: "My Collection",
+    links: [
+      { href: "/roster", label: "Roster" },
+      { href: "/teams", label: "Teams" },
+    ],
+  },
+  {
+    label: "Compete",
+    links: [
+      { href: "/meta", label: "Meta" },
+      { href: "/draft", label: "Draft" },
+      { href: "/cheatsheet", label: "Cheatsheet" },
+      { href: "/matches", label: "Matches" },
+    ],
+  },
 ];
 
 export function Nav() {
@@ -54,22 +69,30 @@ export function Nav() {
         >
           PokeComp
         </Link>
-        {LINKS.map(({ href, label }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`rounded-lg px-4 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${
-                active
-                  ? "bg-primary text-surface"
-                  : "text-on-surface-muted hover:text-on-surface hover:bg-surface-high"
-              }`}
-            >
-              {label}
-            </Link>
-          );
-        })}
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="flex items-center gap-1">
+            <span className="mr-1 font-display text-[0.5rem] uppercase tracking-widest text-on-surface-muted/50">
+              {group.label}
+            </span>
+            {group.links.map(({ href, label }) => {
+              const active = pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`rounded-lg px-3 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${
+                    active
+                      ? "bg-primary text-surface"
+                      : "text-on-surface-muted hover:text-on-surface hover:bg-surface-high"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+            <div className="mx-2 h-4 w-px bg-outline-variant/50" />
+          </div>
+        ))}
       </div>
       <div>
         {user ? (

@@ -34,7 +34,7 @@ export default function ItemsPage() {
   const [filters, setFilters] = useState<FilterState>({
     name: "",
     category: "",
-    championsOnly: false,
+    championsOnly: true,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);

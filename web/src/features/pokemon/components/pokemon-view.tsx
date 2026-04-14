@@ -66,7 +66,7 @@ export function PokemonView() {
     name: "",
     type: "",
     generation: "",
-    championsOnly: false,
+    championsOnly: true,
   });
 
   const handleFilterChange = (newFilters: FilterState) => {

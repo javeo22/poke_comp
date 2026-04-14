@@ -75,6 +75,7 @@ After completing any implementation work, always update:
 - **Usage ingest (Smogon):** `cd api && uv run python -m scripts.ingest.smogon_meta`
 - **Teams ingest (Limitless):** `cd api && uv run python -m scripts.ingest.limitless_teams`
 - **Tier list refresh (AI):** `cd api && uv run python -m scripts.refresh_meta`
+- **Seed user data:** `cd api && uv run python ../scripts/seed_user_data.py`
 
 ## Data Pipeline
 Scripts are organized into three layers:

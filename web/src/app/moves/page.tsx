@@ -63,7 +63,7 @@ export default function MovesPage() {
     name: "",
     type: "",
     category: "",
-    championsOnly: false,
+    championsOnly: true,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);

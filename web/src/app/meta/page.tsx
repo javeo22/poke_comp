@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MetaSnapshot } from "@/types/meta";
 import type { PokemonUsage } from "@/types/usage";
-import type { ScrapeResponse } from "@/lib/api";
 import { META_FORMATS } from "@/types/meta";
-import { fetchLatestMeta, fetchUsage, triggerMetaScrape } from "@/lib/api";
+import { fetchLatestMeta, fetchUsage } from "@/lib/api";
 import { TierListCard } from "@/components/meta/tier-list-card";
 import { UsageList } from "@/components/meta/usage-list";
 import { PokemonDetailPanel } from "@/components/meta/pokemon-detail-panel";
@@ -24,8 +23,6 @@ export default function MetaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [formatFilter, setFormatFilter] = useState("doubles");
   const [viewMode, setViewMode] = useState<ViewMode>("usage");
-  const [isScraping, setIsScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState<ScrapeResponse | null>(null);
   const [selectedPokemon, setSelectedPokemon] = useState<SelectedPokemon | null>(null);
 
   const loadData = useCallback(async () => {
@@ -50,20 +47,6 @@ export default function MetaPage() {
     loadData();
   }, [loadData]);
 
-  const handleScrape = async () => {
-    setIsScraping(true);
-    setScrapeResult(null);
-    try {
-      const result = await triggerMetaScrape();
-      setScrapeResult(result);
-      loadData();
-    } catch (err) {
-      console.error("Scrape failed:", err);
-    } finally {
-      setIsScraping(false);
-    }
-  };
-
   const handlePokemonClick = (name: string, tier?: string) => {
     setSelectedPokemon({ name, tier, format: formatFilter });
   };
@@ -84,37 +67,7 @@ export default function MetaPage() {
             Regulation M-A &middot; {usageData.length} Pokemon tracked
           </p>
         </div>
-        <button
-          onClick={handleScrape}
-          disabled={isScraping}
-          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-50"
-        >
-          {isScraping ? "Updating..." : "Update Data"}
-        </button>
       </div>
-
-      {/* Scrape result banner */}
-      {scrapeResult && (
-        <div className="mb-6 rounded-xl card p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-4">
-              {scrapeResult.results.map((r) => (
-                <span key={r.format} className="text-sm">
-                  <span className="font-display uppercase text-on-surface-muted">
-                    {r.format}:
-                  </span>{" "}
-                  <span className={r.status === "ok" ? "text-secondary" : "text-tertiary"}>
-                    {r.status === "ok" ? `${r.pokemon_count} Pokemon` : r.status}
-                  </span>
-                </span>
-              ))}
-            </div>
-            <span className="font-display text-xs text-on-surface-muted">
-              ~${scrapeResult.estimated_cost_usd.toFixed(3)}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* View mode + format filters */}
       <div className="mb-6 flex items-center justify-between">
@@ -168,9 +121,7 @@ export default function MetaPage() {
         usageData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <p className="font-display text-lg text-on-surface-muted">No usage data yet</p>
-            <code className="mt-4 rounded-xl bg-surface-low px-4 py-2 font-mono text-sm text-primary">
-              cd api && uv run python -m scripts.seed_usage
-            </code>
+            <p className="mt-2 text-sm text-on-surface-muted">Usage data is refreshed automatically from Pikalytics.</p>
           </div>
         ) : (
           <UsageList data={usageData} onPokemonClick={handlePokemonClick} />
@@ -180,9 +131,7 @@ export default function MetaPage() {
           {filteredSnapshots.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <p className="font-display text-lg text-on-surface-muted">No tier data yet</p>
-              <code className="mt-4 rounded-xl bg-surface-low px-4 py-2 font-mono text-sm text-primary">
-                cd api && uv run python -m scripts.seed_meta
-              </code>
+              <p className="mt-2 text-sm text-on-surface-muted">Tier data is refreshed automatically from Game8.</p>
             </div>
           ) : (
             filteredSnapshots.map((snapshot) => (
