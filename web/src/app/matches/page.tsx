@@ -138,10 +138,10 @@ export default function MatchesPage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
             Matches
           </h1>
-          <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
             {count} match{count !== 1 ? "es" : ""} logged
             {stats && stats.overall.total > 0 && (
               <span>
@@ -152,7 +152,7 @@ export default function MatchesPage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal"
+          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
         >
           Log Match
         </button>
@@ -163,9 +163,9 @@ export default function MatchesPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setOutcomeFilter("")}
-            className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+            className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-all ${
               outcomeFilter === ""
-                ? "gradient-primary text-surface gloss-top"
+                ? "bg-primary text-surface"
                 : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
             }`}
           >
@@ -173,7 +173,7 @@ export default function MatchesPage() {
           </button>
           <button
             onClick={() => setOutcomeFilter(outcomeFilter === "win" ? "" : "win")}
-            className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+            className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-all ${
               outcomeFilter === "win"
                 ? "bg-secondary/20 text-secondary"
                 : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
@@ -183,7 +183,7 @@ export default function MatchesPage() {
           </button>
           <button
             onClick={() => setOutcomeFilter(outcomeFilter === "loss" ? "" : "loss")}
-            className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+            className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-all ${
               outcomeFilter === "loss"
                 ? "bg-tertiary/20 text-tertiary"
                 : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
@@ -202,10 +202,10 @@ export default function MatchesPage() {
             </div>
           )}
         </div>
-        <div className="flex gap-1 rounded-pill bg-surface-low p-1">
+        <div className="flex gap-1 rounded-lg bg-surface-low p-1">
           <button
             onClick={() => setViewMode("log")}
-            className={`rounded-pill px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
               viewMode === "log"
                 ? "bg-surface-high text-on-surface"
                 : "text-on-surface-muted hover:text-on-surface"
@@ -215,7 +215,7 @@ export default function MatchesPage() {
           </button>
           <button
             onClick={() => setViewMode("stats")}
-            className={`rounded-pill px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
               viewMode === "stats"
                 ? "bg-surface-high text-on-surface"
                 : "text-on-surface-muted hover:text-on-surface"
@@ -230,7 +230,7 @@ export default function MatchesPage() {
       {isLoading ? (
         <div className="flex flex-col gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       ) : viewMode === "log" ? (
@@ -242,7 +242,7 @@ export default function MatchesPage() {
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="mt-6 h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top"
+              className="btn-primary mt-6 h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
             >
               Log Your First Match
             </button>
@@ -252,11 +252,11 @@ export default function MatchesPage() {
             {matchups.map((m) => (
               <div
                 key={m.id}
-                className="group flex items-center gap-4 rounded-chunky bg-surface-low p-4 transition-all hover:bg-surface-mid"
+                className="group flex items-center gap-4 rounded-xl bg-surface-low p-4 transition-all hover:bg-surface-mid"
               >
                 {/* Outcome badge */}
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-pill font-display text-xs font-bold uppercase ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-display text-xs font-bold uppercase ${
                     m.outcome === "win"
                       ? "bg-secondary/20 text-secondary"
                       : "bg-tertiary/20 text-tertiary"
@@ -303,7 +303,7 @@ export default function MatchesPage() {
                   </span>
                   <button
                     onClick={() => handleDelete(m.id)}
-                    className="rounded-pill px-2 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted opacity-0 transition-all hover:bg-tertiary/10 hover:text-tertiary group-hover:opacity-100"
+                    className="rounded-lg px-2 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted opacity-0 transition-all hover:bg-tertiary/10 hover:text-tertiary group-hover:opacity-100"
                   >
                     Delete
                   </button>
@@ -320,7 +320,7 @@ export default function MatchesPage() {
       {/* Log Match Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-chunky bg-surface p-6">
+          <div className="w-full max-w-2xl rounded-xl bg-surface p-6">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-on-surface">
                 Log Match
@@ -330,7 +330,7 @@ export default function MatchesPage() {
                   setShowForm(false);
                   resetForm();
                 }}
-                className="rounded-pill px-3 py-1 font-display text-xs uppercase text-on-surface-muted hover:bg-surface-high"
+                className="rounded-lg px-3 py-1 font-display text-xs uppercase text-on-surface-muted hover:bg-surface-high"
               >
                 Cancel
               </button>
@@ -359,7 +359,7 @@ export default function MatchesPage() {
                   <button
                     type="button"
                     onClick={() => setFormOutcome("win")}
-                    className={`h-10 flex-1 rounded-pill font-display text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`h-10 flex-1 rounded-lg font-display text-xs font-bold uppercase tracking-wider transition-all ${
                       formOutcome === "win"
                         ? "bg-secondary/20 text-secondary"
                         : "bg-surface-high text-on-surface-muted"
@@ -370,7 +370,7 @@ export default function MatchesPage() {
                   <button
                     type="button"
                     onClick={() => setFormOutcome("loss")}
-                    className={`h-10 flex-1 rounded-pill font-display text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`h-10 flex-1 rounded-lg font-display text-xs font-bold uppercase tracking-wider transition-all ${
                       formOutcome === "loss"
                         ? "bg-tertiary/20 text-tertiary"
                         : "bg-surface-high text-on-surface-muted"
@@ -430,7 +430,7 @@ export default function MatchesPage() {
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="What happened? Key turns, misplays..."
                   rows={2}
-                  className="input-recessed w-full rounded-chunky px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
                 />
               </div>
 
@@ -442,7 +442,7 @@ export default function MatchesPage() {
                   formOpponents.filter((s) => s.trim()).length === 0 ||
                   isSubmitting
                 }
-                className="h-12 rounded-pill gradient-primary font-display text-sm font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary h-12 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Saving..." : "Log Match"}
               </button>
@@ -468,7 +468,7 @@ function StatsView({ stats }: { stats: MatchupStats | null }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Overall */}
-      <div className="rounded-chunky bg-surface-low p-6">
+      <div className="rounded-xl bg-surface-low p-6">
         <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
           Overall Record
         </h3>
@@ -513,7 +513,7 @@ function StatsView({ stats }: { stats: MatchupStats | null }) {
       {/* By team + By opponent */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* By team */}
-        <div className="rounded-chunky bg-surface-low p-6">
+        <div className="rounded-xl bg-surface-low p-6">
           <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
             By Team
           </h3>
@@ -529,7 +529,7 @@ function StatsView({ stats }: { stats: MatchupStats | null }) {
         </div>
 
         {/* By opponent Pokemon */}
-        <div className="rounded-chunky bg-surface-low p-6">
+        <div className="rounded-xl bg-surface-low p-6">
           <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
             vs Opponent Pokemon
           </h3>
@@ -554,9 +554,9 @@ function WinRateRow({ stat }: { stat: { label: string; wins: number; losses: num
       <span className="w-32 truncate font-display text-sm text-on-surface">
         {stat.label}
       </span>
-      <div className="relative h-2 flex-1 overflow-hidden rounded-pill bg-surface-high">
+      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-surface-high">
         <div
-          className="absolute inset-y-0 left-0 rounded-pill bg-secondary transition-all"
+          className="absolute inset-y-0 left-0 rounded-full bg-secondary transition-all"
           style={{ width: `${stat.win_rate}%` }}
         />
       </div>

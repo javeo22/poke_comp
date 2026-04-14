@@ -19,8 +19,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Pokemon Champions Companion",
-  description: "Personal companion app for competitive Pokemon Champions",
+  title: "PokeComp",
+  description: "Competitive Pokemon Champions companion",
 };
 
 export default function RootLayout({
@@ -33,16 +33,15 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${plusJakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" style={{ perspective: "1000px" }}>
+      <body className="min-h-full flex flex-col">
         <Providers>
-          <div className="dynamic-void" />
           <Nav />
-          <main className="flex-1 flex flex-col items-center w-full relative z-10" style={{ transformStyle: "preserve-3d" }}>
+          <main className="flex-1 flex flex-col items-center w-full relative z-10">
             {children}
           </main>
           <footer className="px-6 py-4 text-center">
             <p className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              Pokemon Champions Companion is a fan project. Not affiliated with
+              PokeComp is a fan project. Not affiliated with
               or endorsed by The Pokemon Company, Nintendo, or Game Freak.
             </p>
           </footer>

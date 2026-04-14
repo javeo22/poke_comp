@@ -111,16 +111,16 @@ export default function RosterPage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
             My Roster
           </h1>
-          <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
             {count} Pokemon in collection
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal"
+          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
         >
           Add Pokemon
         </button>
@@ -168,7 +168,7 @@ export default function RosterPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-56 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       ) : entries.length === 0 ? (
@@ -182,7 +182,7 @@ export default function RosterPage() {
           {!statusFilter && (
             <button
               onClick={handleCreate}
-              className="mt-6 h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top"
+              className="mt-6 btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
             >
               Add Pokemon
             </button>
@@ -235,13 +235,13 @@ function StatusPill({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+      className={`flex items-center gap-2 h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-colors ${
         active
-          ? "gradient-primary text-surface gloss-top"
+          ? "bg-primary text-surface"
           : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
       }`}
     >
-      {ledClass && <div className={`led ${ledClass}`} />}
+      {ledClass && <div className={`status-dot ${ledClass === "led-active" ? "status-built" : ledClass === "led-training" ? "status-training" : "status-wishlist"}`} />}
       <span>{label}</span>
       <span className={active ? "text-surface/70" : "text-on-surface-muted/60"}>
         {count}

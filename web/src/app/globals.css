@@ -2,30 +2,33 @@
 
 
 @theme inline {
-  /* ── Surface Hierarchy ── */
-  --color-surface: #12131D;
-  --color-surface-lowest: #0D0E16;
-  --color-surface-low: #1A1B28;
-  --color-surface-mid: #212230;
-  --color-surface-high: #2A2B3D;
-  --color-surface-highest: #323347;
+  /* ── Surface Hierarchy (Carbon Ink) ── */
+  --color-surface: #0F1114;
+  --color-surface-lowest: #0A0B0D;
+  --color-surface-low: #161920;
+  --color-surface-mid: #1E2129;
+  --color-surface-high: #262A33;
+  --color-surface-highest: #2F343E;
 
-  /* ── Primary: Atomic Purple ── */
-  --color-primary: #C1C1FF;
-  --color-primary-container: #6667AB;
+  /* ── Primary: Sky Blue ── */
+  --color-primary: #60A5FA;
+  --color-primary-container: #1E3A5F;
 
-  /* ── Secondary: Neon Teal ── */
-  --color-secondary: #56E8C5;
-  --color-secondary-container: #1B3D35;
+  /* ── Secondary: Emerald ── */
+  --color-secondary: #34D399;
+  --color-secondary-container: #0F3D2E;
 
-  /* ── Tertiary: Berry Red ── */
-  --color-tertiary: #E8567A;
-  --color-tertiary-container: #4D1B2A;
+  /* ── Tertiary: Coral Red ── */
+  --color-tertiary: #F87171;
+  --color-tertiary-container: #4A1C1C;
+
+  /* ── Accent: Amber ── */
+  --color-accent: #FBBF24;
 
   /* ── Text & Outline ── */
-  --color-on-surface: #E2E1F1;
-  --color-on-surface-muted: #9896A8;
-  --color-outline-variant: #464650;
+  --color-on-surface: #E4E7ED;
+  --color-on-surface-muted: #8891A0;
+  --color-outline-variant: #3A3F4B;
 
   /* ── Pokemon Type Colors ── */
   --color-type-normal: #A8A77A;
@@ -51,10 +54,10 @@
   --font-display: var(--font-space-grotesk), "Space Grotesk", ui-monospace, monospace;
   --font-body: var(--font-plus-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
 
-  /* ── Radius: chunky, never subtle ── */
-  --radius-chunky: 9999px; /* Replaced chunky with pill to match antigravity aesthetics systemically */
-  --radius-pill: 9999px;
-  --radius-shell: 3rem;
+  /* ── Radii ── */
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
+  --radius-badge: 9999px;
 }
 
 /* ── Base ── */
@@ -64,59 +67,78 @@ body {
   font-family: var(--font-body);
 }
 
-/* ── Antigravity Refractive Glass ── */
-.glass {
-  background: color-mix(in srgb, var(--color-surface-high) 60%, transparent);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-  border: none;
-  position: relative;
-  overflow: hidden;
-  transform-style: preserve-3d;
+/* ── Card ── */
+.card {
+  background: var(--color-surface-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
 }
 
-/* Faint refractive edge using ::before */
-.glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-on-surface) 15%, transparent),
-    transparent 40%,
-    color-mix(in srgb, var(--color-on-surface) 5%, transparent)
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+/* ── Card Interactive ── */
+.card-interactive {
+  background: var(--color-surface-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-card);
+  transition: background-color 150ms, border-color 150ms;
+}
+.card-interactive:hover {
+  background: var(--color-surface-mid);
+  border-color: var(--color-on-surface-muted);
 }
 
-/* ── Dynamic Void ── */
-.dynamic-void {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-color: var(--color-surface);
-  background-image: 
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-primary-container) 15%, transparent) 0%, transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
-  background-position: center;
-  perspective: 1000px;
-  transform-style: preserve-3d;
+/* ── Button Primary ── */
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 500;
+  border-radius: var(--radius-button);
+  transition: background-color 150ms;
+}
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-/* ── Antigravity Type Tinting ── */
-/* Base variable to be dynamically set via inline styles --type-tint */
-.tinted-glow {
-  box-shadow: 0 0 40px calc(var(--type-tint-opacity, 0.2)) var(--type-tint, var(--color-primary));
+/* ── Button Ghost ── */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-on-surface-muted);
+  border-radius: var(--radius-button);
+  transition: all 150ms;
+}
+.btn-ghost:hover {
+  background: var(--color-surface-high);
+  color: var(--color-on-surface);
 }
 
-/* ── Scrollbar styling ── */
+/* ── Input Field ── */
+.input-field {
+  background: var(--color-surface-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-button);
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.input-field:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  outline: none;
+}
+
+/* ── Status Dots ── */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+.status-built { background: var(--color-secondary); }
+.status-training { background: var(--color-accent); }
+.status-wishlist { background: var(--color-primary); }
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }

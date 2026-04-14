@@ -16,7 +16,7 @@ export function PokemonList({ pokemon, count, isLoading }: PokemonListProps) {
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={i}
-            className="h-64 animate-pulse rounded-chunky bg-surface-low"
+            className="h-64 animate-pulse rounded-xl bg-surface-low"
           />
         ))}
       </div>

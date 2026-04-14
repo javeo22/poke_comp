@@ -17,7 +17,7 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
           key={entry.id}
           type="button"
           onClick={() => onPokemonClick(entry.pokemon_name)}
-          className="group flex items-center gap-4 rounded-chunky bg-surface-low p-4 text-left transition-all hover:bg-surface-mid hover:-translate-y-0.5"
+          className="group flex items-center gap-4 rounded-xl card p-4 text-left transition-all hover:bg-surface-mid hover:-translate-y-0.5"
         >
           {/* Rank */}
           <span className="w-8 text-right font-display text-sm font-bold text-on-surface-muted">
@@ -35,9 +35,9 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
               </span>
             </div>
             {/* Usage bar */}
-            <div className="h-1.5 w-full rounded-pill bg-surface-mid">
+            <div className="h-1.5 w-full rounded-full bg-surface-mid">
               <div
-                className="h-full rounded-pill gradient-primary transition-all duration-500"
+                className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{ width: `${(entry.usage_percent / maxUsage) * 100}%` }}
               />
             </div>
@@ -52,7 +52,7 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
               {(entry.moves ?? []).slice(0, 4).map((m) => (
                 <span
                   key={m.name}
-                  className="rounded-pill bg-surface-mid px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
+                  className="rounded-full bg-surface-mid px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
                 >
                   {m.name}
                 </span>

@@ -77,17 +77,17 @@ export default function MetaPage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
             Meta Tracker
           </h1>
-          <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
             Regulation M-A &middot; {usageData.length} Pokemon tracked
           </p>
         </div>
         <button
           onClick={handleScrape}
           disabled={isScraping}
-          className="h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal disabled:opacity-50"
+          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-50"
         >
           {isScraping ? "Updating..." : "Update Data"}
         </button>
@@ -95,7 +95,7 @@ export default function MetaPage() {
 
       {/* Scrape result banner */}
       {scrapeResult && (
-        <div className="mb-6 rounded-chunky bg-surface-low p-4">
+        <div className="mb-6 rounded-xl card p-4">
           <div className="flex items-center justify-between">
             <div className="flex gap-4">
               {scrapeResult.results.map((r) => (
@@ -123,9 +123,9 @@ export default function MetaPage() {
             <button
               key={f}
               onClick={() => setFormatFilter(f)}
-              className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+              className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-all ${
                 formatFilter === f
-                  ? "gradient-primary text-surface gloss-top"
+                  ? "bg-primary text-surface"
                   : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
               }`}
             >
@@ -133,10 +133,10 @@ export default function MetaPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-1 rounded-pill bg-surface-low p-1">
+        <div className="flex gap-1 rounded-lg bg-surface-low p-1">
           <button
             onClick={() => setViewMode("usage")}
-            className={`rounded-pill px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
               viewMode === "usage"
                 ? "bg-surface-high text-on-surface"
                 : "text-on-surface-muted hover:text-on-surface"
@@ -146,7 +146,7 @@ export default function MetaPage() {
           </button>
           <button
             onClick={() => setViewMode("tiers")}
-            className={`rounded-pill px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.65rem] uppercase tracking-wider transition-all ${
               viewMode === "tiers"
                 ? "bg-surface-high text-on-surface"
                 : "text-on-surface-muted hover:text-on-surface"
@@ -161,14 +161,14 @@ export default function MetaPage() {
       {isLoading ? (
         <div className="flex flex-col gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       ) : viewMode === "usage" ? (
         usageData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <p className="font-display text-lg text-on-surface-muted">No usage data yet</p>
-            <code className="mt-4 rounded-chunky bg-surface-low px-4 py-2 font-mono text-sm text-primary">
+            <code className="mt-4 rounded-xl bg-surface-low px-4 py-2 font-mono text-sm text-primary">
               cd api && uv run python -m scripts.seed_usage
             </code>
           </div>
@@ -180,7 +180,7 @@ export default function MetaPage() {
           {filteredSnapshots.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <p className="font-display text-lg text-on-surface-muted">No tier data yet</p>
-              <code className="mt-4 rounded-chunky bg-surface-low px-4 py-2 font-mono text-sm text-primary">
+              <code className="mt-4 rounded-xl bg-surface-low px-4 py-2 font-mono text-sm text-primary">
                 cd api && uv run python -m scripts.seed_meta
               </code>
             </div>

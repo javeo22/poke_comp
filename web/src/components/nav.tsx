@@ -46,13 +46,13 @@ export function Nav() {
   };
 
   return (
-    <nav className="flex items-center justify-between border-b border-surface-high bg-surface-low px-6 py-3">
+    <nav className="flex items-center justify-between border-b border-outline-variant bg-surface-low px-6 py-3">
       <div className="flex items-center gap-1">
         <Link
           href="/"
           className="mr-6 font-display text-lg font-bold tracking-tight text-primary"
         >
-          PCC
+          PokeComp
         </Link>
         {LINKS.map(({ href, label }) => {
           const active = pathname.startsWith(href);
@@ -60,10 +60,10 @@ export function Nav() {
             <Link
               key={href}
               href={href}
-              className={`rounded-pill px-4 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${
+              className={`rounded-lg px-4 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${
                 active
-                  ? "gradient-primary text-surface gloss-top"
-                  : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
+                  ? "bg-primary text-surface"
+                  : "text-on-surface-muted hover:text-on-surface hover:bg-surface-high"
               }`}
             >
               {label}
@@ -75,14 +75,14 @@ export function Nav() {
         {user ? (
           <button
             onClick={handleSignOut}
-            className="rounded-pill px-4 py-1.5 font-display text-xs uppercase tracking-wider text-on-surface-muted hover:text-red-400 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-500/20"
+            className="btn-ghost px-4 py-1.5 font-display text-xs uppercase tracking-wider hover:text-tertiary hover:border-tertiary/30"
           >
             Sign Out
           </button>
         ) : (
           <Link
             href="/login"
-            className="rounded-pill px-4 py-1.5 font-display text-xs uppercase tracking-wider text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 transition-colors border border-teal-500/30 hover:border-teal-400/50"
+            className="btn-ghost px-4 py-1.5 font-display text-xs uppercase tracking-wider hover:text-primary hover:border-primary/30"
           >
             Sign In
           </Link>

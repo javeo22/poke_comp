@@ -42,7 +42,7 @@ export function TeamCard({
   const teamTypes = members.map((m) => m.poke.types);
 
   return (
-    <div className="group rounded-chunky bg-surface-low p-5 transition-all duration-200 hover:bg-surface-mid gloss-top">
+    <div className="group card-interactive p-5">
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -50,11 +50,11 @@ export function TeamCard({
             {team.name}
           </h3>
           <div className="flex items-center gap-2">
-            <span className="rounded-pill bg-surface-high px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+            <span className="rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
               {FORMAT_LABEL[team.format] ?? team.format}
             </span>
             {team.archetype_tag && (
-              <span className="rounded-pill bg-primary-container/30 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
+              <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
                 {team.archetype_tag}
               </span>
             )}
@@ -63,19 +63,19 @@ export function TeamCard({
         <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             onClick={() => onClone(team)}
-            className="h-7 rounded-pill bg-surface-high px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest"
+            className="btn-ghost h-7 px-3 font-display text-[0.6rem] uppercase tracking-wider"
           >
             Clone
           </button>
           <button
             onClick={() => onEdit(team)}
-            className="h-7 rounded-pill bg-surface-high px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest"
+            className="btn-ghost h-7 px-3 font-display text-[0.6rem] uppercase tracking-wider"
           >
             Edit
           </button>
           <button
             onClick={() => onDelete(team.id)}
-            className="h-7 rounded-pill bg-tertiary-container px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-tertiary"
+            className="h-7 rounded-lg bg-tertiary-container px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-tertiary"
           >
             Delete
           </button>
@@ -87,7 +87,7 @@ export function TeamCard({
         {members.map(({ entry, poke }) => (
           <div
             key={entry.id}
-            className={`flex flex-col items-center rounded-chunky p-1.5 ${
+            className={`flex flex-col items-center rounded-lg p-1.5 ${
               team.mega_pokemon_id === entry.id
                 ? "bg-primary-container/30"
                 : "bg-surface-lowest"
@@ -115,7 +115,7 @@ export function TeamCard({
         {Array.from({ length: Math.max(0, 6 - members.length) }).map((_, i) => (
           <div
             key={`empty-${i}`}
-            className="flex h-14 w-14 items-center justify-center rounded-chunky bg-surface-lowest"
+            className="flex h-14 w-14 items-center justify-center rounded-lg bg-surface-lowest"
           >
             <span className="text-[0.5rem] text-on-surface-muted/30">--</span>
           </div>

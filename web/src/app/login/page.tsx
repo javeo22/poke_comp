@@ -59,17 +59,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-[url('/bg-orbits.svg')] bg-cover bg-center">
+    <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="glass-panel p-8 backdrop-blur-xl bg-surface-high/60 border border-surface-border shadow-2xl rounded-chunky relative overflow-hidden group">
-          {/* Decorative Top Glow */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-teal-400 to-transparent opacity-50" />
-          
+        <div className="card p-8 shadow-2xl rounded-xl relative overflow-hidden">
           <h1 className="text-3xl font-display font-bold tracking-tight text-on-surface mb-2 text-center">
-            {isSignUp ? "Orbital Access" : "Welcome Back"}
+            {isSignUp ? "Sign Up" : "Welcome Back"}
           </h1>
-          <p className="text-sm font-display uppercase tracking-[0.05rem] text-on-surface-muted text-center mb-8">
-            {isSignUp ? "Create your commander account" : "Log in to your commander account"}
+          <p className="text-sm font-body text-on-surface-muted text-center mb-8">
+            {isSignUp ? "Create your account" : "Log in to your account"}
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -86,8 +83,8 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full h-12 rounded-pill bg-surface border border-surface-border px-4 text-on-surface focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-colors"
-                placeholder="commander@orbital.net"
+                className="input-field w-full h-12 rounded-xl px-4 text-on-surface focus:outline-none transition-colors"
+                placeholder="you@example.com"
               />
             </div>
 
@@ -104,19 +101,19 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full h-12 rounded-pill bg-surface border border-surface-border px-4 text-on-surface focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-colors"
+                className="input-field w-full h-12 rounded-xl px-4 text-on-surface focus:outline-none transition-colors"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-pill text-red-400 text-sm text-center font-medium">
+              <div className="p-3 bg-red-500/10 rounded-xl text-red-400 text-sm text-center font-medium">
                 {error}
               </div>
             )}
 
             {successMsg && (
-              <div className="p-3 bg-teal-500/10 border border-teal-500/20 rounded-pill text-teal-400 text-sm text-center font-medium">
+              <div className="p-3 bg-teal-500/10 rounded-xl text-teal-400 text-sm text-center font-medium">
                 {successMsg}
               </div>
             )}
@@ -124,14 +121,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 h-12 w-full rounded-pill gradient-primary font-display text-sm font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100"
+              className="btn-primary mt-2 h-12 w-full font-display text-sm font-medium uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100"
             >
               {loading ? (
                 <span className="animate-pulse">Processing...</span>
               ) : isSignUp ? (
-                "Initialize Account"
+                "Sign Up"
               ) : (
-                "Authorize Access"
+                "Sign In"
               )}
             </button>
           </form>
@@ -144,11 +141,11 @@ export default function LoginPage() {
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className="text-sm font-display text-on-surface-muted hover:text-teal-400 transition-colors tracking-wide underline-offset-4 hover:underline"
+              className="text-sm font-display text-on-surface-muted hover:text-primary transition-colors tracking-wide underline-offset-4 hover:underline"
             >
               {isSignUp
-                ? "Already established? Sign in instead."
-                : "Need clearance? Create an account."}
+                ? "Already have an account? Sign in instead."
+                : "Need an account? Create one."}
             </button>
           </div>
         </div>

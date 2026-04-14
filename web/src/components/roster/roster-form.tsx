@@ -188,10 +188,10 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
   const noPokemonSelected = !selectedPokemon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <form
         onSubmit={handleSubmit}
-        className="glass glass-border mx-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-shell"
+        className="card mx-4 flex max-h-[90vh] w-full max-w-lg flex-col shadow-2xl"
       >
         <div className="overflow-y-auto p-8">
           <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
@@ -205,7 +205,7 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
                 Pokemon
               </label>
               {selectedPokemon ? (
-                <div className="flex items-center gap-3 rounded-chunky bg-surface-low p-3">
+                <div className="flex items-center gap-3 rounded-lg bg-surface-mid p-3">
                   <span className="font-display font-semibold text-on-surface">
                     {selectedPokemon.name}
                   </span>
@@ -227,17 +227,17 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     placeholder="Search Champions Pokemon..."
-                    className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+                    className="input-field h-10 w-full rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
                     autoFocus
                   />
                   {searchResults.length > 0 && (
-                    <div className="absolute left-0 right-0 top-11 z-10 max-h-48 overflow-y-auto rounded-chunky bg-surface-high">
+                    <div className="absolute left-0 right-0 top-11 z-10 max-h-48 overflow-y-auto rounded-lg card shadow-lg">
                       {searchResults.map((p) => (
                         <button
                           key={p.id}
                           type="button"
                           onClick={() => handleSelectPokemon(p)}
-                          className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-highest"
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-mid"
                         >
                           <span className="font-display text-[0.65rem] text-on-surface-muted">
                             #{String(p.id).padStart(4, "0")}
@@ -275,7 +275,7 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
             <select
               value={nature}
               onChange={(e) => setNature(e.target.value)}
-              className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+              className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
             >
               <option value="">Select nature</option>
               {NATURES.map((n) => (
@@ -332,7 +332,7 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
               <select
                 value={buildStatus}
                 onChange={(e) => setBuildStatus(e.target.value)}
-                className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+                className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
               >
                 {BUILD_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -350,7 +350,7 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
                 value={vpSpent}
                 onChange={(e) => setVpSpent(e.target.value)}
                 min={0}
-                className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow"
+                className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface"
               />
             </div>
           </div>
@@ -365,24 +365,24 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Build notes, matchup thoughts..."
-              className="input-recessed w-full resize-none rounded-chunky px-4 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+              className="input-field w-full resize-none rounded-lg px-4 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
             />
           </div>
         </div>
 
         {/* Sticky actions */}
-        <div className="flex gap-3 border-t border-surface-high/20 p-6">
+        <div className="flex gap-3 border-t border-outline-variant p-6">
           <button
             type="submit"
             disabled={!editing && !selectedPokemon}
-            className="h-10 flex-1 rounded-pill gradient-primary font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-primary h-10 flex-1 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {editing ? "Save Changes" : "Add to Roster"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 rounded-pill bg-surface-high px-6 font-display text-xs uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-surface-highest"
+            className="btn-ghost h-10 px-6 font-display text-xs uppercase tracking-wider"
           >
             Cancel
           </button>

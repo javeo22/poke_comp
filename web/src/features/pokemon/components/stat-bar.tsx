@@ -21,9 +21,9 @@ export function StatBar({ stat, value }: { stat: string; value: number }) {
       <span className="w-7 text-right font-display text-xs text-on-surface">
         {value}
       </span>
-      <div className="h-1.5 flex-1 rounded-pill bg-surface-lowest">
+      <div className="h-1.5 flex-1 rounded-full bg-surface-lowest">
         <div
-          className="h-full rounded-pill gradient-primary transition-all duration-300"
+          className="h-full rounded-full bg-primary transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>

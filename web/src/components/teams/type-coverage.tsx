@@ -144,7 +144,7 @@ function CoverageCell({
 
   return (
     <div
-      className={`${bgClass} flex w-16 flex-col items-center rounded-chunky px-1.5 py-1.5`}
+      className={`${bgClass} flex w-16 flex-col items-center rounded-lg px-1.5 py-1.5`}
       title={`${type}: ${multiplier}x`}
     >
       <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">

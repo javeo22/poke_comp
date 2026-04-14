@@ -117,10 +117,10 @@ export default function DraftPage() {
   if (isLoading) {
     return (
       <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
-        <div className="h-10 w-48 animate-pulse rounded-chunky bg-surface-low mb-8" />
+        <div className="h-10 w-48 animate-pulse rounded-xl bg-surface-low mb-8" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       </div>
@@ -131,10 +131,10 @@ export default function DraftPage() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Draft Helper
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
           Team preview analysis &middot; Pick your 4
         </p>
       </div>
@@ -142,7 +142,7 @@ export default function DraftPage() {
       {/* Input section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* My team selector */}
-        <div className="rounded-chunky bg-surface-low p-6">
+        <div className="rounded-xl bg-surface-low p-6">
           <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
             My Team
           </h2>
@@ -162,13 +162,13 @@ export default function DraftPage() {
                     {team.pokemon_ids.map((pid, i) => (
                       <span
                         key={i}
-                        className="rounded-pill bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
+                        className="rounded-lg bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
                       >
                         #{pid}
                       </span>
                     ))}
                     {team.archetype_tag && (
-                      <span className="rounded-pill bg-primary/20 px-3 py-1 font-display text-xs text-primary">
+                      <span className="rounded-lg bg-primary/20 px-3 py-1 font-display text-xs text-primary">
                         {team.archetype_tag}
                       </span>
                     )}
@@ -180,7 +180,7 @@ export default function DraftPage() {
         </div>
 
         {/* Opponent team input */}
-        <div className="rounded-chunky bg-surface-low p-6">
+        <div className="rounded-xl bg-surface-low p-6">
           <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
             Opponent&apos;s Team (6 from preview)
           </h2>
@@ -206,7 +206,7 @@ export default function DraftPage() {
         <button
           onClick={handleAnalyze}
           disabled={!canAnalyze || isAnalyzing}
-          className="h-12 rounded-pill gradient-primary px-8 font-display text-sm font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isAnalyzing ? "Analyzing..." : "Analyze Matchup"}
         </button>
@@ -224,7 +224,7 @@ export default function DraftPage() {
 
       {/* Error */}
       {error && (
-        <div className="mt-6 rounded-chunky bg-tertiary/10 p-4">
+        <div className="mt-6 rounded-xl bg-tertiary/10 p-4">
           <p className="font-body text-sm text-tertiary">{error}</p>
         </div>
       )}
@@ -233,7 +233,7 @@ export default function DraftPage() {
       {isAnalyzing && (
         <div className="mt-8 flex flex-col gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       )}
@@ -242,7 +242,7 @@ export default function DraftPage() {
       {result && !isAnalyzing && (
         <div className="mt-8 flex flex-col gap-6">
           {/* Summary */}
-          <div className="rounded-chunky bg-surface-low p-6">
+          <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
               Matchup Overview
             </h3>
@@ -253,7 +253,7 @@ export default function DraftPage() {
 
           {/* Bring 4 + Leads */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-chunky bg-surface-low p-6">
+            <div className="rounded-xl bg-surface-low p-6">
               <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
                 Bring These 4
               </h3>
@@ -263,7 +263,7 @@ export default function DraftPage() {
                   return (
                     <div
                       key={i}
-                      className={`rounded-chunky p-4 transition-all ${
+                      className={`rounded-xl p-4 transition-all ${
                         isLead ? "bg-primary/10" : "bg-surface-mid"
                       }`}
                     >
@@ -272,11 +272,11 @@ export default function DraftPage() {
                           {rec.pokemon}
                         </span>
                         {isLead && (
-                          <span className="rounded-pill bg-primary/20 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
+                          <span className="rounded-full bg-primary/20 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
                             Lead
                           </span>
                         )}
-                        <span className="ml-auto rounded-pill bg-surface-high px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                        <span className="ml-auto rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
                           {rec.role}
                         </span>
                       </div>
@@ -290,7 +290,7 @@ export default function DraftPage() {
             </div>
 
             {/* Game Plan */}
-            <div className="rounded-chunky bg-surface-low p-6">
+            <div className="rounded-xl bg-surface-low p-6">
               <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
                 Game Plan
               </h3>
@@ -301,13 +301,13 @@ export default function DraftPage() {
           </div>
 
           {/* Threats */}
-          <div className="rounded-chunky bg-surface-low p-6">
+          <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
               Threats
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {result.analysis.threats.map((threat, i) => (
-                <div key={i} className="rounded-chunky bg-surface-mid p-4">
+                <div key={i} className="rounded-xl bg-surface-mid p-4">
                   <div className="flex items-center gap-2">
                     <span className="font-display text-sm font-bold text-on-surface">
                       {threat.pokemon}
@@ -335,7 +335,7 @@ export default function DraftPage() {
                     {threat.key_moves.map((move, j) => (
                       <span
                         key={j}
-                        className="rounded-pill bg-surface-high px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
+                        className="rounded-full bg-surface-high px-2 py-0.5 font-body text-[0.6rem] text-on-surface"
                       >
                         {move}
                       </span>
@@ -347,7 +347,7 @@ export default function DraftPage() {
           </div>
 
           {/* Damage Calcs */}
-          <div className="rounded-chunky bg-surface-low p-6">
+          <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
               Key Damage Calculations
             </h3>
@@ -398,13 +398,13 @@ export default function DraftPage() {
           </div>
 
           {/* Record Outcome */}
-          <div className="rounded-chunky bg-surface-low p-6">
+          <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
               Record Outcome
             </h3>
             {savedId ? (
               <div className="flex items-center gap-3">
-                <span className={`rounded-pill px-4 py-2 font-display text-sm font-bold uppercase tracking-wider ${
+                <span className={`rounded-lg px-4 py-2 font-display text-sm font-bold uppercase tracking-wider ${
                   saveOutcome === "win"
                     ? "bg-secondary/20 text-secondary"
                     : "bg-tertiary/20 text-tertiary"
@@ -423,14 +423,14 @@ export default function DraftPage() {
                 <button
                   onClick={() => handleSave("win")}
                   disabled={isSaving}
-                  className="h-10 rounded-pill bg-secondary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-secondary transition-all hover:bg-secondary/30 disabled:opacity-40"
+                  className="h-10 rounded-lg bg-secondary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-secondary transition-all hover:bg-secondary/30 disabled:opacity-40"
                 >
                   {isSaving ? "Saving..." : "Win"}
                 </button>
                 <button
                   onClick={() => handleSave("loss")}
                   disabled={isSaving}
-                  className="h-10 rounded-pill bg-tertiary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-tertiary transition-all hover:bg-tertiary/30 disabled:opacity-40"
+                  className="h-10 rounded-lg bg-tertiary/20 px-6 font-display text-sm font-medium uppercase tracking-wider text-tertiary transition-all hover:bg-tertiary/30 disabled:opacity-40"
                 >
                   {isSaving ? "Saving..." : "Loss"}
                 </button>

@@ -124,16 +124,16 @@ export default function TeamsPage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
             Teams
           </h1>
-          <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
             {count} team{count !== 1 ? "s" : ""} saved
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal"
+          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
         >
           New Team
         </button>
@@ -143,10 +143,10 @@ export default function TeamsPage() {
       <div className="mb-6 flex gap-2">
         <button
           onClick={() => setFormatFilter("")}
-          className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+          className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-colors ${
             formatFilter === ""
-              ? "gradient-primary text-surface gloss-top"
-              : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
+              ? "bg-primary text-surface"
+              : "bg-surface-high text-on-surface-muted hover:bg-surface-highest transition-colors"
           }`}
         >
           All
@@ -155,10 +155,10 @@ export default function TeamsPage() {
           <button
             key={f}
             onClick={() => setFormatFilter(formatFilter === f ? "" : f)}
-            className={`h-9 rounded-pill px-4 font-display text-xs uppercase tracking-wider transition-all ${
+            className={`h-9 rounded-lg px-4 font-display text-xs uppercase tracking-wider transition-colors ${
               formatFilter === f
-                ? "gradient-primary text-surface gloss-top"
-                : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
+                ? "bg-primary text-surface"
+                : "bg-surface-high text-on-surface-muted hover:bg-surface-highest transition-colors"
             }`}
           >
             {f}
@@ -170,7 +170,7 @@ export default function TeamsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-chunky bg-surface-low" />
+            <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
       ) : teams.length === 0 ? (
@@ -184,7 +184,7 @@ export default function TeamsPage() {
           {!formatFilter && (
             <button
               onClick={handleCreate}
-              className="mt-6 h-10 rounded-pill gradient-primary px-6 font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top"
+              className="mt-6 btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
             >
               New Team
             </button>

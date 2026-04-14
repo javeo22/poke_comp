@@ -31,9 +31,9 @@ function UsageBar({ entries, label, max = 4 }: { entries: UsageEntry[]; label: s
             <span className="w-28 truncate font-body text-xs text-on-surface">
               {entry.name}
             </span>
-            <div className="h-1.5 flex-1 rounded-pill bg-surface-mid">
+            <div className="h-1.5 flex-1 rounded-full bg-surface-mid">
               <div
-                className="h-full rounded-pill bg-primary transition-all"
+                className="h-full rounded-full bg-primary transition-all"
                 style={{ width: `${(entry.percent / highest) * 100}%` }}
               />
             </div>
@@ -89,7 +89,7 @@ export function PokemonDetailPanel({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-surface/60 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/70"
         onClick={onClose}
       />
 
@@ -97,23 +97,23 @@ export function PokemonDetailPanel({
         {/* Header bar */}
         <div className="flex items-center justify-between p-6 pb-0">
           <div className="flex items-center gap-2">
-            <span className="rounded-pill bg-surface-mid px-3 py-1 font-display text-xs uppercase tracking-wider text-on-surface-muted">
+            <span className="rounded-full bg-surface-mid px-3 py-1 font-display text-xs uppercase tracking-wider text-on-surface-muted">
               {format}
             </span>
             {tier && (
-              <span className="rounded-pill bg-surface-mid px-3 py-1 font-display text-xs font-bold text-primary">
+              <span className="rounded-full bg-surface-mid px-3 py-1 font-display text-xs font-bold text-primary">
                 {tier} Tier
               </span>
             )}
             {usage && (
-              <span className="rounded-pill bg-secondary/15 px-3 py-1 font-display text-xs font-bold text-secondary">
+              <span className="rounded-full bg-secondary/15 px-3 py-1 font-display text-xs font-bold text-secondary">
                 {usage.usage_percent.toFixed(1)}% usage
               </span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-pill bg-surface-mid text-on-surface-muted hover:bg-surface-high hover:text-on-surface"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-mid text-on-surface-muted hover:bg-surface-high hover:text-on-surface"
           >
             x
           </button>
@@ -121,7 +121,7 @@ export function PokemonDetailPanel({
 
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center">
-            <div className="h-12 w-12 animate-pulse rounded-chunky bg-surface-mid" />
+            <div className="h-12 w-12 animate-pulse rounded-xl bg-surface-mid" />
           </div>
         ) : !pokemon ? (
           <div className="flex flex-1 items-center justify-center">
@@ -176,7 +176,7 @@ export function PokemonDetailPanel({
                 )}
               </>
             ) : (
-              <div className="rounded-chunky bg-surface-mid p-4 text-center">
+              <div className="rounded-xl bg-surface-mid p-4 text-center">
                 <p className="font-display text-xs text-on-surface-muted">
                   No competitive usage data available
                 </p>
@@ -188,7 +188,7 @@ export function PokemonDetailPanel({
               <h3 className="mb-2 font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
                 Base Stats
               </h3>
-              <div className="flex flex-col gap-1.5 rounded-chunky bg-surface-mid p-4">
+              <div className="flex flex-col gap-1.5 rounded-xl bg-surface-mid p-4">
                 {Object.entries(pokemon.base_stats).map(([stat, value]) => (
                   <StatBar key={stat} stat={stat} value={value} />
                 ))}
@@ -204,7 +204,7 @@ export function PokemonDetailPanel({
                 {pokemon.abilities.map((a) => (
                   <span
                     key={a}
-                    className="rounded-pill bg-primary/15 px-3 py-1 font-body text-sm text-primary"
+                    className="rounded-full bg-primary/15 px-3 py-1 font-body text-sm text-primary"
                   >
                     {a}
                   </span>
@@ -214,7 +214,7 @@ export function PokemonDetailPanel({
 
             {/* Mega info */}
             {pokemon.mega_evolution_id && (
-              <div className="rounded-chunky bg-primary/10 p-4">
+              <div className="rounded-xl bg-primary/10 p-4">
                 <p className="font-display text-xs uppercase tracking-wider text-primary">
                   Mega Evolution Available
                 </p>
@@ -230,7 +230,7 @@ export function PokemonDetailPanel({
                 {pokemon.movepool.map((m) => (
                   <span
                     key={m}
-                    className="rounded-pill bg-surface-mid px-2.5 py-1 font-body text-[0.7rem] text-on-surface"
+                    className="rounded-full bg-surface-mid px-2.5 py-1 font-body text-[0.7rem] text-on-surface"
                   >
                     {m}
                   </span>

@@ -88,10 +88,10 @@ export default function ItemsPage() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Items
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
           Competitive Item Reference
         </p>
       </div>
@@ -103,13 +103,13 @@ export default function ItemsPage() {
           placeholder="Search items..."
           value={filters.name}
           onChange={(e) => update({ name: e.target.value })}
-          className="input-recessed h-10 w-64 rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+          className="input-field h-10 w-64 rounded-xl px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
         />
 
         <select
           value={filters.category}
           onChange={(e) => update({ category: e.target.value })}
-          className="input-recessed h-10 rounded-chunky px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+          className="input-field h-10 rounded-xl px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
         >
           <option value="">All Categories</option>
           {ITEM_CATEGORIES.map((c) => (
@@ -121,9 +121,9 @@ export default function ItemsPage() {
 
         <button
           onClick={() => update({ championsOnly: !filters.championsOnly })}
-          className={`h-10 rounded-pill px-4 font-display text-xs font-medium uppercase tracking-wider transition-all glow-teal ${
+          className={`h-10 rounded-lg px-4 font-display text-xs font-medium uppercase tracking-wider transition-all ${
             filters.championsOnly
-              ? "gradient-primary text-surface gloss-top"
+              ? "bg-primary text-surface"
               : "bg-surface-high text-on-surface-muted"
           }`}
         >
@@ -163,7 +163,7 @@ export default function ItemsPage() {
                   {item.name}
                 </h3>
                 {item.champions_shop_available && (
-                  <span className="shrink-0 rounded-pill bg-secondary/20 px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-secondary">
+                  <span className="shrink-0 rounded-full bg-secondary/20 px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-secondary">
                     Shop
                   </span>
                 )}
@@ -171,12 +171,12 @@ export default function ItemsPage() {
 
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {item.category && (
-                  <span className="rounded-pill bg-surface-mid px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-on-surface-muted">
+                  <span className="rounded-full bg-surface-mid px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-on-surface-muted">
                     {CATEGORY_LABELS[item.category] || item.category}
                   </span>
                 )}
                 {item.vp_cost != null && (
-                  <span className="rounded-pill bg-primary/20 px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-primary">
+                  <span className="rounded-full bg-primary/20 px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest text-primary">
                     {item.vp_cost} VP
                   </span>
                 )}
@@ -198,7 +198,7 @@ export default function ItemsPage() {
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="h-10 rounded-chunky bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+            className="h-10 rounded-xl bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Prev
           </button>
@@ -208,7 +208,7 @@ export default function ItemsPage() {
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
-            className="h-10 rounded-chunky bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+            className="h-10 rounded-xl bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Next
           </button>

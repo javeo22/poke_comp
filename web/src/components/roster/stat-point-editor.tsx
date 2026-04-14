@@ -78,7 +78,7 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
         </span>
       </div>
 
-      <div className="rounded-chunky bg-surface-low p-3">
+      <div className="rounded-xl bg-surface-low p-3">
         <div className="grid grid-cols-3 gap-x-4 gap-y-2">
           {STAT_KEYS.map((key) => {
             const invested = value[key] || 0;
@@ -92,9 +92,9 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
                 </span>
 
                 {/* Mini bar */}
-                <div className="relative h-2 flex-1 rounded-pill bg-surface-mid">
+                <div className="relative h-2 flex-1 rounded-full bg-surface-mid">
                   <div
-                    className="absolute inset-y-0 left-0 rounded-pill bg-primary transition-all"
+                    className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
                     style={{ width: `${fillPct}%` }}
                   />
                 </div>
@@ -105,7 +105,7 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
                     type="button"
                     onClick={() => handleChange(key, invested - 2)}
                     disabled={invested === 0}
-                    className="flex h-5 w-5 items-center justify-center rounded-pill bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
                   >
                     -
                   </button>
@@ -116,7 +116,7 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
                     type="button"
                     onClick={() => handleChange(key, invested + 2)}
                     disabled={invested >= MAX_PER_STAT || remaining <= 0}
-                    className="flex h-5 w-5 items-center justify-center rounded-pill bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
                   >
                     +
                   </button>
@@ -135,7 +135,7 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
 
         {/* Speed tier context */}
         {finalSpeed > 0 && (
-          <div className="mt-3 rounded-pill bg-surface-mid px-3 py-1.5 text-center">
+          <div className="mt-3 rounded-full bg-surface-mid px-3 py-1.5 text-center">
             <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
               Speed: {finalSpeed}
             </span>

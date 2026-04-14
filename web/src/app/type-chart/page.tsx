@@ -82,10 +82,10 @@ export default function TypeChartPage() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Type Chart
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
           Offensive Type Effectiveness
         </p>
       </div>
@@ -142,7 +142,7 @@ export default function TypeChartPage() {
               <tr key={atkType}>
                 <td className="sticky left-0 z-10 bg-surface-low pr-2 py-0.5">
                   <span
-                    className={`${TYPE_BG[atkType]} inline-block w-full rounded-pill px-2 py-1 text-center font-display text-[10px] font-medium uppercase tracking-widest text-surface`}
+                    className={`${TYPE_BG[atkType]} inline-block w-full rounded-full px-2 py-1 text-center font-display text-[10px] font-medium uppercase tracking-widest text-surface`}
                   >
                     {atkType}
                   </span>

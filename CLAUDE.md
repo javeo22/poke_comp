@@ -28,19 +28,20 @@ poke_comp/
 - **Names:** Stored as Title Case ("Thunder Punch", not "thunder-punch")
 - **No ORM:** Direct Supabase client queries, SQL migrations
 - **Types:** Pydantic models (Python) are source of truth; TypeScript interfaces mirror manually
-- **No borders:** UI uses background color shifts, not 1px borders (design spec)
-- **Radii:** Minimum 1rem ("chunky") or pill (9999px), never 4px/8px
-- **Text color:** Use on-surface (#E2E1F1), never pure white (#FFFFFF)
+- **Borders:** 1px solid `outline-variant` on cards, panels, and inputs for clear boundaries.
+- **Radii:** 0.75rem for cards, 0.5rem for buttons/inputs, 9999px only for badges/dots.
+- **Text color:** Use on-surface (#E4E7ED), never pure white (#FFFFFF).
 
-## Design System: The Orbital Archive (Antigravity)
-The UI is a holographic projection floating in a weightless void. See `design/ANTIGRAVITY_DESIGN_REVIEW.md`.
-- **Core Principle:** Elements orbit the user; they are never "fixed" or "heavy."
-- **Z-Axis Depth:** Mandatory use of CSS `perspective: 1000px` on main layouts.
-- **Motion:** GSAP is the source of truth for all physics. No instant snaps. No generic ease-out.
-- **Glassmorphism:** `backdrop-filter: blur(16px)` with variable opacity (30-70%) based on elevation.
-- **Shadows:** Natural, ultra-diffused ambient occlusion. Shadows tint towards surface color.
-- **No Borders:** Strictly prohibited. Use tonal shifts and glass refraction for definition.
-- **Interaction:** Every hover must trigger a 3D tilt or slight Z-lift. Stagger all grid entrances.
+## Design System: Battle Station
+Tactical, high-contrast dark UI built for competitive play scan speed. Information-dense but never cluttered.
+- **Core Principle:** Scan speed over spectacle. Data in 200ms during live matches.
+- **Flat Materiality:** Opaque panels with borders. No glassmorphism, no 3D perspective, no backdrop-blur.
+- **Motion:** GSAP for entrance staggers and panel slides. 2D only -- no 3D tilt, no perspective transforms.
+- **Cards:** `.card` (static) or `.card-interactive` (hoverable) classes. Opaque bg-surface-low with 1px border.
+- **Buttons:** `.btn-primary` (solid sky blue) or `.btn-ghost` (transparent with border). No gradients, no glow.
+- **Inputs:** `.input-field` class. Focus ring with primary color.
+- **Hover:** CSS-only `transition-colors duration-150`. No GSAP hover effects.
+- **Grid entrance:** `gsap.fromTo` with `{ opacity: 0, y: 20 }` -> `{ opacity: 1, y: 0 }`, stagger 0.03s.
 
 ## Data Model Decisions
 - `movepool` and `abilities` on pokemon table are TEXT[] (denormalized, no FK to moves/abilities tables)

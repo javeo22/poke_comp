@@ -86,10 +86,10 @@ export function TeamForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-surface/80 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-8">
       <form
         onSubmit={handleSubmit}
-        className="glass glass-border mx-4 w-full max-w-2xl rounded-shell p-8"
+        className="card mx-4 w-full max-w-2xl p-8 shadow-2xl"
       >
         <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
           {editing ? "Edit Team" : "Create Team"}
@@ -106,7 +106,7 @@ export function TeamForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Rain Offense"
-              className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+              className="input-field h-10 w-full rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
               autoFocus
             />
           </div>
@@ -117,7 +117,7 @@ export function TeamForm({
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
-              className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+              className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
             >
               {FORMATS.map((f) => (
                 <option key={f} value={f}>
@@ -143,7 +143,7 @@ export function TeamForm({
                 return (
                   <div
                     key={i}
-                    className="flex h-20 items-center justify-center rounded-chunky bg-surface-lowest"
+                    className="flex h-20 items-center justify-center rounded-lg bg-surface-lowest"
                   >
                     <span className="font-display text-[0.6rem] uppercase text-on-surface-muted/40">
                       Empty
@@ -156,7 +156,7 @@ export function TeamForm({
               return (
                 <div
                   key={i}
-                  className={`relative flex flex-col items-center justify-center rounded-chunky p-1.5 transition-colors ${
+                  className={`relative flex flex-col items-center justify-center rounded-lg p-1.5 transition-colors ${
                     isMega ? "bg-primary-container/40" : "bg-surface-low"
                   }`}
                 >
@@ -196,7 +196,7 @@ export function TeamForm({
           <label className="mb-2 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
             Add from Roster
           </label>
-          <div className="max-h-48 overflow-y-auto rounded-chunky bg-surface-lowest p-2">
+          <div className="max-h-48 overflow-y-auto rounded-lg bg-surface-lowest p-2">
             {roster.length === 0 ? (
               <p className="py-4 text-center font-body text-sm text-on-surface-muted">
                 No Pokemon in roster yet
@@ -215,7 +215,7 @@ export function TeamForm({
                       type="button"
                       onClick={() => toggleSlot(entry.id)}
                       disabled={!isSelected && selectedIds.length >= 6}
-                      className={`flex items-center gap-2 rounded-chunky px-2 py-1.5 text-left transition-colors disabled:opacity-30 ${
+                      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-30 ${
                         isSelected
                           ? "bg-primary-container/30"
                           : "hover:bg-surface-mid"
@@ -263,7 +263,7 @@ export function TeamForm({
             <select
               value={megaId ?? ""}
               onChange={(e) => setMegaId(e.target.value || null)}
-              className="input-recessed h-10 w-full rounded-chunky px-3 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+              className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
             >
               <option value="">None</option>
               {selectedIds.map((id) => {
@@ -291,7 +291,7 @@ export function TeamForm({
               value={archetypeTag}
               onChange={(e) => setArchetypeTag(e.target.value)}
               placeholder="e.g. rain, trick room"
-              className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+              className="input-field h-10 w-full rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
             />
           </div>
           <div className="flex-1">
@@ -303,14 +303,14 @@ export function TeamForm({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Team notes..."
-              className="input-recessed h-10 w-full rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+              className="input-field h-10 w-full rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
             />
           </div>
         </div>
 
         {/* Type coverage analysis */}
         {teamTypes.length > 0 && (
-          <div className="mb-6 rounded-chunky bg-surface-lowest p-4">
+          <div className="mb-6 rounded-lg bg-surface-lowest p-4">
             <TypeCoverage teamTypes={teamTypes} />
           </div>
         )}
@@ -320,14 +320,14 @@ export function TeamForm({
           <button
             type="submit"
             disabled={!name.trim() || selectedIds.length === 0}
-            className="h-10 flex-1 rounded-pill gradient-primary font-display text-xs font-medium uppercase tracking-wider text-surface gloss-top transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-primary h-10 flex-1 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {editing ? "Save Changes" : "Create Team"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 rounded-pill bg-surface-high px-6 font-display text-xs uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-surface-highest"
+            className="btn-ghost h-10 px-6 font-display text-xs uppercase tracking-wider"
           >
             Cancel
           </button>

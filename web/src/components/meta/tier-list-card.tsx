@@ -27,7 +27,7 @@ export function TierListCard({ snapshot, onPokemonClick }: TierListCardProps) {
   );
 
   return (
-    <div className="rounded-chunky bg-surface-low p-6 hover-lift">
+    <div className="rounded-xl card p-6 hover-lift">
       <div className="mb-5 flex items-baseline justify-between">
         <h2 className="font-display text-2xl font-bold capitalize text-on-surface">
           {snapshot.format}

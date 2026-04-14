@@ -6,10 +6,10 @@ import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import { TypeBadge } from "@/features/pokemon/components/type-badge";
 
-const STATUS_LED: Record<string, string> = {
-  built: "led-active",
-  training: "led-training",
-  wishlist: "led-wishlist",
+const STATUS_DOT: Record<string, string> = {
+  built: "status-built",
+  training: "status-training",
+  wishlist: "status-wishlist",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -36,13 +36,13 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
     : 0;
 
   return (
-    <div className="group relative rounded-chunky bg-surface-low p-5 transition-all duration-200 hover:bg-surface-mid gloss-top">
+    <div className="group relative card-interactive p-5">
       {/* Status LED */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
           {STATUS_LABEL[statusKey]}
         </span>
-        <div className={`led ${STATUS_LED[statusKey]}`} />
+        <div className={`status-dot ${STATUS_DOT[statusKey]}`} />
       </div>
 
       {/* Header */}
@@ -58,7 +58,7 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[0.65rem] uppercase tracking-[0.05rem] text-on-surface-muted">
+          <p className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
             #{String(pokemon.id).padStart(4, "0")}
           </p>
           <h3 className="truncate font-display text-lg font-semibold text-on-surface">
@@ -107,7 +107,7 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
               {entry.moves.map((m) => (
                 <span
                   key={m}
-                  className="rounded-pill bg-surface-mid px-2 py-0.5 font-body text-[0.65rem] text-on-surface"
+                  className="rounded-full bg-surface-mid px-2 py-0.5 font-body text-[0.65rem] text-on-surface"
                 >
                   {m}
                 </span>
@@ -135,13 +135,13 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
       <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           onClick={() => onEdit(entry)}
-          className="h-7 rounded-pill bg-surface-high px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest"
+          className="btn-ghost h-7 px-3 font-display text-[0.6rem] uppercase tracking-wider"
         >
           Edit
         </button>
         <button
           onClick={() => onDelete(entry.id)}
-          className="h-7 rounded-pill bg-tertiary-container px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-tertiary"
+          className="h-7 rounded-lg bg-tertiary-container px-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface transition-colors hover:bg-tertiary"
         >
           Delete
         </button>

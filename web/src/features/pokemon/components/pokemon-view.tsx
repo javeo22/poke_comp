@@ -86,11 +86,11 @@ export function PokemonView() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Pokedex
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
-          Pokemon Champions Database
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
+          Pokemon Champions database
         </p>
       </div>
 
@@ -124,15 +124,13 @@ function ListContainer({ filters, offset, onPageChange }: { filters: FilterState
     if (gridRef.current) {
       gsap.fromTo(
         gsap.utils.toArray(".scrollComponent"),
-        { opacity: 0, y: 50, z: -150, rotateX: -15 },
-        { 
-          opacity: 1, 
-          y: 0, 
-          z: 0, 
-          rotateX: 0,
-          stagger: 0.04, 
-          ease: "back.out(1.4)", 
-          duration: 0.5,
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1,
+          y: 0,
+          stagger: 0.03,
+          ease: "power2.out",
+          duration: 0.35,
           clearProps: "all"
         }
       );
@@ -153,7 +151,7 @@ function ListContainer({ filters, offset, onPageChange }: { filters: FilterState
           <p className="mb-4 font-display text-xs uppercase tracking-[0.05rem] text-on-surface-muted">
             {data.count} result{data.count !== 1 ? "s" : ""}
           </p>
-          <div ref={gridRef} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ perspective: "1000px" }}>
+          <div ref={gridRef} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.data.map((p) => (
               <div key={p.id} className="scrollComponent">
                 <PokemonCard pokemon={p} />
@@ -166,17 +164,17 @@ function ListContainer({ filters, offset, onPageChange }: { filters: FilterState
               <button
                 onClick={() => onPageChange(offset - PAGE_SIZE)}
                 disabled={currentPage <= 1}
-                className="h-10 rounded-full bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                className="btn-ghost h-10 px-4 font-display text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Prev
               </button>
-              <span className="px-4 font-display text-xs uppercase tracking-[0.05rem] text-on-surface-muted">
+              <span className="px-4 font-display text-xs uppercase tracking-wider text-on-surface-muted">
                 {currentPage} / {totalPages}
               </span>
               <button
                 onClick={() => onPageChange(offset + PAGE_SIZE)}
                 disabled={currentPage >= totalPages}
-                className="h-10 rounded-full bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+                className="btn-ghost h-10 px-4 font-display text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -194,7 +192,7 @@ function ListSkeleton() {
       {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
-          className="h-64 animate-pulse rounded-full bg-surface-low/50"
+          className="h-64 animate-pulse rounded-xl bg-surface-low/50"
         />
       ))}
     </div>

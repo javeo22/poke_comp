@@ -68,7 +68,7 @@ export function CoverageSummary({ entries, pokemonMap }: CoverageSummaryProps) {
   const uncovered = ALL_TYPES.filter((t) => !coveredTypes.has(t));
 
   return (
-    <div className="rounded-chunky bg-surface-low p-5">
+    <div className="rounded-xl bg-surface-low p-5">
       <h3 className="mb-3 font-display text-sm font-bold text-on-surface">
         Team Coverage
       </h3>
@@ -84,7 +84,7 @@ export function CoverageSummary({ entries, pokemonMap }: CoverageSummaryProps) {
           return (
             <div
               key={type}
-              className={`flex flex-col items-center gap-0.5 rounded-chunky p-1.5 ${
+              className={`flex flex-col items-center gap-0.5 rounded-xl p-1.5 ${
                 isCovered
                   ? "bg-secondary/15"
                   : "bg-tertiary/15"
@@ -98,7 +98,7 @@ export function CoverageSummary({ entries, pokemonMap }: CoverageSummaryProps) {
                 {type.slice(0, 3)}
               </span>
               {isTeamType && (
-                <div className="h-1 w-1 rounded-pill bg-primary" />
+                <div className="h-1 w-1 rounded-full bg-primary" />
               )}
             </div>
           );

@@ -32,7 +32,7 @@ function CategoryBadge({ category }: { category: string }) {
 
   return (
     <span
-      className={`inline-block rounded-pill px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest ${
+      className={`inline-block rounded-full px-3 py-0.5 font-display text-xs font-medium uppercase tracking-widest ${
         styles[category] || styles.status
       }`}
     >
@@ -118,10 +118,10 @@ export default function MovesPage() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Moves
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
           Complete Move Reference
         </p>
       </div>
@@ -133,13 +133,13 @@ export default function MovesPage() {
           placeholder="Search moves..."
           value={filters.name}
           onChange={(e) => update({ name: e.target.value })}
-          className="input-recessed h-10 w-64 rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+          className="input-field h-10 w-64 rounded-xl px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
         />
 
         <select
           value={filters.type}
           onChange={(e) => update({ type: e.target.value })}
-          className="input-recessed h-10 rounded-chunky px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+          className="input-field h-10 rounded-xl px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
         >
           <option value="">All Types</option>
           {POKEMON_TYPES.map((t) => (
@@ -152,7 +152,7 @@ export default function MovesPage() {
         <select
           value={filters.category}
           onChange={(e) => update({ category: e.target.value })}
-          className="input-recessed h-10 rounded-chunky px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+          className="input-field h-10 rounded-xl px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
         >
           <option value="">All Categories</option>
           {CATEGORIES.map((c) => (
@@ -164,9 +164,9 @@ export default function MovesPage() {
 
         <button
           onClick={() => update({ championsOnly: !filters.championsOnly })}
-          className={`h-10 rounded-pill px-4 font-display text-xs font-medium uppercase tracking-wider transition-all glow-teal ${
+          className={`h-10 rounded-lg px-4 font-display text-xs font-medium uppercase tracking-wider transition-all ${
             filters.championsOnly
-              ? "gradient-primary text-surface gloss-top"
+              ? "bg-primary text-surface"
               : "bg-surface-high text-on-surface-muted"
           }`}
         >
@@ -244,7 +244,7 @@ export default function MovesPage() {
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="h-10 rounded-chunky bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+            className="h-10 rounded-xl bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Prev
           </button>
@@ -254,7 +254,7 @@ export default function MovesPage() {
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
-            className="h-10 rounded-chunky bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
+            className="h-10 rounded-xl bg-surface-high px-4 font-display text-xs uppercase tracking-wider text-on-surface transition-colors hover:bg-surface-highest disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Next
           </button>

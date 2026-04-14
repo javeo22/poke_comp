@@ -129,7 +129,7 @@ export function SearchableDropdown({
           onKeyDown={handleKeyDown}
           placeholder={disabled ? "Select a Pokemon first" : placeholder}
           disabled={disabled}
-          className="input-recessed h-10 w-full rounded-chunky px-4 pr-8 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow disabled:opacity-40 disabled:cursor-not-allowed"
+          className="input-field h-10 w-full rounded-lg px-4 pr-8 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none disabled:opacity-40 disabled:cursor-not-allowed"
         />
         {value && !disabled && (
           <button
@@ -146,7 +146,7 @@ export function SearchableDropdown({
       {isOpen && !disabled && filtered.length > 0 && (
         <div
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-chunky bg-surface-high"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg card shadow-lg"
         >
           {filtered.map((opt, i) => (
             <button
@@ -156,8 +156,8 @@ export function SearchableDropdown({
               onClick={() => handleSelect(opt)}
               className={`flex w-full items-center justify-between px-4 py-2 text-left transition-colors ${
                 i === highlightIndex
-                  ? "bg-surface-highest"
-                  : "hover:bg-surface-highest"
+                  ? "bg-surface-mid"
+                  : "hover:bg-surface-mid"
               }`}
             >
               <span className="font-body text-sm text-on-surface">
@@ -174,7 +174,7 @@ export function SearchableDropdown({
       )}
 
       {isOpen && !disabled && query && filtered.length === 0 && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-chunky bg-surface-high px-4 py-3">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg card shadow-lg px-4 py-3">
           <span className="font-body text-sm text-on-surface-muted">No matches</span>
         </div>
       )}

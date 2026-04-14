@@ -124,10 +124,10 @@ export default function CheatsheetPage() {
     <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
       {/* Page Header + Controls */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
           Cheatsheet
         </h1>
-        <p className="mt-1 font-display text-sm uppercase tracking-[0.05rem] text-on-surface-muted">
+        <p className="mt-1 font-body text-sm text-on-surface-muted">
           AI-generated game plan &middot; One page, everything you need
         </p>
       </div>
@@ -152,7 +152,7 @@ export default function CheatsheetPage() {
         <button
           onClick={handleGenerate}
           disabled={!canGenerate}
-          className="h-12 rounded-full gradient-primary px-8 font-display text-sm font-medium uppercase tracking-wider text-surface gloss-top transition-all glow-teal disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isGenerating ? "Generating..." : "Generate Cheatsheet"}
         </button>

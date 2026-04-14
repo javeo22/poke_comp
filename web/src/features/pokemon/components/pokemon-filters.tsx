@@ -29,14 +29,14 @@ export function PokemonFilters({ filters, onFilterChange }: PokemonFiltersProps)
         placeholder="Search Pokemon..."
         value={filters.name}
         onChange={(e) => update({ name: e.target.value })}
-        className="input-recessed h-10 w-64 rounded-chunky px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none transition-shadow"
+        className="input-field h-10 w-64 rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
       />
 
       {/* Type select */}
       <select
         value={filters.type}
         onChange={(e) => update({ type: e.target.value })}
-        className="input-recessed h-10 rounded-chunky px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+        className="input-field h-10 rounded-lg px-3 pr-8 font-body text-sm text-on-surface appearance-none"
       >
         <option value="">All Types</option>
         {POKEMON_TYPES.map((t) => (
@@ -50,7 +50,7 @@ export function PokemonFilters({ filters, onFilterChange }: PokemonFiltersProps)
       <select
         value={filters.generation}
         onChange={(e) => update({ generation: e.target.value })}
-        className="input-recessed h-10 rounded-chunky px-3 pr-8 font-body text-sm text-on-surface outline-none transition-shadow appearance-none"
+        className="input-field h-10 rounded-lg px-3 pr-8 font-body text-sm text-on-surface appearance-none"
       >
         <option value="">All Gens</option>
         {GENERATIONS.map((g) => (
@@ -63,10 +63,10 @@ export function PokemonFilters({ filters, onFilterChange }: PokemonFiltersProps)
       {/* Champions toggle */}
       <button
         onClick={() => update({ championsOnly: !filters.championsOnly })}
-        className={`h-10 rounded-pill px-4 font-display text-xs font-medium uppercase tracking-wider transition-all glow-teal ${
+        className={`h-10 rounded-lg px-4 font-display text-xs font-medium uppercase tracking-wider transition-colors ${
           filters.championsOnly
-            ? "gradient-primary text-surface gloss-top"
-            : "bg-surface-high text-on-surface-muted"
+            ? "btn-primary"
+            : "bg-surface-high text-on-surface-muted hover:bg-surface-highest"
         }`}
       >
         Champions

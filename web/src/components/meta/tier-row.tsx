@@ -24,7 +24,7 @@ export function TierRow({ tier, pokemon, onPokemonClick }: TierRowProps) {
   return (
     <div className="flex gap-4 items-start">
       <div
-        className={`flex h-12 w-16 shrink-0 items-center justify-center rounded-chunky ${colors.bg}`}
+        className={`flex h-12 w-16 shrink-0 items-center justify-center rounded-xl ${colors.bg}`}
       >
         <span className={`font-display text-lg font-bold ${colors.text}`}>
           {tier}
@@ -36,7 +36,7 @@ export function TierRow({ tier, pokemon, onPokemonClick }: TierRowProps) {
             key={name}
             type="button"
             onClick={() => onPokemonClick?.(name)}
-            className="rounded-pill bg-surface-mid px-3 py-1.5 font-body text-sm text-on-surface transition-all hover:bg-surface-high hover:-translate-y-0.5"
+            className="rounded-lg bg-surface-mid px-3 py-1.5 font-body text-sm text-on-surface transition-all hover:bg-surface-high hover:-translate-y-0.5"
           >
             {name}
           </button>
