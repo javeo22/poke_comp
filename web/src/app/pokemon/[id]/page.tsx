@@ -174,33 +174,51 @@ export default function PokemonDetailPage() {
           </h2>
           {pokemon.usage.length > 0 ? (
             <div className="space-y-4">
-              {pokemon.usage.map((u) => (
-                <div key={u.format} className="rounded-lg bg-surface-lowest p-3 border border-outline-variant">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-display text-xs font-semibold uppercase tracking-wider text-on-surface">
-                      {u.format}
-                    </span>
-                    <span className="font-display text-sm font-bold text-primary">
-                      {u.usage_percent.toFixed(1)}%
-                    </span>
+              {pokemon.usage.map((u) => {
+                const hasAnyDetail =
+                  u.top_moves.length > 0 ||
+                  u.top_items.length > 0 ||
+                  u.top_abilities.length > 0 ||
+                  u.top_teammates.length > 0;
+
+                return (
+                  <div key={u.format} className="rounded-lg bg-surface-lowest p-3 border border-outline-variant">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-display text-xs font-semibold uppercase tracking-wider text-on-surface">
+                        {u.format}
+                      </span>
+                      <span className="font-display text-sm font-bold text-primary">
+                        {u.usage_percent.toFixed(1)}%
+                      </span>
+                    </div>
+                    {u.top_moves.length > 0 && (
+                      <UsageRow label="Moves" items={u.top_moves} />
+                    )}
+                    {u.top_items.length > 0 && (
+                      <UsageRow label="Items" items={u.top_items} />
+                    )}
+                    {u.top_abilities.length > 0 && (
+                      <UsageRow label="Abilities" items={u.top_abilities} />
+                    )}
+                    {u.top_teammates.length > 0 && (
+                      <UsageRow label="Teammates" items={u.top_teammates} />
+                    )}
+                    {!hasAnyDetail && (
+                      <p className="mt-1 text-xs italic text-on-surface-muted">
+                        Usage % only -- detailed breakdowns pending data refresh
+                      </p>
+                    )}
                   </div>
-                  {u.top_moves.length > 0 && (
-                    <UsageRow label="Moves" items={u.top_moves} />
-                  )}
-                  {u.top_items.length > 0 && (
-                    <UsageRow label="Items" items={u.top_items} />
-                  )}
-                  {u.top_abilities.length > 0 && (
-                    <UsageRow label="Abilities" items={u.top_abilities} />
-                  )}
-                  {u.top_teammates.length > 0 && (
-                    <UsageRow label="Teammates" items={u.top_teammates} />
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <p className="text-sm text-on-surface-muted">No usage data available yet.</p>
+            <div className="rounded-lg bg-surface-lowest p-4 border border-outline-variant text-center">
+              <p className="text-sm text-on-surface-muted">No usage data available yet.</p>
+              <p className="mt-1 text-xs text-on-surface-muted">
+                Data refreshes automatically from Pikalytics and Smogon.
+              </p>
+            </div>
           )}
         </div>
       </div>

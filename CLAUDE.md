@@ -74,7 +74,11 @@ After completing any implementation work, always update:
 - **Serebii import:** `cd api && uv run python -m scripts.ingest.serebii_static`
 - **Usage ingest (Smogon):** `cd api && uv run python -m scripts.ingest.smogon_meta`
 - **Teams ingest (Limitless):** `cd api && uv run python -m scripts.ingest.limitless_teams`
+- **Usage ingest (Pikalytics):** `cd api && uv run python -m scripts.ingest.pikalytics_usage`
 - **Tier list refresh (AI):** `cd api && uv run python -m scripts.refresh_meta`
+- **Data validation:** `cd api && uv run python -m scripts.validate_data`
+- **Data validation (fix mode):** `cd api && uv run python -m scripts.validate_data --fix`
+- **Smoke test:** `cd api && uv run python -m scripts.smoke_test`
 - **Seed user data:** `cd api && uv run python ../scripts/seed_user_data.py`
 
 ## Data Pipeline
@@ -86,9 +90,15 @@ Scripts are organized into three layers:
 - `scripts/ingest/serebii_static.py` -- Champions-verified movepools, abilities, items, moves, mega data
 
 **Automated refresh** (scheduled weekly/daily):
-- `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon -> `pokemon_usage` table
-- `scripts/ingest/limitless_teams.py` -- Tournament teams -> `tournament_teams` table
+- `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon (gen9vgc2026) -> `pokemon_usage` table
+- `scripts/ingest/limitless_teams.py` -- Tournament teams from Limitless VGC API -> `tournament_teams` table
+- `scripts/ingest/pikalytics_usage.py` -- Tournament-weighted usage stats from Pikalytics -> `pokemon_usage` table
 - `scripts/refresh_meta.py` -- AI-extracted tier lists -> `meta_snapshots` table (daily cron)
+
+**Validation** (run after ingest or on-demand):
+- `scripts/validate_data.py` -- 7-check data integrity validator (--fix mode to auto-repair)
+- `scripts/smoke_test.py` -- Quick pass/fail data health check
+- `GET /admin/data-health` -- API endpoint for data health monitoring
 
 **On-demand** (via API):
 - `POST /meta/scrape` -- Trigger Game8 tier list scrape from the API

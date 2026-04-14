@@ -134,14 +134,18 @@ def _fetch_team_pokemon(team_id: str, user_id: str) -> dict:
     }
 
 
-def _fetch_usage_context(pokemon_names: list[str]) -> list[dict]:
-    """Fetch competitive usage data for a list of Pokemon names."""
+def _fetch_usage_context(pokemon_names: list[str], format_key: str = "doubles") -> list[dict]:
+    """Fetch competitive usage data for a list of Pokemon names.
+
+    Filters by Champions format (defaults to doubles -- the VGC format).
+    """
     usage_rows: list[dict] = []
     for name in pokemon_names:
         result = (
             supabase.table("pokemon_usage")
             .select("pokemon_name, usage_percent, moves, items, abilities, teammates")
             .ilike("pokemon_name", name.strip())
+            .eq("format", format_key)
             .order("snapshot_date", desc=True)
             .limit(1)
             .execute()
@@ -427,7 +431,8 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     opponent_names = [p["name"] for p in opponent_pokemon]
     opponent_ids = [p["id"] for p in opponent_pokemon if p.get("id", 0) > 0]
 
-    opponent_usage = _fetch_usage_context(opponent_names)
+    team_format = my_team.get("format", "doubles")
+    opponent_usage = _fetch_usage_context(opponent_names, team_format)
     my_usage: list[dict] = []
 
     tournament_context = _fetch_tournament_context(opponent_ids)

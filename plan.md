@@ -154,10 +154,19 @@
 - [x] GET /teams/{id}/export endpoint
 - [ ] Frontend UI: import modal + export button on teams page
 
+### Data Quality Overhaul -- COMPLETE
+- [x] Phase 1: Fixed Smogon URL (gen9doublesou -> gen9vgc2026), added ingest validation
+- [x] Phase 2: API read-path filtering by Champions format (pokemon, usage, draft, cheatsheet)
+- [x] Phase 3: Real Limitless VGC API integration (replaced mock data)
+- [x] Phase 4: Pikalytics Champions scraper for tournament-weighted usage stats
+- [x] Phase 5: Schema hardening (CHECK constraints, abilities.champions_available)
+- [x] Phase 6: UI empty-state handling for partial/missing data
+- [x] Phase 7: Data validation agent (7 checks + /admin/data-health endpoint)
+- [x] Smoke test script for CI verification
+
 ### Remaining
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
-- [ ] Limitless VGC real API integration
 - [ ] Speed tier reference page
 - [ ] Open source release (MIT or Apache 2.0)
 - [ ] README with setup instructions

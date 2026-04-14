@@ -84,32 +84,34 @@ def get_pokemon_detail(pokemon_id: int):
         ab_rows: list[dict[str, Any]] = ab_result.data  # type: ignore[assignment]
         ability_details = [AbilityDetail.model_validate(a) for a in ab_rows]
 
-    # Fetch usage data (all formats)
+    # Fetch usage data -- latest snapshot per Champions format
     usage: list[PokemonUsageSummary] = []
-    usage_result = (
-        supabase.table("pokemon_usage")
-        .select("format, usage_percent, moves, items, abilities, teammates")
-        .eq("pokemon_name", base.name)
-        .order("snapshot_date", desc=True)
-        .limit(3)
-        .execute()
-    )
-    usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
-    for u in usage_rows:
-        moves_data = u.get("moves") or {}
-        items_data = u.get("items") or {}
-        ab_data = u.get("abilities") or {}
-        teammates_data = u.get("teammates") or {}
-        usage.append(
-            PokemonUsageSummary(
-                format=u.get("format", ""),
-                usage_percent=u.get("usage_percent", 0),
-                top_moves=list(moves_data.keys())[:6],
-                top_items=list(items_data.keys())[:4],
-                top_abilities=list(ab_data.keys())[:3],
-                top_teammates=list(teammates_data.keys())[:4],
-            )
+    for fmt in ("doubles", "singles"):
+        usage_result = (
+            supabase.table("pokemon_usage")
+            .select("format, usage_percent, moves, items, abilities, teammates")
+            .eq("pokemon_name", base.name)
+            .eq("format", fmt)
+            .order("snapshot_date", desc=True)
+            .limit(1)
+            .execute()
         )
+        usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
+        for u in usage_rows:
+            moves_list: list[dict] = u.get("moves") or []
+            items_list: list[dict] = u.get("items") or []
+            ab_list: list[dict] = u.get("abilities") or []
+            mates_list: list[dict] = u.get("teammates") or []
+            usage.append(
+                PokemonUsageSummary(
+                    format=u.get("format", ""),
+                    usage_percent=u.get("usage_percent", 0),
+                    top_moves=[m["name"] for m in moves_list[:6]],
+                    top_items=[i["name"] for i in items_list[:4]],
+                    top_abilities=[a["name"] for a in ab_list[:3]],
+                    top_teammates=[t["name"] for t in mates_list[:4]],
+                )
+            )
 
     # Resolve mega evolution name if linked
     mega_name: str | None = None

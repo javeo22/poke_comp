@@ -47,6 +47,19 @@ function UsageBar({ entries, label, max = 4 }: { entries: UsageEntry[]; label: s
   );
 }
 
+function EmptySection({ label }: { label: string }) {
+  return (
+    <div>
+      <h3 className="mb-2 font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+        {label}
+      </h3>
+      <p className="font-body text-xs italic text-on-surface-muted">
+        No data available
+      </p>
+    </div>
+  );
+}
+
 export function PokemonDetailPanel({
   pokemonName,
   tier,
@@ -159,26 +172,42 @@ export function PokemonDetailPanel({
             {/* Usage sections — the competitive intelligence */}
             {usage ? (
               <>
-                {usage.moves && (
+                {usage.moves && usage.moves.length > 0 ? (
                   <UsageBar entries={usage.moves} label="Most Used Moves" max={6} />
+                ) : (
+                  <EmptySection label="Most Used Moves" />
                 )}
 
-                {usage.items && (
+                {usage.items && usage.items.length > 0 ? (
                   <UsageBar entries={usage.items} label="Most Used Items" max={5} />
+                ) : (
+                  <EmptySection label="Most Used Items" />
                 )}
 
-                {usage.abilities && (
+                {usage.abilities && usage.abilities.length > 0 ? (
                   <UsageBar entries={usage.abilities} label="Abilities" />
+                ) : (
+                  <EmptySection label="Abilities" />
                 )}
 
-                {usage.teammates && (
+                {usage.teammates && usage.teammates.length > 0 ? (
                   <UsageBar entries={usage.teammates} label="Common Teammates" max={6} />
+                ) : (
+                  <EmptySection label="Common Teammates" />
                 )}
+
+                {/* Data source + freshness */}
+                <p className="mt-1 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                  Source: {usage.source ?? "pikalytics"} &middot; {usage.snapshot_date ?? "recent"}
+                </p>
               </>
             ) : (
               <div className="rounded-xl bg-surface-mid p-4 text-center">
                 <p className="font-display text-xs text-on-surface-muted">
                   No competitive usage data available
+                </p>
+                <p className="mt-1 font-display text-[0.5rem] text-on-surface-muted">
+                  Usage data refreshes automatically from Pikalytics and Smogon
                 </p>
               </div>
             )}

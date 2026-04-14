@@ -7,7 +7,7 @@
 - [ ] Cheatsheet frontend component completion
 
 ### Data
-- [ ] Limitless VGC real API integration (replace mock in limitless_teams.py)
+- [ ] Run Pikalytics ingest for full usage data (scripts/ingest/pikalytics_usage.py)
 
 ---
 
@@ -86,3 +86,10 @@
 - [x] POST /teams/import and GET /teams/{id}/export endpoints
 - [x] Pre-existing CI lint/format/pyright errors fixed (auth.py, draft.py, teams.py, seed_auth_user.py)
 - [x] Added pnpm-lock.yaml for CI cache resolution
+- [x] Data quality overhaul: Smogon URL fix (gen9vgc2026), ingest validation, API format filtering
+- [x] Real Limitless VGC API integration (replaced mock data)
+- [x] Pikalytics Champions scraper (scripts/ingest/pikalytics_usage.py)
+- [x] Schema hardening: CHECK constraints, abilities.champions_available, tournament_teams dedup
+- [x] UI empty-state handling for partial/missing usage data
+- [x] Data validation agent (scripts/validate_data.py) with 7 checks + /admin/data-health endpoint
+- [x] Smoke test script (scripts/smoke_test.py)

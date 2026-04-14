@@ -9,14 +9,13 @@ router = APIRouter(prefix="/usage", tags=["usage"])
 
 @router.get("", response_model=PokemonUsageList)
 def list_usage(
-    format: str | None = Query(None, description="Filter by format (doubles, singles)"),
+    format: str = Query("doubles", description="Filter by format (doubles, singles)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    query = supabase.table("pokemon_usage").select("*", count=CountMethod.exact)
-
-    if format:
-        query = query.eq("format", format)
+    query = (
+        supabase.table("pokemon_usage").select("*", count=CountMethod.exact).eq("format", format)
+    )
 
     result = query.order("usage_percent", desc=True).range(offset, offset + limit - 1).execute()
     return PokemonUsageList(
