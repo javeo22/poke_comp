@@ -16,14 +16,21 @@ export function PokemonCard({ pokemon }: { pokemon: Pokemon }) {
 
   return (
     <Link href={`/pokemon/${pokemon.id}`} className="block">
-    <div className="card-interactive p-5">
+    <div className={`card-interactive p-5 ${!pokemon.champions_eligible ? "opacity-50" : ""}`}>
       {/* Champions indicator */}
-      {pokemon.champions_eligible && (
+      {pokemon.champions_eligible ? (
         <div
           className="absolute top-4 right-4 status-dot"
           style={{ backgroundColor: primaryTypeColor }}
           title="Champions eligible"
         />
+      ) : (
+        <span
+          className="absolute top-3 right-3 rounded-full border border-outline-variant px-2 py-0.5 font-display text-[0.5rem] uppercase tracking-wider text-on-surface-muted"
+          title="Not available in Champions"
+        >
+          Not in Champions
+        </span>
       )}
 
       {/* Header */}

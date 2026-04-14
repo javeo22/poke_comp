@@ -16,6 +16,24 @@ from app.models.pokemon import (
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
 
 
+def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
+    """Extract Pokemon/move/item names from usage data.
+
+    Handles both legacy dict format ({"Name": count, ...}) and current
+    list format ([{"name": "Name", "percent": 50.0}, ...]) stored by the
+    Smogon ingest pipeline.
+    """
+    if not data:
+        return []
+    if isinstance(data, list):
+        return [
+            entry["name"]
+            for entry in data[:limit]
+            if isinstance(entry, dict) and "name" in entry
+        ]
+    return list(data.keys())[:limit]
+
+
 @router.get("", response_model=PokemonList)
 def list_pokemon(
     name: str | None = Query(None, description="Filter by name (case-insensitive contains)"),
@@ -100,18 +118,14 @@ def get_pokemon_detail(pokemon_id: int):
     )
     usage_rows: list[dict[str, Any]] = usage_result.data  # type: ignore[assignment]
     for u in usage_rows:
-        moves_data = u.get("moves") or {}
-        items_data = u.get("items") or {}
-        ab_data = u.get("abilities") or {}
-        teammates_data = u.get("teammates") or {}
         usage.append(
             PokemonUsageSummary(
                 format=u.get("format", ""),
                 usage_percent=u.get("usage_percent", 0),
-                top_moves=list(moves_data.keys())[:6],
-                top_items=list(items_data.keys())[:4],
-                top_abilities=list(ab_data.keys())[:3],
-                top_teammates=list(teammates_data.keys())[:4],
+                top_moves=_extract_usage_names(u.get("moves"), 6),
+                top_items=_extract_usage_names(u.get("items"), 4),
+                top_abilities=_extract_usage_names(u.get("abilities"), 3),
+                top_teammates=_extract_usage_names(u.get("teammates"), 4),
             )
         )
 
