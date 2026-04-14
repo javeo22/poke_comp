@@ -174,7 +174,9 @@ def ingest_smogon_data(sb: Client) -> None:
         sb.table("pokemon_usage").select("pokemon_name").eq("format", FORMAT_KEY).execute()
     )
     existing_rows: list[dict] = existing_result.data  # type: ignore[assignment]
-    stale_names = [r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names]
+    stale_names = [
+        r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names
+    ]
     if stale_names:
         print(f"  Removing {len(stale_names)} non-Champions entries from pokemon_usage...")
         batch_size = 100
