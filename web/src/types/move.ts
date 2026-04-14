@@ -8,6 +8,7 @@ export interface Move {
   target: string | null;
   effect_text: string | null;
   champions_available: boolean;
+  learner_count?: number | null;
 }
 
 export interface MoveListResponse {

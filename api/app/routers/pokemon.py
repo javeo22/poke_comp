@@ -45,18 +45,22 @@ def list_pokemon(
 
 @router.get("/{pokemon_id}", response_model=PokemonBase)
 def get_pokemon(pokemon_id: int):
-    result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+    try:
+        result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Pokemon not found") from exc
     return PokemonBase.model_validate(result.data)
 
 
 @router.get("/{pokemon_id}/detail", response_model=PokemonDetail)
 def get_pokemon_detail(pokemon_id: int):
     """Enriched Pokemon data: base info + move details + ability descriptions + usage."""
-    # Fetch base Pokemon
-    poke_result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
-    poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
-    if not poke_row:
-        raise HTTPException(status_code=404, detail="Pokemon not found")
+    # Fetch base Pokemon — .single() raises on zero rows; treat as 404
+    try:
+        poke_result = supabase.table("pokemon").select("*").eq("id", pokemon_id).single().execute()
+        poke_row: dict[str, Any] = poke_result.data  # type: ignore[assignment]
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Pokemon not found") from exc
 
     base = PokemonBase.model_validate(poke_row)
 

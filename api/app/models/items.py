@@ -9,6 +9,7 @@ class ItemBase(BaseModel):
     vp_cost: int | None = None
     champions_shop_available: bool
     last_verified: str | None = None
+    top_holders: list[str] | None = None
 
 
 class ItemList(BaseModel):

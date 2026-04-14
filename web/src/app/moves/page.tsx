@@ -195,7 +195,7 @@ export default function MovesPage() {
           <table className="w-full" role="table">
             <thead>
               <tr>
-                {["Name", "Type", "Category", "Power", "Accuracy", "Effect"].map(
+                {["Name", "Type", "Category", "Power", "Accuracy", "Effect", "Learners"].map(
                   (header) => (
                     <th
                       key={header}
@@ -230,6 +230,11 @@ export default function MovesPage() {
                   </td>
                   <td className="max-w-xs truncate px-4 py-3 font-body text-sm text-on-surface-muted">
                     {move.effect_text ?? "\u2014"}
+                  </td>
+                  <td className="px-4 py-3 font-display text-xs text-on-surface-muted tabular-nums">
+                    {move.learner_count != null
+                      ? `${move.learner_count} Pokemon`
+                      : "\u2014"}
                   </td>
                 </tr>
               ))}

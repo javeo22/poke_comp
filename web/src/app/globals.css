@@ -2,27 +2,27 @@
 
 
 @theme inline {
-  /* ── Surface Hierarchy (Carbon Ink) ── */
-  --color-surface: #0F1114;
-  --color-surface-lowest: #0A0B0D;
-  --color-surface-low: #161920;
-  --color-surface-mid: #1E2129;
-  --color-surface-high: #262A33;
-  --color-surface-highest: #2F343E;
+  /* ── Surface Hierarchy (Warm Matte Black) ── */
+  --color-surface: #111110;
+  --color-surface-lowest: #0C0B0A;
+  --color-surface-low: #181614;
+  --color-surface-mid: #201D1A;
+  --color-surface-high: #282421;
+  --color-surface-highest: #312C27;
 
-  /* ── Primary: Sky Blue ── */
-  --color-primary: #60A5FA;
-  --color-primary-container: #1E3A5F;
+  /* ── Primary: Crimson ── */
+  --color-primary: #CC2929;
+  --color-primary-container: #4A0A0A;
 
-  /* ── Secondary: Emerald ── */
-  --color-secondary: #34D399;
-  --color-secondary-container: #0F3D2E;
+  /* ── Secondary: Silver ── */
+  --color-secondary: #B0B8C4;
+  --color-secondary-container: #2A2E35;
 
-  /* ── Tertiary: Coral Red ── */
-  --color-tertiary: #F87171;
-  --color-tertiary-container: #4A1C1C;
+  /* ── Tertiary: Amber (avoids red-on-red with Crimson primary) ── */
+  --color-tertiary: #F59E0B;
+  --color-tertiary-container: #3D2800;
 
-  /* ── Accent: Amber ── */
+  /* ── Accent: Gold ── */
   --color-accent: #FBBF24;
 
   /* ── Text & Outline ── */

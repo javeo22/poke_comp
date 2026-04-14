@@ -23,7 +23,8 @@ class _StripApiPrefix:
         if scope["type"] == "http":
             path = scope.get("path", "")
             if path.startswith("/api"):
-                scope = dict(scope, path=path[4:] or "/")
+                stripped = path[4:] or "/"
+                scope = dict(scope, path=stripped, raw_path=stripped.encode())
         await self.app(scope, receive, send)
 
 

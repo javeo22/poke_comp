@@ -6,7 +6,7 @@ import type { Item } from "@/types/item";
 import type { UserPokemon, UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
 import type { PokemonUsage } from "@/types/usage";
 import { BUILD_STATUSES, NATURES } from "@/types/user-pokemon";
-import { fetchPokemon, fetchItems, fetchPokemonUsage } from "@/lib/api";
+import { fetchPokemon, fetchItems, fetchPokemonUsage, fetchPokemonDetail } from "@/lib/api";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 import { StatPointEditor } from "./stat-point-editor";
@@ -33,6 +33,8 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
   // Items (loaded once) + usage data
   const [items, setItems] = useState<Item[]>([]);
   const [usage, setUsage] = useState<PokemonUsage | null>(null);
+  // Move stats map: name -> { type, power } fetched from detail endpoint on pokemon select
+  const [moveStatsMap, setMoveStatsMap] = useState<Map<string, { type: string; power: number | null }>>(new Map());
 
   // Form fields
   const [ability, setAbility] = useState(editing?.ability ?? "");
@@ -89,10 +91,17 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
     if (!ability && p.abilities.length > 0) {
       setAbility(p.abilities[0]);
     }
-    // Fetch usage data for this Pokemon
+    // Fetch usage data and move stats in parallel
     fetchPokemonUsage(p.name)
       .then((res) => setUsage(res[0] ?? null))
       .catch(() => setUsage(null));
+    fetchPokemonDetail(p.id)
+      .then((detail) => {
+        setMoveStatsMap(
+          new Map(detail.move_details.map((m) => [m.name, { type: m.type, power: m.power ?? null }]))
+        );
+      })
+      .catch(() => setMoveStatsMap(new Map()));
   };
 
   const handleMoveChange = (index: number, value: string) => {
@@ -160,13 +169,15 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
     .sort((a, b) => (usageAbilityMap.get(b.value) ?? 0) - (usageAbilityMap.get(a.value) ?? 0));
 
   const moveOptions: DropdownOption[] = (selectedPokemon?.movepool ?? [])
-    .map((m) => ({
-      value: m,
-      label: m,
-      sublabel: usageMoveMap.has(m)
-        ? `${usageMoveMap.get(m)!.toFixed(0)}%`
-        : undefined,
-    }))
+    .map((m) => {
+      const stats = moveStatsMap.get(m);
+      const usagePart = usageMoveMap.has(m) ? `${usageMoveMap.get(m)!.toFixed(0)}%` : null;
+      const statPart = stats
+        ? `${stats.type}${stats.power != null ? ` · ${stats.power}` : ""}`
+        : null;
+      const sublabel = [usagePart, statPart].filter(Boolean).join("  ") || undefined;
+      return { value: m, label: m, sublabel };
+    })
     .sort((a, b) => (usageMoveMap.get(b.value) ?? 0) - (usageMoveMap.get(a.value) ?? 0));
 
   const itemOptions: DropdownOption[] = items
@@ -214,7 +225,7 @@ export function RosterForm({ editing, pokemonLookup, onSubmit, onClose }: Roster
                   </span>
                   <button
                     type="button"
-                    onClick={() => setSelectedPokemon(null)}
+                    onClick={() => { setSelectedPokemon(null); setMoveStatsMap(new Map()); }}
                     className="ml-auto font-display text-xs text-on-surface-muted hover:text-on-surface"
                   >
                     Change
