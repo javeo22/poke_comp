@@ -397,6 +397,15 @@ export default function DraftPage() {
             </div>
           </div>
 
+          {/* AI Disclaimer */}
+          {result.ai_disclaimer && (
+            <div className="rounded-xl border border-outline-variant bg-surface-lowest px-5 py-3">
+              <p className="font-body text-xs leading-relaxed text-on-surface-muted">
+                {result.ai_disclaimer}
+              </p>
+            </div>
+          )}
+
           {/* Record Outcome */}
           <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">

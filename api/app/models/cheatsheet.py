@@ -56,6 +56,12 @@ class Weakness(BaseModel):
 # ── Combined response ───────────────────────────────────────────
 
 
+AI_DISCLAIMER = (
+    "AI-generated analysis for guidance only. Accuracy is not guaranteed. "
+    "Always verify suggestions against your own game knowledge and experience."
+)
+
+
 class CheatsheetResponse(BaseModel):
     team_id: str
     team_name: str
@@ -70,3 +76,4 @@ class CheatsheetResponse(BaseModel):
     weaknesses: list[Weakness]
     cached: bool = False
     estimated_cost_usd: float = 0.0
+    ai_disclaimer: str = AI_DISCLAIMER

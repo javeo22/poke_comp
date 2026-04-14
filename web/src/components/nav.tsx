@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { resetOnboardingTour } from "@/components/onboarding-tour";
 import type { User } from "@supabase/supabase-js";
 
 const NAV_GROUPS = [
@@ -77,6 +78,13 @@ export function Nav() {
           >
             PokeComp
           </Link>
+          <button
+            onClick={resetOnboardingTour}
+            className="mr-4 flex h-6 w-6 items-center justify-center rounded-full border border-outline-variant text-[0.6rem] font-display text-on-surface-muted hover:text-primary hover:border-primary/30 transition-colors"
+            title="Show feature tour"
+          >
+            ?
+          </button>
 
           {/* Desktop nav links -- hidden on mobile */}
           <div className="hidden lg:flex lg:items-center lg:gap-1">

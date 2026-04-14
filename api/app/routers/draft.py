@@ -152,6 +152,66 @@ def _fetch_usage_context(pokemon_names: list[str]) -> list[dict]:
     return usage_rows
 
 
+def _fetch_personal_context(user_id: str, opponent_names: list[str]) -> str:
+    """Fetch user's matchup history against teams containing similar Pokemon.
+
+    Part of the Dual RAG pipeline: personal context stream.
+    """
+    if not opponent_names:
+        return ""
+
+    result = (
+        supabase.table("matchup_log")
+        .select("outcome, opponent_team_data, lead_pair, notes, played_at")
+        .eq("user_id", user_id)
+        .order("played_at", desc=True)
+        .limit(50)
+        .execute()
+    )
+    if not result.data:
+        return ""
+
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    opp_set = {n.lower().strip() for n in opponent_names}
+
+    # Find matches where opponent team overlaps with current opponent
+    relevant: list[dict] = []
+    for row in rows:
+        opp_team = row.get("opponent_team_data") or []
+        opp_names_in_match = {p.get("name", "").lower() for p in opp_team}
+        overlap = opp_set & opp_names_in_match
+        if len(overlap) >= 2:
+            relevant.append({**row, "overlap": len(overlap)})
+
+    if not relevant:
+        return ""
+
+    # Sort by overlap count (most similar first), take top 5
+    relevant.sort(key=lambda r: r["overlap"], reverse=True)
+    relevant = relevant[:5]
+
+    wins = sum(1 for r in relevant if r["outcome"] == "win")
+    losses = len(relevant) - wins
+    total = len(relevant)
+    win_rate = round(wins / total * 100, 1) if total else 0
+
+    lines = [f"- Your record vs similar teams: {wins}W {losses}L ({win_rate}% win rate)"]
+    for r in relevant:
+        opp_team = r.get("opponent_team_data") or []
+        opp_names_str = ", ".join(p.get("name", "?") for p in opp_team[:6])
+        outcome = r["outcome"].upper()
+        leads = r.get("lead_pair") or []
+        lead_str = f" (led: {', '.join(leads)})" if leads else ""
+        notes = r.get("notes") or ""
+        note_str = f' -- Notes: "{notes}"' if notes else ""
+        lines.append(f"- {outcome} vs [{opp_names_str}]{lead_str}{note_str}")
+
+    return (
+        "\n\n## Your Personal History\n"
+        "Your past results against similar team compositions:\n" + "\n".join(lines)
+    )
+
+
 def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
     """Fetch tournament archetype if this exact team combination has placed recently."""
     if len(pokemon_ids) < 4:
@@ -223,6 +283,7 @@ def _build_prompt(
     opponent_usage: list[dict],
     my_usage: list[dict],
     tournament_context: str = "",
+    personal_context: str = "",
 ) -> str:
     # Format my team
     my_lines = []
@@ -295,6 +356,7 @@ def _build_prompt(
         f"{chr(10).join(opp_lines)}"
         f"{usage_context}"
         f"{tournament_context}"
+        f"{personal_context}"
     )
     task_section = """\
 ## Task
@@ -369,9 +431,17 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     my_usage: list[dict] = []
 
     tournament_context = _fetch_tournament_context(opponent_ids)
+    personal_context = _fetch_personal_context(user_id, opponent_names)
 
     # Build prompt and call Claude
-    prompt = _build_prompt(my_team, opponent_pokemon, opponent_usage, my_usage, tournament_context)
+    prompt = _build_prompt(
+        my_team,
+        opponent_pokemon,
+        opponent_usage,
+        my_usage,
+        tournament_context,
+        personal_context,
+    )
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = ai.messages.create(

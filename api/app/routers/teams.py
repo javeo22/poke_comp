@@ -1,9 +1,18 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 from postgrest.types import CountMethod
+from pydantic import BaseModel, Field
 
 from app.auth import get_current_user
 from app.database import supabase
 from app.models.team import TeamCreate, TeamList, TeamResponse, TeamUpdate
+from app.services.showdown_parser import (
+    export_showdown_paste,
+    parse_showdown_paste,
+    resolve_pokemon_ids,
+)
 from app.validators import validate_champions_pokemon_batch
 
 router = APIRouter(prefix="/teams", tags=["teams"])
@@ -112,3 +121,147 @@ def delete_team(team_id: str, user_id: str = Depends(get_current_user)):
     result = supabase.table("teams").delete().eq("id", team_id).eq("user_id", user_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")
+
+
+# ── Showdown Import / Export ─────────────────────────────────────────────
+
+
+class ImportRequest(BaseModel):
+    paste: str = Field(description="Showdown paste text")
+    team_name: str = Field(description="Name for the imported team")
+    format: str = Field(pattern=r"^(singles|doubles|megas)$")
+
+
+class ImportResponse(BaseModel):
+    team: TeamResponse
+    pokemon_created: int
+    warnings: list[str]
+
+
+@router.post("/import", response_model=ImportResponse, status_code=201)
+def import_team(body: ImportRequest, user_id: str = Depends(get_current_user)):
+    """Import a team from Showdown paste format.
+
+    Parses the paste, resolves Pokemon/item names to DB IDs,
+    creates user_pokemon entries, and assembles a team.
+    """
+    parsed = parse_showdown_paste(body.paste)
+    if not parsed.pokemon:
+        raise HTTPException(
+            status_code=400,
+            detail="No Pokemon found in paste. Check the format.",
+        )
+
+    # Resolve names to IDs
+    parsed = resolve_pokemon_ids(parsed)
+
+    # Filter to Pokemon that resolved successfully
+    resolved = [p for p in parsed.pokemon if p.pokemon_id is not None]
+    if not resolved:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No Pokemon could be resolved. Warnings: {parsed.warnings}",
+        )
+
+    # Validate Champions eligibility (batch)
+    pokemon_ids = [p.pokemon_id for p in resolved if p.pokemon_id]
+    validate_champions_pokemon_batch(pokemon_ids)
+
+    # Create user_pokemon entries
+    created_ids: list[int] = []
+    for p in resolved:
+        row: dict[str, Any] = {
+            "user_id": user_id,
+            "pokemon_id": p.pokemon_id,
+            "ability": p.ability,
+            "nature": p.nature,
+            "stat_points": p.stat_points,
+            "moves": p.moves if len(p.moves) == 4 else None,
+            "item_id": p.item_id,
+            "build_status": "built",
+            "vp_spent": 0,
+        }
+        result = supabase.table("user_pokemon").insert(row).execute()
+        rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+        if rows and p.pokemon_id:
+            created_ids.append(p.pokemon_id)
+
+    # Create the team
+    team_data: dict[str, Any] = {
+        "user_id": user_id,
+        "name": body.team_name,
+        "format": body.format,
+        "pokemon_ids": created_ids[:6],
+    }
+    team_result = supabase.table("teams").insert(team_data).execute()
+    team_rows: list[dict[str, Any]] = team_result.data  # type: ignore[assignment]
+    if not team_rows:
+        raise HTTPException(status_code=500, detail="Failed to create team")
+
+    return ImportResponse(
+        team=TeamResponse.model_validate(team_rows[0]),
+        pokemon_created=len(created_ids),
+        warnings=parsed.warnings,
+    )
+
+
+@router.get("/{team_id}/export", response_class=PlainTextResponse)
+def export_team(team_id: str, user_id: str = Depends(get_current_user)):
+    """Export a team in Showdown paste format."""
+    # Fetch team
+    team = (
+        supabase.table("teams")
+        .select("*")
+        .eq("id", team_id)
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not team.data:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    team_row: dict[str, Any] = team.data  # type: ignore[assignment]
+    pokemon_ids: list[int] = team_row["pokemon_ids"]
+
+    # Fetch Pokemon base data
+    poke_result = supabase.table("pokemon").select("id, name").in_("id", pokemon_ids).execute()
+    poke_rows: list[dict[str, Any]] = poke_result.data  # type: ignore[assignment]
+    poke_map = {r["id"]: r["name"] for r in poke_rows}
+
+    # Fetch user builds
+    builds_result = (
+        supabase.table("user_pokemon")
+        .select("pokemon_id, ability, nature, stat_points, moves, item_id")
+        .eq("user_id", user_id)
+        .in_("pokemon_id", pokemon_ids)
+        .execute()
+    )
+    builds: list[dict[str, Any]] = builds_result.data  # type: ignore[assignment]
+    build_map = {b["pokemon_id"]: b for b in builds}
+
+    # Fetch item names
+    item_ids = [b["item_id"] for b in builds if b.get("item_id")]
+    item_map: dict[int, str] = {}
+    if item_ids:
+        items_result = supabase.table("items").select("id, name").in_("id", item_ids).execute()
+        item_rows: list[dict[str, Any]] = items_result.data  # type: ignore[assignment]
+        item_map = {r["id"]: r["name"] for r in item_rows}
+
+    # Assemble export data
+    export_data: list[dict[str, Any]] = []
+    for pid in pokemon_ids:
+        name = poke_map.get(pid, f"Pokemon #{pid}")
+        build = build_map.get(pid, {})
+        item_name = item_map.get(build.get("item_id", 0))
+        export_data.append(
+            {
+                "name": name,
+                "item_name": item_name,
+                "ability": build.get("ability"),
+                "nature": build.get("nature"),
+                "stat_points": build.get("stat_points"),
+                "moves": build.get("moves") or [],
+            }
+        )
+
+    return export_showdown_paste(export_data)

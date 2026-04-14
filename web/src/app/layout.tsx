@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
 import { Nav } from "@/components/nav";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Providers>
           <Nav />
+          <OnboardingTour />
           <main className="flex-1 flex flex-col items-center w-full relative z-10">
             {children}
           </main>

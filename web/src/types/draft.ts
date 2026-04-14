@@ -33,6 +33,7 @@ export interface DraftResponse {
   analysis: DraftAnalysis;
   cached: boolean;
   estimated_cost_usd: number;
+  ai_disclaimer: string;
 }
 
 export interface DraftRequest {

@@ -63,7 +63,15 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    // Try to extract a user-friendly detail message from the response
+    let detail = `API error: ${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      // Response wasn't JSON -- use the default message
+    }
+    throw new Error(detail);
   }
 
   return res.json();
