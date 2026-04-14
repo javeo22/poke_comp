@@ -27,9 +27,7 @@ def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
         return []
     if isinstance(data, list):
         return [
-            entry["name"]
-            for entry in data[:limit]
-            if isinstance(entry, dict) and "name" in entry
+            entry["name"] for entry in data[:limit] if isinstance(entry, dict) and "name" in entry
         ]
     return list(data.keys())[:limit]
 
