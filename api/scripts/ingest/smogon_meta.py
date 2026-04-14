@@ -3,6 +3,20 @@ Ingest weekly meta statistics from Smogon/data.pkmn.cc.
 Pulls real usage percentages, item/ability breakdowns, and writes
 to the consolidated ``pokemon_usage`` table.
 
+IMPORTANT: Smogon's gen9vgc2026 is the VGC 2026 Regulation I format
+for Pokemon Scarlet/Violet on Pokemon Showdown. This is NOT the same
+as Pokemon Champions tournament data. Smogon currently has NO
+Champions-specific format.
+
+This script is kept as a supplemental data source. It filters to
+Champions-eligible Pokemon, but usage rates reflect VGC 2026 ladder
+play, not Champions tournaments. The Pikalytics scraper
+(pikalytics_usage.py) is the primary source for Champions data.
+
+To avoid overwriting Pikalytics data, this script writes with
+source='smogon' and will NOT overwrite existing pikalytics records
+for the same date.
+
 Validates ingested items and abilities against Champions legality
 (items must exist in the Champions shop; abilities must belong to
 a Champions-eligible Pokemon).
@@ -21,7 +35,7 @@ from supabase import Client, create_client
 
 from app.config import settings
 
-# VGC 2026 is the correct Champions competitive format
+# VGC 2026 Regulation I on Pokemon Showdown (NOT Champions-specific)
 SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9vgc2026.json"
 # Fallback if gen9vgc2026 is not yet available on pkmn.github.io
 SMOGON_FALLBACK_URL = "https://pkmn.github.io/smogon/data/stats/gen9vgc2025.json"
@@ -141,8 +155,25 @@ def _top_entries_filtered(
     return items[:top_n]
 
 
+def _get_existing_pikalytics_names(sb: Client, snapshot_date: str) -> set[str]:
+    """Get Pokemon names that already have Pikalytics data for the given date."""
+    result = (
+        sb.table("pokemon_usage")
+        .select("pokemon_name")
+        .eq("format", FORMAT_KEY)
+        .eq("snapshot_date", snapshot_date)
+        .eq("source", "pikalytics")
+        .execute()
+    )
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    return {row["pokemon_name"] for row in rows}
+
+
 def ingest_smogon_data(sb: Client) -> None:
     """Validate, clean, and upsert Smogon usage stats into pokemon_usage.
+
+    Protects existing Pikalytics records: if a Pokemon already has
+    Pikalytics data for today's date, the Smogon record is skipped.
 
     Items and abilities are validated against Champions legality:
     - Items must exist in the Champions shop
@@ -159,7 +190,8 @@ def ingest_smogon_data(sb: Client) -> None:
         print(f"Data validation failed: {e}")
         return
 
-    print("Data validated successfully. Preparing upserts...")
+    print(f"Data validated successfully ({validated_data.battles} battles). Preparing upserts...")
+    print("NOTE: gen9vgc2026 is VGC 2026 Regulation I (Showdown), not Champions-specific data.")
 
     # Build a lookup of our Champions roster: normalized_name -> display_name
     result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
@@ -171,7 +203,11 @@ def ingest_smogon_data(sb: Client) -> None:
 
     # Remove stale non-Champions usage rows (e.g. old VGC data that leaked in)
     existing_result = (
-        sb.table("pokemon_usage").select("pokemon_name").eq("format", FORMAT_KEY).execute()
+        sb.table("pokemon_usage")
+        .select("pokemon_name")
+        .eq("format", FORMAT_KEY)
+        .eq("source", "smogon")
+        .execute()
     )
     existing_rows: list[dict] = existing_result.data  # type: ignore[assignment]
     stale_names = [
@@ -182,7 +218,7 @@ def ingest_smogon_data(sb: Client) -> None:
         batch_size = 100
         for i in range(0, len(stale_names), batch_size):
             chunk = stale_names[i : i + batch_size]
-            sb.table("pokemon_usage").delete().eq("format", FORMAT_KEY).in_(
+            sb.table("pokemon_usage").delete().eq("format", FORMAT_KEY).eq("source", "smogon").in_(
                 "pokemon_name", chunk
             ).execute()
 
@@ -192,8 +228,18 @@ def ingest_smogon_data(sb: Client) -> None:
     print(f"Legality sets: {len(legal_items)} items, {len(legal_abilities)} abilities")
 
     today_date = date.today().isoformat()
+
+    # Skip Pokemon that already have Pikalytics data for today
+    pikalytics_names = _get_existing_pikalytics_names(sb, today_date)
+    if pikalytics_names:
+        print(
+            f"  {len(pikalytics_names)} Pokemon already have Pikalytics data for today, "
+            "Smogon will not overwrite them."
+        )
+
     upsert_batch: list[dict] = []
     mapped_count = 0
+    skipped_pikalytics = 0
 
     for pokemon_name, stats in validated_data.pokemon.items():
         clean_name = pokemon_name.lower().replace("-", "").replace(" ", "")
@@ -203,6 +249,11 @@ def ingest_smogon_data(sb: Client) -> None:
             continue
 
         mapped_count += 1
+
+        # Do not overwrite existing Pikalytics data
+        if display_name in pikalytics_names:
+            skipped_pikalytics += 1
+            continue
 
         usage_val = stats.usage.get("weighted", stats.usage.get("real", 0))
 
@@ -219,7 +270,11 @@ def ingest_smogon_data(sb: Client) -> None:
         }
         upsert_batch.append(record)
 
-    print(f"Mapped {mapped_count} Champions-eligible Pokemon. Upserting...")
+    print(
+        f"Mapped {mapped_count} Champions-eligible Pokemon. "
+        f"Skipped {skipped_pikalytics} (Pikalytics data exists). "
+        f"Upserting {len(upsert_batch)}..."
+    )
 
     batch_size = 100
     for i in range(0, len(upsert_batch), batch_size):

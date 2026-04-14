@@ -25,52 +25,34 @@ SOURCES = [
         "name": "Game8",
         "urls": {
             "singles": "https://game8.co/games/Pokemon-Champions/archives/592465",
-            "doubles": "https://game8.co/games/Pokemon-Champions/archives/592465",
-            "megas": "https://game8.co/games/Pokemon-Champions/archives/592465",
+            "doubles": "https://game8.co/games/Pokemon-Champions/archives/593883",
+            "megas": "https://game8.co/games/Pokemon-Champions/archives/593897",
         },
     },
-    {
-        "name": "Pikalytics",
-        "urls": {
-            "singles": "https://www.pikalytics.com/champions",
-            "doubles": "https://www.pikalytics.com/champions",
-        },
-    },
+    # Pikalytics provides usage rates, not editorial tier lists (S/A+/A/B/C).
+    # Use pikalytics_usage.py for usage data instead.
 ]
 
 EXTRACTION_PROMPT = """\
 You are a Pokemon Champions competitive data extractor.
 
-Given the HTML content of a tier list or usage stats page, extract structured
-tier data. Return ONLY valid JSON with this exact structure:
+Given the HTML content of a Game8 tier list page, extract the structured
+tier data. Return ONLY valid JSON mapping tier names to arrays of Pokemon names.
 
-{
-  "singles": {
-    "S": ["Pokemon1", "Pokemon2"],
-    "A+": ["Pokemon3"],
-    "A": ["Pokemon4", "Pokemon5"],
-    "B": ["Pokemon6"],
-    "C": ["Pokemon7"]
-  },
-  "doubles": {
-    "S": ["Pokemon1"],
-    "A+": ["Pokemon2"],
-    "A": ["Pokemon3"],
-    "B": ["Pokemon4"]
-  },
-  "megas": {
-    "S": ["Mega Pokemon1"],
-    "A+": ["Mega Pokemon2"],
-    "A": ["Mega Pokemon3"],
-    "B": ["Mega Pokemon4"]
-  }
-}
+Example output:
+{{
+  "S": ["Pokemon1", "Pokemon2"],
+  "A+": ["Pokemon3"],
+  "A": ["Pokemon4", "Pokemon5"],
+  "B": ["Pokemon6"],
+  "C": ["Pokemon7"]
+}}
 
 Rules:
 - Use the Pokemon's display name (Title Case, e.g. "Garchomp", "Mega Delphox")
-- Include all tiers present on the page
-- If a format is not present in the content, omit that key
+- Include all tiers present on the page (S, A+, A, B, C)
 - Only include Pokemon explicitly listed in the tier list
+- If a tier has no Pokemon, include it as an empty array
 - Return ONLY the JSON, no markdown fences or explanation
 """
 
@@ -148,23 +130,31 @@ def main() -> None:
 
     for source in SOURCES:
         print(f"\nRefreshing from {source['name']}...")
+        any_success = False
 
-        # Fetch from first available URL
-        first_url = next(iter(source["urls"].values()))
-        html = fetch_page_content(first_url)
-        if not html:
-            print(f"  Skipping {source['name']} (fetch failed)")
-            continue
+        for format_key, url in source["urls"].items():
+            print(f"  Fetching {format_key} from {url}...")
+            html = fetch_page_content(url)
+            if not html:
+                print(f"    Skipping {format_key} (fetch failed)")
+                continue
 
-        print(f"  Fetched {len(html)} chars, extracting with Claude...")
-        tier_data = extract_tier_data(claude, html)
-        if not tier_data:
-            print(f"  Skipping {source['name']} (extraction failed)")
-            continue
+            print(f"    Fetched {len(html)} chars, extracting with Claude...")
+            tier_data = extract_tier_data(claude, html)
+            if not tier_data:
+                print(f"    Skipping {format_key} (extraction failed)")
+                continue
 
-        update_meta_snapshots(db, tier_data, source["name"], first_url)
-        print(f"  {source['name']} refresh complete.")
-        break  # Use first successful source
+            # Claude returns flat tier data ({"S": [...], "A+": [...], ...}).
+            # Wrap it under the format key for update_meta_snapshots.
+            wrapped = {format_key: tier_data}
+            update_meta_snapshots(db, wrapped, source["name"], url)
+            any_success = True
+            print(f"    {format_key} updated.")
+
+        if any_success:
+            print(f"  {source['name']} refresh complete.")
+            break  # Use first successful source
 
     print("\nMeta refresh complete.")
 
