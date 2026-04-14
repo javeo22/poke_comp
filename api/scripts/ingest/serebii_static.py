@@ -678,10 +678,20 @@ def upsert_items(sb: Client, items: list[ItemEntry]) -> None:
             data["vp_cost"] = item.vp_cost
 
         # Try to find existing item by name (case-insensitive)
-        existing = sb.table("items").select("id").ilike("name", item.name).execute()
+        existing = (
+            sb.table("items")
+            .select("id, champions_shop_available")
+            .ilike("name", item.name)
+            .execute()
+        )
 
         existing_rows: list[dict] = existing.data  # type: ignore[assignment]
         if existing_rows:
+            # Never downgrade champions_shop_available from True to False.
+            # The seed script or prior ingest may have marked it available;
+            # Serebii's location text may simply not mention "shop".
+            if existing_rows[0].get("champions_shop_available") and not item.champions_shop:
+                del data["champions_shop_available"]
             sb.table("items").update(data).eq("id", existing_rows[0]["id"]).execute()
             upserted += 1
         else:

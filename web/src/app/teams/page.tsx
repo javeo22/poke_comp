@@ -5,6 +5,7 @@ import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team, TeamCreate, TeamUpdate } from "@/types/team";
 import { FORMATS } from "@/types/team";
+import type { UserPokemonCreate } from "@/types/user-pokemon";
 import {
   fetchTeams,
   fetchUserPokemon,
@@ -12,12 +13,14 @@ import {
   createTeam,
   updateTeam,
   deleteTeam,
+  createUserPokemon,
   importTeamFromShowdown,
   exportTeamToShowdown,
 } from "@/lib/api";
 import type { ShowdownImportRequest } from "@/lib/api";
 import { TeamCard } from "@/components/teams/team-card";
 import { TeamForm } from "@/components/teams/team-form";
+import { RosterForm } from "@/components/roster/roster-form";
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -31,6 +34,9 @@ export default function TeamsPage() {
   // Team form modal
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Team | null>(null);
+
+  // Inline roster form (from team builder)
+  const [showRosterForm, setShowRosterForm] = useState(false);
 
   // Showdown import modal
   const [showImport, setShowImport] = useState(false);
@@ -143,6 +149,17 @@ export default function TeamsPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to export team:", err);
+    }
+  };
+
+  const handleRosterSubmit = async (data: UserPokemonCreate) => {
+    try {
+      await createUserPokemon(data);
+      setShowRosterForm(false);
+      // Refresh data so the new roster entry appears in the team picker
+      await loadData(formatFilter);
+    } catch (err) {
+      console.error("Failed to add to roster:", err);
     }
   };
 
@@ -288,7 +305,24 @@ export default function TeamsPage() {
             setShowForm(false);
             setEditing(null);
           }}
+          onAddToRoster={() => setShowRosterForm(true)}
         />
+      )}
+
+      {/* Inline roster form (opened from team builder) */}
+      {showRosterForm && (
+        <div className="fixed inset-0 z-[60]">
+          <RosterForm
+            editing={null}
+            pokemonLookup={pokemonMap}
+            onSubmit={(data) => {
+              if (!("id" in data)) {
+                handleRosterSubmit(data);
+              }
+            }}
+            onClose={() => setShowRosterForm(false)}
+          />
+        </div>
       )}
 
       {/* Showdown import modal */}
@@ -329,7 +363,7 @@ export default function TeamsPage() {
               </div>
 
               {/* Team name + format row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
                     Team Name

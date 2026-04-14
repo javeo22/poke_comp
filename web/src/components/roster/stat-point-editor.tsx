@@ -79,7 +79,7 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
       </div>
 
       <div className="rounded-xl bg-surface-low p-3">
-        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 sm:gap-x-4">
           {STAT_KEYS.map((key) => {
             const invested = value[key] || 0;
             const base = baseStats?.[key] ?? 0;
