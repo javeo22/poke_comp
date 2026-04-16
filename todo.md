@@ -27,20 +27,22 @@
 ### Visual Polish
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
 
-### Data Quality (found by validate_data.py run 2026-04-14)
-- [ ] Item legality: 126 Pokemon in smogon usage have non-Champions items (Assault Vest, Safety Goggles etc.) -- items table only covers 138 items (Champions shop), Smogon pulls from broader held-item pool. Options: (a) expand items table with all valid Champions held items, (b) add legality pre-filter in smogon_meta.py ingest
-- [ ] Ability legality: Vivillon "Compound Eyes" appears in usage data but isn't in abilities array -- check if Compound Eyes is actually legal in Champions or if it's a scraper artifact
-- [ ] Roster integrity: 34 Pokemon in meta_snapshots tier_data not in champions_eligible (e.g. "Wash Rotom", "Alolan Ninetales") -- Game8 uses different name conventions (form names vs base names). Need name normalization or alias mapping in meta scraper
+### Data Quality
+- [x] Item legality: fixed Smogon ingest to recalculate percentages after filtering, ran --fix to clean 131 entries
+- [x] Ability legality: cleaned 12 entries via --fix (including non-English ability names)
+- [x] Non-English data: deleted 6 Pikalytics rows with Spanish/Korean/French/Italian/Chinese moves/items
+- [ ] Meta snapshot names: 31 names from legacy Game8 data (Wash Rotom etc.) -- Game8 scraper removed, these are stale
 
 ### Data
-- [ ] Run Pikalytics ingest for full usage data (scripts/ingest/pikalytics_usage.py)
+- [x] Pikalytics ingest: 25 Pokemon with full usage data (2026-04-16)
 
 ---
 
 ## Up Next
-- [ ] Open source release (MIT or Apache 2.0)
-- [ ] README with setup instructions
-- [ ] Supabase Auth: enable email confirmation in dashboard, configure redirect URL
+- [ ] Supabase Auth: enable email confirmation in dashboard, set redirect URL to `https://pokecomp.app/login`
+  - Dashboard > Auth > URL Configuration > Site URL: `https://pokecomp.app`
+  - Dashboard > Auth > URL Configuration > Redirect URLs: add `https://pokecomp.app/**`
+  - Dashboard > Auth > Email Templates: customize confirmation email (optional)
 
 ---
 

@@ -134,23 +134,33 @@ def _top_entries_filtered(
     legal_set: set[str] | None,
     top_n: int = 5,
 ) -> list[dict[str, str | float]]:
-    """Like _top_entries, but drops entries not in legal_set (if provided)."""
-    total = sum(raw_dict.values())
-    if total == 0:
+    """Like _top_entries, but drops entries not in legal_set and
+    recalculates percentages based on the remaining legal entries."""
+    if not raw_dict:
         return []
 
-    items = []
+    # Filter to legal entries only
+    legal_entries: dict[str, float] = {}
     dropped = 0
     for k, v in raw_dict.items():
         normalized = k.lower().replace(" ", "").replace("-", "")
         if legal_set and normalized not in legal_set:
             dropped += 1
             continue
-        items.append({"name": k, "percent": round((v / total) * 100, 1)})
+        legal_entries[k] = v
 
     if dropped:
         print(f"    Filtered {dropped} non-Champions entries")
 
+    # Recalculate percentages from legal-only total
+    legal_total = sum(legal_entries.values())
+    if legal_total == 0:
+        return []
+
+    items = [
+        {"name": k, "percent": round((v / legal_total) * 100, 1)}
+        for k, v in legal_entries.items()
+    ]
     items.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
     return items[:top_n]
 
