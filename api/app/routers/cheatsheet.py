@@ -464,9 +464,21 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
 
     # 1. Fetch team
     team = _fetch_team(team_id, user_id)
-    pokemon_ids = [int(pid) for pid in team["pokemon_ids"]]
-    mega_id = team.get("mega_pokemon_id")
-    mega_id_int = int(mega_id) if mega_id else None
+    roster_ids: list[str] = team["pokemon_ids"]  # UUIDs of user_pokemon rows
+    mega_roster_id: str | None = team.get("mega_pokemon_id")  # UUID or None
+
+    # 1b. Resolve user_pokemon UUIDs to species IDs
+    roster_result = (
+        supabase.table("user_pokemon")
+        .select("id, pokemon_id")
+        .eq("user_id", user_id)
+        .in_("id", roster_ids)
+        .execute()
+    )
+    roster_rows: list[dict] = roster_result.data  # type: ignore[assignment]
+    uuid_to_species = {r["id"]: r["pokemon_id"] for r in roster_rows}
+    pokemon_ids = [uuid_to_species[rid] for rid in roster_ids if rid in uuid_to_species]
+    mega_id_int = uuid_to_species.get(mega_roster_id) if mega_roster_id else None
 
     # 2. Fetch base data + builds
     pokemon_data = _fetch_pokemon_data(pokemon_ids)

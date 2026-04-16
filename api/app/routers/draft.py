@@ -85,30 +85,32 @@ def _fetch_team_pokemon(team_id: str, user_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Team not found")
 
     team_row: dict = team.data  # type: ignore[assignment]
-    pokemon_ids: list[str] = team_row["pokemon_ids"]
+    roster_ids: list[str] = team_row["pokemon_ids"]  # UUIDs of user_pokemon rows
+
+    # Resolve user_pokemon UUIDs to builds + species IDs
+    user_builds = (
+        supabase.table("user_pokemon")
+        .select("id, pokemon_id, ability, moves, item_id, stat_points, nature")
+        .eq("user_id", user_id)
+        .in_("id", roster_ids)
+        .execute()
+    )
+    build_rows: list[dict] = user_builds.data  # type: ignore[assignment]
+    builds_by_species = {b["pokemon_id"]: b for b in build_rows}
+    species_ids = list({b["pokemon_id"] for b in build_rows})
+
+    # Fetch base Pokemon data by species IDs
     pokemon_rows = (
         supabase.table("pokemon")
         .select("id, name, types, base_stats, abilities, movepool, sprite_url")
-        .in_("id", [int(pid) for pid in pokemon_ids])
+        .in_("id", species_ids)
         .execute()
     )
-
-    # Also fetch user_pokemon builds for these Pokemon
-    user_builds = (
-        supabase.table("user_pokemon")
-        .select("pokemon_id, ability, moves, item_id, stat_points, nature")
-        .eq("user_id", user_id)
-        .in_("pokemon_id", [int(pid) for pid in pokemon_ids])
-        .execute()
-    )
-
-    build_rows: list[dict] = user_builds.data  # type: ignore[assignment]
-    builds_by_id = {str(b["pokemon_id"]): b for b in build_rows}
 
     pokemon_list = []
     poke_rows: list[dict] = pokemon_rows.data  # type: ignore[assignment]
     for p in poke_rows:
-        build = builds_by_id.get(str(p["id"]), {})
+        build = builds_by_species.get(p["id"], {})
         pokemon_list.append(
             {
                 "name": p["name"],
