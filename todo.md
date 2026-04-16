@@ -11,7 +11,7 @@
 - [x] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
 - [x] B2: Profile features (display name, trainer card, expanded stats)
 - [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
-- [ ] F2: Centralized name resolver + data freshness API
+- [x] F2: Centralized name resolver + data freshness API
 - [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)
 
 ### Visual Polish
@@ -43,6 +43,11 @@
 ---
 
 ## Done (2026-04-15)
+- [x] F2: Centralized name resolver (`api/app/services/name_resolver.py`) wired into meta scraper
+- [x] F2: `GET /admin/data-freshness` endpoint (latest snapshot dates by source/format)
+- [x] F2: Check 8 (meta snapshot roster integrity) added to validate_data.py
+
+## Done (2026-04-15) - Previous
 - [x] A1: Quick-Add mode for roster (search Pokemon, auto-fill ability from usage data, one-click save)
 - [x] A2: Add to Roster buttons on Meta detail panel and Pokedex detail page
 - [x] A3: Showdown import review step (preview parsed Pokemon before confirming import)

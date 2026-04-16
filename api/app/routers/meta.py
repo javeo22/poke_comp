@@ -14,6 +14,7 @@ from app.config import settings
 from app.database import supabase
 from app.limiter import limiter
 from app.models.meta import MetaSnapshotCreate, MetaSnapshotList, MetaSnapshotResponse
+from app.services.name_resolver import build_roster_index, normalize_tier_data
 
 router = APIRouter(prefix="/meta", tags=["meta"])
 
@@ -178,6 +179,7 @@ def scrape_game8(request: Request, user_id: str = Depends(get_current_user)):
     check_ai_quota(user_id)
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    roster_index = build_roster_index(supabase)
     results: list[ScrapeResult] = []
     total_cost = 0.0
 
@@ -185,6 +187,9 @@ def scrape_game8(request: Request, user_id: str = Depends(get_current_user)):
         try:
             page_text = _fetch_page(url)
             tier_data, in_tok, out_tok = _parse_with_claude(ai, page_text, format_name)
+            tier_data, unresolved = normalize_tier_data(tier_data, roster_index)
+            if unresolved:
+                print(f"[{format_name}] {len(unresolved)} unresolved names: {unresolved[:10]}")
             _upsert_snapshot(format_name, tier_data, url)
             total = sum(len(v) for v in tier_data.values())
             call_cost = estimate_cost(in_tok, out_tok)
