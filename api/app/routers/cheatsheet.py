@@ -494,6 +494,23 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 # ═══════════════════════════════════════════════════════════════════
 
 
+@router.get("/all")
+def list_cheatsheets(user_id: str = Depends(get_current_user)):
+    """Fetch all saved cheatsheets for the current user."""
+    try:
+        result = (
+            supabase.table("team_cheatsheets")
+            .select("team_id, cheatsheet_json, created_at, updated_at")
+            .eq("user_id", user_id)
+            .order("updated_at", desc=True)
+            .execute()
+        )
+        rows: list[dict] = result.data  # type: ignore[assignment]
+        return rows
+    except Exception:
+        return []
+
+
 @router.get("/status")
 def cheatsheet_status(
     team_ids: str = "",

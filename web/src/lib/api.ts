@@ -386,6 +386,17 @@ export async function fetchSavedCheatsheet(teamId: string): Promise<CheatsheetRe
   return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`);
 }
 
+export interface SavedCheatsheet {
+  team_id: string;
+  cheatsheet_json: CheatsheetResponse;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchAllCheatsheets(): Promise<SavedCheatsheet[]> {
+  return apiFetch<SavedCheatsheet[]>(`/cheatsheet/all`);
+}
+
 export async function fetchCheatsheetStatus(teamIds: string[]): Promise<Record<string, string>> {
   if (teamIds.length === 0) return {};
   return apiFetch<Record<string, string>>(`/cheatsheet/status`, {
