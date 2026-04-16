@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.ai_quota import check_ai_quota, estimate_cost, log_ai_usage
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
@@ -501,7 +502,11 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         cached["speed_tiers"] = [s.model_dump(mode="json") for s in speed_tiers]
         cached["cached"] = True
         cached["estimated_cost_usd"] = 0.0
+        log_ai_usage(user_id, "cheatsheet", "claude-sonnet-4-6-20250514", 0, 0, cached=True)
         return CheatsheetResponse.model_validate(cached)
+
+    # 6b. Check daily quota (non-cached requests only)
+    check_ai_quota(user_id)
 
     # 7. Fetch meta context (filtered by team's format)
     tier_data, usage_data = _fetch_meta_context(team["format"])
@@ -554,11 +559,17 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         lead_matchups=[LeadMatchup.model_validate(m) for m in raw.get("lead_matchups", [])],
         weaknesses=[Weakness.model_validate(w) for w in raw.get("weaknesses", [])],
         cached=False,
-        # ~4K input + ~2K output tokens at Sonnet pricing
-        estimated_cost_usd=0.04,
+        estimated_cost_usd=estimate_cost(message.usage.input_tokens, message.usage.output_tokens),
     )
 
-    # 10. Cache
+    # 10. Cache + log usage
     _save_cache(cache_key, response)
+    log_ai_usage(
+        user_id,
+        "cheatsheet",
+        "claude-sonnet-4-6-20250514",
+        message.usage.input_tokens,
+        message.usage.output_tokens,
+    )
 
     return response

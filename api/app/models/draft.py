@@ -56,8 +56,10 @@ class DraftAnalysis(BaseModel):
 
 
 AI_DISCLAIMER = (
-    "AI-generated analysis for guidance only. Accuracy is not guaranteed. "
-    "Always verify suggestions against your own game knowledge and experience."
+    "AI-generated analysis powered by Claude (Anthropic). For guidance only -- "
+    "accuracy is not guaranteed. Usage data sourced from Pikalytics and Smogon; "
+    "meta may not reflect the latest game patch. Always verify suggestions "
+    "against your own game knowledge."
 )
 
 

@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { DraftResponse } from "@/types/draft";
-import { fetchTeams, fetchPokemon, analyzeDraft, createMatchup } from "@/lib/api";
+import { fetchTeams, fetchPokemon, analyzeDraft, createMatchup, fetchAiUsage } from "@/lib/api";
+import type { AiUsageToday } from "@/lib/api";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 
@@ -37,6 +38,7 @@ export default function DraftPage() {
   const [pendingOutcome, setPendingOutcome] = useState<"win" | "loss" | null>(null);
   const [saveLeads, setSaveLeads] = useState<[string, string]>(["", ""]);
   const [saveNotes, setSaveNotes] = useState("");
+  const [quota, setQuota] = useState<AiUsageToday | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -61,6 +63,10 @@ export default function DraftPage() {
       } else {
         console.error("Failed to load Pokemon list:", pokemonResult.reason);
       }
+      // Load AI quota (non-blocking)
+      fetchAiUsage()
+        .then((usage) => setQuota(usage.today))
+        .catch(() => {});
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +108,10 @@ export default function DraftPage() {
         my_team_id: selectedTeamId,
       });
       setResult(response);
+      // Refresh quota after analysis
+      fetchAiUsage()
+        .then((usage) => setQuota(usage.today))
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
@@ -241,11 +251,18 @@ export default function DraftPage() {
       <div className="mt-6 flex items-center gap-4">
         <button
           onClick={handleAnalyze}
-          disabled={!canAnalyze || isAnalyzing}
+          disabled={!canAnalyze || isAnalyzing || (quota !== null && quota.remaining <= 0)}
           className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isAnalyzing ? "Analyzing..." : "Analyze Matchup"}
         </button>
+        {quota !== null && (
+          <span className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}>
+            {quota.remaining <= 0
+              ? "Daily limit reached -- resets at midnight UTC"
+              : `${quota.used}/${quota.limit} analyses used today`}
+          </span>
+        )}
         {result?.cached && (
           <span className="font-display text-xs text-on-surface-muted">
             Cached result

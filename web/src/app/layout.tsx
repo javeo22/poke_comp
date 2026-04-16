@@ -41,10 +41,53 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col items-center w-full relative z-10">
             {children}
           </main>
-          <footer className="px-6 py-4 text-center">
+          <footer className="px-6 py-5 text-center flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+              <a href="/terms" className="hover:text-on-surface transition-colors">
+                Terms
+              </a>
+              <span className="text-outline-variant">|</span>
+              <a href="/privacy" className="hover:text-on-surface transition-colors">
+                Privacy
+              </a>
+              <span className="text-outline-variant">|</span>
+              <a href="/support" className="hover:text-on-surface transition-colors">
+                Support
+              </a>
+              <span className="text-outline-variant">|</span>
+              <span>
+                Data from{" "}
+                <a
+                  href="https://pokeapi.co"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-on-surface transition-colors"
+                >
+                  PokeAPI
+                </a>
+                {", "}
+                <a
+                  href="https://pikalytics.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-on-surface transition-colors"
+                >
+                  Pikalytics
+                </a>
+                {", "}
+                <a
+                  href="https://www.smogon.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-on-surface transition-colors"
+                >
+                  Smogon
+                </a>
+              </span>
+            </div>
             <p className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              PokeComp is a fan project. Not affiliated with
-              or endorsed by The Pokemon Company, Nintendo, or Game Freak.
+              PokeComp is a fan project. Not affiliated with or endorsed by
+              The Pokemon Company, Nintendo, or Game Freak.
             </p>
           </footer>
         </Providers>

@@ -178,10 +178,35 @@
 - [x] auth.py now detects alg from token header: ES256 via JWKS, HS256 via JWT secret
 - [x] Fixed NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel (was publishable key, now JWT format)
 
-### Phase 5: Improvements (Planned, not started)
-See `.claude/plans/dreamy-honking-brooks.md` for the full improvement plan covering:
-- D: AI strategy (per-user rate limiting, quotas, cost tracking)
-- E: Disclaimers revision (Terms of Service, Privacy Policy pages)
+### Phase 5: Improvements
+
+#### Workstream D: AI Strategy -- COMPLETE (2026-04-15)
+- [x] D1: `ai_usage_log` table with RLS (migration 20260415100000)
+- [x] D2: Per-user daily quota (10 req/day, `ai_quota.py`)
+- [x] D3: Quota enforcement wired into draft, cheatsheet, meta scrape endpoints
+- [x] D4: `GET /ai/usage` endpoint (today's usage + recent history)
+- [x] D5: Prompt injection protection (`prompt_guard.py`, sanitize matchup notes)
+- [x] D6: Frontend quota indicator on draft + cheatsheet pages (disable when exhausted)
+- [x] Real token counts from Claude API response (replaces hardcoded cost estimates)
+- [x] Meta scrape now requires auth + has rate limit + logs usage
+
+#### Workstream E: Disclaimers -- COMPLETE (2026-04-15)
+- [x] E1: Terms of Service page (`/terms`) -- fan project, AI content, acceptable use, IP, liability
+- [x] E2: Privacy Policy page (`/privacy`) -- data collected, third-party services (Supabase, Anthropic, Vercel), security, retention
+- [x] E3: Footer updated with Terms/Privacy links + data source attribution (PokeAPI, Pikalytics, Smogon)
+- [x] E4: AI disclaimers enhanced -- now credit Claude/Anthropic, name data sources, note meta freshness caveat
+
+#### Workstream I: Monetization -- COMPLETE (2026-04-15)
+- [x] I1: `/support` page with Ko-fi donation link, cost breakdown, promise section
+- [x] I2: Support link in footer alongside Terms/Privacy
+- All features remain free -- donation-only model
+
+#### Workstream C: Favicon -- COMPLETE (2026-04-15)
+- [x] C1: SVG favicon (`icon.svg`) -- crimson pokeball with crosshairs on dark bg
+- [x] C2: Apple touch icon (`apple-icon.png`, 180x180) + replaced `favicon.ico` (16+32px)
+- [x] C3: Auto-discovered by Next.js App Router (no metadata changes needed)
+
+#### Remaining Workstreams
 - C: Favicon (convert PokeballLogo SVG to ico/png)
 - I: Monetization (donation model -- Buy Me a Coffee / Ko-fi)
 - B: Profile revamp (avatar system, display name, trainer card)

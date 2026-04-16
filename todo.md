@@ -3,11 +3,11 @@
 ## In Progress
 
 ### Improvements Plan (see plan.md Phase 5+)
-- [ ] D2: Per-user AI rate limiting + daily quotas + usage tracking
-- [ ] E2: Terms of Service and Privacy Policy pages
-- [ ] E2: Update disclaimers (footer attribution, AI disclaimers, copyright)
-- [ ] C1: Convert PokeballLogo to custom favicon (ico, svg, apple-icon)
-- [ ] I2: Support/donate page (Buy Me a Coffee / Ko-fi)
+- [x] D2: Per-user AI rate limiting + daily quotas + usage tracking
+- [x] E2: Terms of Service and Privacy Policy pages
+- [x] E2: Update disclaimers (footer attribution, AI disclaimers, copyright)
+- [x] C1: Convert PokeballLogo to custom favicon (ico, svg, apple-icon)
+- [x] I2: Support/donate page (Ko-fi)
 - [ ] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
 - [ ] B2: Profile features (display name, trainer card, expanded stats)
 - [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research

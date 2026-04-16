@@ -4,12 +4,15 @@ from datetime import date
 import anthropic
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from postgrest.types import CountMethod
 from pydantic import BaseModel
 
+from app.ai_quota import check_ai_quota, estimate_cost, log_ai_usage
+from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
+from app.limiter import limiter
 from app.models.meta import MetaSnapshotCreate, MetaSnapshotList, MetaSnapshotResponse
 
 router = APIRouter(prefix="/meta", tags=["meta"])
@@ -118,7 +121,7 @@ def _fetch_page(url: str) -> str:
 
 def _parse_with_claude(
     client: anthropic.Anthropic, page_text: str, format_name: str
-) -> dict[str, list[str]]:
+) -> tuple[dict[str, list[str]], int, int]:
     prompt = (
         f"Extract the Pokemon tier list from this Game8 page for {format_name}.\n\n"
         "Return ONLY a JSON object mapping tier names to arrays of Pokemon names.\n"
@@ -145,7 +148,8 @@ def _parse_with_claude(
     for tier in VALID_TIERS:
         if tier not in tier_data:
             tier_data[tier] = []
-    return {k: v for k, v in tier_data.items() if k in VALID_TIERS}
+    filtered = {k: v for k, v in tier_data.items() if k in VALID_TIERS}
+    return filtered, message.usage.input_tokens, message.usage.output_tokens
 
 
 def _upsert_snapshot(format_name: str, tier_data: dict[str, list[str]], source_url: str) -> None:
@@ -162,7 +166,8 @@ def _upsert_snapshot(format_name: str, tier_data: dict[str, list[str]], source_u
 
 
 @router.post("/scrape", response_model=ScrapeResponse)
-def scrape_game8():
+@limiter.limit("5/minute")
+def scrape_game8(request: Request, user_id: str = Depends(get_current_user)):
     """Scrape Game8 tier lists and upsert into meta_snapshots."""
     if not settings.anthropic_api_key:
         raise HTTPException(
@@ -170,17 +175,21 @@ def scrape_game8():
             detail="ANTHROPIC_API_KEY is not configured",
         )
 
+    check_ai_quota(user_id)
+
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     results: list[ScrapeResult] = []
-    api_calls = 0
+    total_cost = 0.0
 
     for format_name, url in GAME8_URLS.items():
         try:
             page_text = _fetch_page(url)
-            tier_data = _parse_with_claude(ai, page_text, format_name)
+            tier_data, in_tok, out_tok = _parse_with_claude(ai, page_text, format_name)
             _upsert_snapshot(format_name, tier_data, url)
             total = sum(len(v) for v in tier_data.values())
-            api_calls += 1
+            call_cost = estimate_cost(in_tok, out_tok)
+            total_cost += call_cost
+            log_ai_usage(user_id, "meta_scrape", "claude-sonnet-4-6-20250514", in_tok, out_tok)
             results.append(ScrapeResult(format=format_name, pokemon_count=total, status="ok"))
         except httpx.HTTPStatusError as e:
             results.append(
@@ -191,7 +200,6 @@ def scrape_game8():
                 )
             )
         except (json.JSONDecodeError, ValueError) as e:
-            api_calls += 1
             results.append(
                 ScrapeResult(
                     format=format_name,
@@ -208,7 +216,4 @@ def scrape_game8():
                 )
             )
 
-    # ~2200 input + ~400 output tokens per call at Sonnet pricing
-    estimated_cost = api_calls * 0.013
-
-    return ScrapeResponse(results=results, estimated_cost_usd=estimated_cost)
+    return ScrapeResponse(results=results, estimated_cost_usd=total_cost)

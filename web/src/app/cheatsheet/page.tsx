@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
-import { fetchTeams, generateCheatsheet } from "@/lib/api";
+import { fetchTeams, generateCheatsheet, fetchAiUsage } from "@/lib/api";
+import type { AiUsageToday } from "@/lib/api";
 import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
@@ -66,6 +67,7 @@ export default function CheatsheetPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingTeams, setIsLoadingTeams] = useState(true);
+  const [quota, setQuota] = useState<AiUsageToday | null>(null);
 
   const loadTeams = useCallback(async () => {
     setIsLoadingTeams(true);
@@ -74,6 +76,10 @@ export default function CheatsheetPage() {
       setTeams(teamsResult.data);
     } catch (err) {
       console.error("Failed to load teams:", err);
+      // Load AI quota (non-blocking)
+      fetchAiUsage()
+        .then((usage) => setQuota(usage.today))
+        .catch(() => {});
     } finally {
       setIsLoadingTeams(false);
     }
@@ -103,6 +109,9 @@ export default function CheatsheetPage() {
     try {
       const response = await generateCheatsheet(selectedTeamId);
       setResult(response);
+      fetchAiUsage()
+        .then((usage) => setQuota(usage.today))
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate cheatsheet");
     } finally {
@@ -156,7 +165,7 @@ export default function CheatsheetPage() {
       <div className="mb-8 flex items-center gap-4">
         <button
           onClick={handleGenerate}
-          disabled={!canGenerate}
+          disabled={!canGenerate || (quota !== null && quota.remaining <= 0)}
           className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isGenerating ? "Generating..." : "Generate Cheatsheet"}
@@ -168,6 +177,13 @@ export default function CheatsheetPage() {
           >
             Export PDF
           </button>
+        )}
+        {quota !== null && (
+          <span className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}>
+            {quota.remaining <= 0
+              ? "Daily limit reached -- resets at midnight UTC"
+              : `${quota.used}/${quota.limit} analyses used today`}
+          </span>
         )}
         {result?.cached && (
           <span className="font-display text-xs text-on-surface-muted">

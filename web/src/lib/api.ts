@@ -420,5 +420,33 @@ export async function exportTeamToShowdown(teamId: string): Promise<string> {
   return apiFetchText(`/teams/${teamId}/export`);
 }
 
+// ── AI Usage ──
+
+export interface AiUsageToday {
+  used: number;
+  limit: number;
+  remaining: number;
+  resets_at: string;
+}
+
+export interface AiUsageEntry {
+  endpoint: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_usd: number;
+  cached: boolean;
+  created_at: string;
+}
+
+export interface AiUsageResponse {
+  today: AiUsageToday;
+  recent: AiUsageEntry[];
+}
+
+export async function fetchAiUsage(): Promise<AiUsageResponse> {
+  return apiFetch<AiUsageResponse>("/ai/usage");
+}
+
 export { apiFetch };
 

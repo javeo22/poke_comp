@@ -5,11 +5,13 @@ from datetime import datetime, timedelta, timezone
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.ai_quota import check_ai_quota, estimate_cost, log_ai_usage
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
 from app.limiter import limiter
 from app.models.draft import DraftAnalysis, DraftRequest, DraftResponse
+from app.prompt_guard import sanitize_user_text
 
 router = APIRouter(prefix="/draft", tags=["draft"])
 
@@ -206,7 +208,7 @@ def _fetch_personal_context(user_id: str, opponent_names: list[str]) -> str:
         outcome = r["outcome"].upper()
         leads = r.get("lead_pair") or []
         lead_str = f" (led: {', '.join(leads)})" if leads else ""
-        notes = r.get("notes") or ""
+        notes = sanitize_user_text(r.get("notes") or "")
         note_str = f' -- Notes: "{notes}"' if notes else ""
         lines.append(f"- {outcome} vs [{opp_names_str}]{lead_str}{note_str}")
 
@@ -424,7 +426,11 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     # Check cache
     cached = _check_cache(request_hash)
     if cached:
+        log_ai_usage(user_id, "draft", "claude-sonnet-4-6-20250514", 0, 0, cached=True)
         return DraftResponse(analysis=cached, cached=True, estimated_cost_usd=0.0)
+
+    # Check daily quota (non-cached requests only)
+    check_ai_quota(user_id)
 
     # Enrich with data
     opponent_pokemon = _fetch_opponent_pokemon(body.opponent_team)
@@ -481,7 +487,10 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
         analysis,
     )
 
-    # Estimate cost: ~3000 input + ~1500 output tokens at Sonnet pricing
-    estimated_cost = 0.02
+    # Log usage with real token counts
+    in_tok = message.usage.input_tokens
+    out_tok = message.usage.output_tokens
+    estimated_cost = estimate_cost(in_tok, out_tok)
+    log_ai_usage(user_id, "draft", "claude-sonnet-4-6-20250514", in_tok, out_tok)
 
     return DraftResponse(analysis=analysis, cached=False, estimated_cost_usd=estimated_cost)
