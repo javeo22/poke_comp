@@ -49,13 +49,18 @@
 ---
 
 ## Backlog
-- [ ] Dedup pokemon_usage: same Pokemon appears twice when both Smogon and Pikalytics have data
-- [ ] ISR migration: convert public pages to server components for static generation
+- [x] Dedup pokemon_usage: ingest scripts now clean old snapshots; 19 stale rows deleted
+- [x] ISR migration: 9 static pages (pokemon, moves, items, type-chart, meta, login, terms, privacy, support), 10 dynamic (auth-gated)
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
 - [ ] Speed tier reference page (/speed-tiers)
 
 ---
+
+## Done (2026-04-16) - Session 3 (continued)
+- [x] ISR migration: terms/privacy/support converted to server components, per-route force-dynamic layouts for auth pages
+- [x] Usage data dedup: ingest scripts clean old snapshots, 19 stale rows deleted
+- [x] Backlog cleared
 
 ## Done (2026-04-16) - Session 3
 - [x] Auth callback route (/auth/callback) for Supabase email confirmation
