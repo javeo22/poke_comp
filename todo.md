@@ -47,6 +47,8 @@
 - [x] Fix: SSR `TypeError: Failed to parse URL` — resolved relative `/api` URL to absolute during server rendering
 - [x] Fix: Team fetch in draft/cheatsheet also used `.single()` which raised on missing teams
 - [x] Fix: UUID pokemon_ids type mismatch — `teams.pokemon_ids` are UUID[] (user_pokemon refs), not PokeAPI int[]; draft/cheatsheet were calling `int(pid)` on UUIDs. Fixed by resolving through user_pokemon table first.
+- [x] Fix: `.maybe_single().execute()` returns `None` (not APIResponse with data=None) — added `result is None` guard
+- [x] Fix: Claude model ID `claude-sonnet-4-6-20250514` does not exist — corrected to `claude-sonnet-4-6` in draft, cheatsheet, meta routers
 
 ## Done (2026-04-15)
 - [x] F2: Centralized name resolver (`api/app/services/name_resolver.py`) wired into meta scraper
