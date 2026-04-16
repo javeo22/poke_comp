@@ -53,7 +53,32 @@ def get_team(team_id: str, user_id: str = Depends(get_current_user)):
     return TeamResponse.model_validate(result.data)
 
 
-def _validate_mega(pokemon_ids: list[int], mega_pokemon_id: int | None) -> None:
+def _resolve_roster_pokemon_ids(user_id: str, roster_ids: list[str]) -> list[int]:
+    """Resolve user_pokemon UUIDs to pokemon species IDs for validation.
+
+    Verifies that all roster entries exist and belong to the user.
+    """
+    result = (
+        supabase.table("user_pokemon")
+        .select("id, pokemon_id")
+        .eq("user_id", user_id)
+        .in_("id", roster_ids)
+        .execute()
+    )
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    found = {row["id"]: row["pokemon_id"] for row in rows}
+
+    missing = set(roster_ids) - set(found.keys())
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Roster entries not found: {sorted(missing)}",
+        )
+
+    return [found[rid] for rid in roster_ids]
+
+
+def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
     """Validate that at most one mega is designated and it's in the team."""
     if mega_pokemon_id and mega_pokemon_id not in pokemon_ids:
         raise HTTPException(
@@ -64,7 +89,8 @@ def _validate_mega(pokemon_ids: list[int], mega_pokemon_id: int | None) -> None:
 
 @router.post("", response_model=TeamResponse, status_code=201)
 def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
-    validate_champions_pokemon_batch(body.pokemon_ids)
+    species_ids = _resolve_roster_pokemon_ids(user_id, body.pokemon_ids)
+    validate_champions_pokemon_batch(species_ids)
     _validate_mega(body.pokemon_ids, body.mega_pokemon_id)
 
     data = body.model_dump(exclude_none=True)
@@ -84,7 +110,8 @@ def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_curre
 
     # Validate Champions eligibility when pokemon_ids change
     if body.pokemon_ids is not None:
-        validate_champions_pokemon_batch(body.pokemon_ids)
+        species_ids = _resolve_roster_pokemon_ids(user_id, body.pokemon_ids)
+        validate_champions_pokemon_batch(species_ids)
 
     # If updating pokemon_ids or mega, validate mega membership
     if body.pokemon_ids is not None or body.mega_pokemon_id is not None:
@@ -167,8 +194,8 @@ def import_team(body: ImportRequest, user_id: str = Depends(get_current_user)):
     pokemon_ids = [p.pokemon_id for p in resolved if p.pokemon_id]
     validate_champions_pokemon_batch(pokemon_ids)
 
-    # Create user_pokemon entries
-    created_ids: list[int] = []
+    # Create user_pokemon entries — store their UUIDs for the team
+    created_roster_ids: list[str] = []
     for p in resolved:
         row: dict[str, Any] = {
             "user_id": user_id,
@@ -183,15 +210,15 @@ def import_team(body: ImportRequest, user_id: str = Depends(get_current_user)):
         }
         result = supabase.table("user_pokemon").insert(row).execute()
         rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
-        if rows and p.pokemon_id:
-            created_ids.append(p.pokemon_id)
+        if rows:
+            created_roster_ids.append(rows[0]["id"])
 
     # Create the team
     team_data: dict[str, Any] = {
         "user_id": user_id,
         "name": body.team_name,
         "format": body.format,
-        "pokemon_ids": created_ids[:6],
+        "pokemon_ids": created_roster_ids[:6],
     }
     team_result = supabase.table("teams").insert(team_data).execute()
     team_rows: list[dict[str, Any]] = team_result.data  # type: ignore[assignment]
@@ -200,7 +227,7 @@ def import_team(body: ImportRequest, user_id: str = Depends(get_current_user)):
 
     return ImportResponse(
         team=TeamResponse.model_validate(team_rows[0]),
-        pokemon_created=len(created_ids),
+        pokemon_created=len(created_roster_ids),
         warnings=parsed.warnings,
     )
 
@@ -221,23 +248,24 @@ def export_team(team_id: str, user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Team not found")
 
     team_row: dict[str, Any] = team.data  # type: ignore[assignment]
-    pokemon_ids: list[int] = team_row["pokemon_ids"]
+    roster_ids: list[str] = team_row["pokemon_ids"]
 
-    # Fetch Pokemon base data
-    poke_result = supabase.table("pokemon").select("id, name").in_("id", pokemon_ids).execute()
-    poke_rows: list[dict[str, Any]] = poke_result.data  # type: ignore[assignment]
-    poke_map = {r["id"]: r["name"] for r in poke_rows}
-
-    # Fetch user builds
+    # Fetch user_pokemon entries (roster builds) by their UUIDs
     builds_result = (
         supabase.table("user_pokemon")
-        .select("pokemon_id, ability, nature, stat_points, moves, item_id")
+        .select("id, pokemon_id, ability, nature, stat_points, moves, item_id")
         .eq("user_id", user_id)
-        .in_("pokemon_id", pokemon_ids)
+        .in_("id", roster_ids)
         .execute()
     )
     builds: list[dict[str, Any]] = builds_result.data  # type: ignore[assignment]
-    build_map = {b["pokemon_id"]: b for b in builds}
+    build_map = {b["id"]: b for b in builds}
+
+    # Fetch Pokemon base data for names
+    species_ids = list({b["pokemon_id"] for b in builds})
+    poke_result = supabase.table("pokemon").select("id, name").in_("id", species_ids).execute()
+    poke_rows: list[dict[str, Any]] = poke_result.data  # type: ignore[assignment]
+    poke_map = {r["id"]: r["name"] for r in poke_rows}
 
     # Fetch item names
     item_ids = [b["item_id"] for b in builds if b.get("item_id")]
@@ -247,11 +275,12 @@ def export_team(team_id: str, user_id: str = Depends(get_current_user)):
         item_rows: list[dict[str, Any]] = items_result.data  # type: ignore[assignment]
         item_map = {r["id"]: r["name"] for r in item_rows}
 
-    # Assemble export data
+    # Assemble export data in team order
     export_data: list[dict[str, Any]] = []
-    for pid in pokemon_ids:
-        name = poke_map.get(pid, f"Pokemon #{pid}")
-        build = build_map.get(pid, {})
+    for rid in roster_ids:
+        build = build_map.get(rid, {})
+        pokemon_id = build.get("pokemon_id")
+        name = poke_map.get(pokemon_id, f"Pokemon #{pokemon_id}") if pokemon_id else "Unknown"
         item_name = item_map.get(build.get("item_id", 0))
         export_data.append(
             {
