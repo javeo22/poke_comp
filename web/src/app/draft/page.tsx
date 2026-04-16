@@ -491,6 +491,24 @@ export default function DraftPage() {
             </div>
           )}
 
+          {/* Contextual support prompt */}
+          {!result.cached && (
+            <div className="rounded-xl bg-surface-low/50 px-5 py-3 flex items-center justify-between gap-4">
+              <p className="font-body text-xs text-on-surface-muted">
+                This analysis cost ~${result.estimated_cost_usd.toFixed(3)} to generate.
+                Help keep PokeComp free for everyone.
+              </p>
+              <a
+                href="https://ko-fi.com/pokecompapp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost h-8 px-4 font-display text-[0.6rem] uppercase tracking-wider shrink-0"
+              >
+                Support
+              </a>
+            </div>
+          )}
+
           {/* Record Outcome */}
           <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">

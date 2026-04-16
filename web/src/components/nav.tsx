@@ -46,6 +46,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[]; dim
       { href: "/draft", label: "Draft" },
       { href: "/cheatsheet", label: "Cheatsheet" },
       { href: "/matches", label: "Matches" },
+      { href: "/support", label: "Support" },
     ],
   },
 ];

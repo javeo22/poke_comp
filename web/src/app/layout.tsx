@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import { Nav } from "@/components/nav";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { Providers } from "./providers";
@@ -20,8 +21,31 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "PokeComp",
-  description: "Competitive Pokemon Champions companion",
+  title: {
+    default: "PokeComp - Pokemon Champions Companion",
+    template: "%s | PokeComp",
+  },
+  description:
+    "AI-powered competitive Pokemon Champions companion. Roster tracking, team builder, draft analysis, cheatsheets, and meta insights.",
+  metadataBase: new URL("https://pokecomp.app"),
+  openGraph: {
+    title: "PokeComp - Pokemon Champions Companion",
+    description:
+      "AI-powered draft analysis, team cheatsheets, and meta tracking for competitive Pokemon Champions.",
+    url: "https://pokecomp.app",
+    siteName: "PokeComp",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "PokeComp - Pokemon Champions Companion",
+    description:
+      "AI-powered draft analysis, team cheatsheets, and meta tracking for competitive Pokemon Champions.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -36,6 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>
+          <Analytics />
           <Nav />
           <OnboardingTour />
           <main className="flex-1 flex flex-col items-center w-full relative z-10">

@@ -594,6 +594,22 @@ export default function CheatsheetPage() {
                     <div id="cheatsheet-content">
                       <CheatsheetContent data={data} />
                     </div>
+                    {/* Contextual support prompt */}
+                    <div className="mt-4 rounded-xl bg-surface-mid/30 px-5 py-3 flex items-center justify-between gap-4">
+                      <p className="font-body text-xs text-on-surface-muted">
+                        Cheatsheets are powered by AI and cost real money to generate.
+                        Help keep PokeComp free for everyone.
+                      </p>
+                      <a
+                        href="https://ko-fi.com/pokecompapp"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-ghost h-8 px-4 font-display text-[0.6rem] uppercase tracking-wider shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Support
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>

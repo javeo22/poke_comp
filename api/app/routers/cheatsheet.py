@@ -31,7 +31,7 @@ from app.models.cheatsheet import (
 router = APIRouter(prefix="/cheatsheet", tags=["cheatsheet"])
 
 
-CACHE_TTL_DAYS = 7
+CACHE_TTL_DAYS = 30
 
 
 # ═══════════════════════════════════════════════════════════════════

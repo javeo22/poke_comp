@@ -16,7 +16,7 @@ from app.prompt_guard import sanitize_user_text
 router = APIRouter(prefix="/draft", tags=["draft"])
 
 
-CACHE_TTL_HOURS = 24
+CACHE_TTL_HOURS = 168  # 7 days
 
 
 def _make_hash(opponent: list[str], my_pokemon_ids: list[str]) -> str:
