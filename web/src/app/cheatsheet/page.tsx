@@ -266,7 +266,9 @@ export default function CheatsheetPage() {
                                   : s
                               )
                             );
-                          } catch { /* ignore */ }
+                          } catch (err) {
+                            console.error("Toggle visibility failed:", err);
+                          }
                         }}
                         className={`btn-ghost h-9 px-5 font-display text-xs font-medium uppercase tracking-wider ${
                           saved.is_public ? "text-green-400 border-green-400/30" : ""
