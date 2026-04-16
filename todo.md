@@ -25,7 +25,9 @@
 - [x] P: Strategy content -- strategy_notes table, admin Strategy tab, wired into draft/cheatsheet AI prompts
 
 ### Visual Polish
-- [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
+- [x] Responsive audit (375/768/1280px) -- landing, pokedex, moves, items, type-chart, meta, login all verified
+- [x] Fix: moves table min-w-[700px] for mobile horizontal scroll (was clipping category badges)
+- [x] Auth callback route: /auth/callback for Supabase email confirmation flow
 
 ### Data Quality
 - [x] Item legality: fixed Smogon ingest to recalculate percentages after filtering, ran --fix to clean 131 entries
@@ -47,12 +49,22 @@
 ---
 
 ## Backlog
-- [ ] Decide on open source license (MIT vs Apache 2.0)
+- [ ] Dedup pokemon_usage: same Pokemon appears twice when both Smogon and Pikalytics have data
+- [ ] ISR migration: convert public pages to server components for static generation
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
 - [ ] Speed tier reference page (/speed-tiers)
 
 ---
+
+## Done (2026-04-16) - Session 3
+- [x] Auth callback route (/auth/callback) for Supabase email confirmation
+- [x] Moves table mobile fix (min-w-[700px] horizontal scroll)
+- [x] Responsive audit: all pages verified at 375/768/1280px
+- [x] Data quality: item legality (131 fixed), ability legality (12 fixed), non-English rows (6 deleted)
+- [x] Pikalytics full ingest: 25 Pokemon
+- [x] README.md + MIT LICENSE
+- [x] Smogon ingest: _top_entries_filtered now recalculates percentages after legality filtering
 
 ## Done (2026-04-16) - Session 2
 - [x] G3: Game8 scraper removed from meta.py, LEGAL_AND_DEV_GUIDELINES.md updated with Limitless terms + Champions IP section
