@@ -41,29 +41,36 @@ CACHE_TTL_DAYS = 7
 
 def _save_cheatsheet(team_id: str, user_id: str, response: CheatsheetResponse) -> None:
     """Persist cheatsheet to team_cheatsheets table (upsert by team_id)."""
-    supabase.table("team_cheatsheets").upsert(
-        {
-            "team_id": team_id,
-            "user_id": user_id,
-            "cheatsheet_json": response.model_dump(mode="json"),
-        },
-        on_conflict="team_id",
-    ).execute()
+    try:
+        supabase.table("team_cheatsheets").upsert(
+            {
+                "team_id": team_id,
+                "user_id": user_id,
+                "cheatsheet_json": response.model_dump(mode="json"),
+            },
+            on_conflict="team_id",
+        ).execute()
+    except Exception:
+        # Table may not exist yet (migration not applied) -- silently skip
+        pass
 
 
 def _fetch_saved_cheatsheet(team_id: str, user_id: str) -> dict | None:
     """Fetch a previously saved cheatsheet for a team."""
-    result = (
-        supabase.table("team_cheatsheets")
-        .select("cheatsheet_json, created_at, updated_at, is_public")
-        .eq("team_id", team_id)
-        .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    if result is None or not result.data:
+    try:
+        result = (
+            supabase.table("team_cheatsheets")
+            .select("cheatsheet_json, created_at, updated_at, is_public")
+            .eq("team_id", team_id)
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if result is None or not result.data:
+            return None
+        return result.data  # type: ignore[return-value]
+    except Exception:
         return None
-    return result.data  # type: ignore[return-value]
 
 # ═══════════════════════════════════════════════════════════════════
 # Constants
@@ -498,15 +505,18 @@ def cheatsheet_status(
     ids = [t.strip() for t in team_ids.split(",") if t.strip()]
     if not ids:
         return {}
-    result = (
-        supabase.table("team_cheatsheets")
-        .select("team_id, updated_at")
-        .eq("user_id", user_id)
-        .in_("team_id", ids)
-        .execute()
-    )
-    rows: list[dict] = result.data  # type: ignore[assignment]
-    return {r["team_id"]: r["updated_at"] for r in rows}
+    try:
+        result = (
+            supabase.table("team_cheatsheets")
+            .select("team_id, updated_at")
+            .eq("user_id", user_id)
+            .in_("team_id", ids)
+            .execute()
+        )
+        rows: list[dict] = result.data  # type: ignore[assignment]
+        return {r["team_id"]: r["updated_at"] for r in rows}
+    except Exception:
+        return {}
 
 
 @router.get("/{team_id}")
