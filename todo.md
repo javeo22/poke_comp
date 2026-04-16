@@ -8,8 +8,8 @@
 - [x] E2: Update disclaimers (footer attribution, AI disclaimers, copyright)
 - [x] C1: Convert PokeballLogo to custom favicon (ico, svg, apple-icon)
 - [x] I2: Support/donate page (Ko-fi)
-- [ ] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
-- [ ] B2: Profile features (display name, trainer card, expanded stats)
+- [x] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
+- [x] B2: Profile features (display name, trainer card, expanded stats)
 - [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
 - [ ] F2: Centralized name resolver + data freshness API
 - [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)

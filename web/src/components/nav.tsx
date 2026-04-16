@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { resetOnboardingTour } from "@/components/onboarding-tour";
 import { PokeballLogo } from "@/components/pokeball-logo";
+import { fetchProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
+
+interface ProfileBrief {
+  display_name: string | null;
+  avatar_sprite_url: string | null;
+  email: string | null;
+}
 
 const NAV_GROUPS: { label: string; links: { href: string; label: string }[]; dim?: boolean }[] = [
   {
@@ -46,6 +54,7 @@ export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [profileBrief, setProfileBrief] = useState<ProfileBrief | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const supabase = createClient();
 
@@ -54,12 +63,27 @@ export function Nav() {
 
     supabase.auth.getUser().then(({ data: { user: authUser } }) => {
       setUser(authUser);
+      if (authUser) {
+        fetchProfile()
+          .then((fp) =>
+            setProfileBrief({
+              display_name: fp.profile.display_name,
+              avatar_sprite_url: fp.profile.avatar_sprite_url,
+              email: fp.email,
+            })
+          )
+          .catch(() => {});
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const newUser = session?.user ?? null;
+      setUser(newUser);
+      if (!newUser) {
+        setProfileBrief(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -113,7 +137,7 @@ export function Nav() {
         <div className="flex items-center gap-2">
           {/* Auth buttons -- always visible */}
           <div className="hidden sm:flex sm:items-center sm:gap-2">
-            <AuthButtons user={user} pathname={pathname} onSignOut={handleSignOut} />
+            <AuthButtons user={user} profileBrief={profileBrief} pathname={pathname} onSignOut={handleSignOut} />
           </div>
 
           {/* Hamburger button -- mobile only */}
@@ -157,7 +181,7 @@ export function Nav() {
             </div>
           ))}
           <div className="mt-4 flex items-center gap-2 border-t border-outline-variant pt-3 sm:hidden">
-            <AuthButtons user={user} pathname={pathname} onSignOut={handleSignOut} onClick={closeMobile} />
+            <AuthButtons user={user} profileBrief={profileBrief} pathname={pathname} onSignOut={handleSignOut} onClick={closeMobile} />
           </div>
         </div>
       )}
@@ -196,19 +220,68 @@ function NavLink({
 
 function AuthButtons({
   user,
+  profileBrief,
   pathname,
   onSignOut,
   onClick,
 }: {
   user: User | null;
+  profileBrief: ProfileBrief | null;
   pathname: string;
   onSignOut: () => void;
   onClick?: () => void;
 }) {
   if (user) {
+    const displayName =
+      profileBrief?.display_name ||
+      profileBrief?.email?.split("@")[0] ||
+      user.email?.split("@")[0] ||
+      "Profile";
+
     return (
       <>
-        <NavLink href="/profile" label="Profile" active={pathname === "/profile"} onClick={onClick} />
+        <Link
+          href="/profile"
+          onClick={onClick}
+          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors ${
+            pathname === "/profile"
+              ? "bg-primary text-surface"
+              : "hover:bg-surface-high"
+          }`}
+        >
+          {/* Avatar */}
+          {profileBrief?.avatar_sprite_url ? (
+            <Image
+              src={profileBrief.avatar_sprite_url}
+              alt="Avatar"
+              width={28}
+              height={28}
+              className="image-rendering-pixelated"
+              unoptimized
+            />
+          ) : (
+            <span
+              className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-display font-bold ${
+                pathname === "/profile"
+                  ? "border-surface/30 text-surface"
+                  : "border-outline-variant text-on-surface-muted"
+              }`}
+            >
+              {displayName[0]?.toUpperCase()}
+            </span>
+          )}
+          <span
+            className={`font-display text-xs uppercase tracking-wider ${
+              pathname === "/profile"
+                ? "text-surface"
+                : "text-on-surface-muted"
+            }`}
+          >
+            {displayName.length > 12
+              ? displayName.slice(0, 12) + "..."
+              : displayName}
+          </span>
+        </Link>
         <button
           onClick={onSignOut}
           className="btn-ghost px-4 py-1.5 font-display text-xs uppercase tracking-wider hover:text-tertiary hover:border-tertiary/30"

@@ -206,10 +206,16 @@
 - [x] C2: Apple touch icon (`apple-icon.png`, 180x180) + replaced `favicon.ico` (16+32px)
 - [x] C3: Auto-discovered by Next.js App Router (no metadata changes needed)
 
+#### Workstream B: Profile Revamp -- COMPLETE (2026-04-15)
+- [x] B1: `user_profiles` table (display_name, avatar_pokemon_id) with RLS
+- [x] B2: GET /profile endpoint (profile + expanded stats in one call)
+- [x] B3: PUT /profile endpoint (update display name + avatar)
+- [x] B4: Avatar sprite picker modal (searchable grid of Champions-eligible Pokemon)
+- [x] B5: Trainer card component (avatar, editable display name, trainer title, member since)
+- [x] B6: Profile page revamp (trainer card + activity stats + battle stats + insights + recent form)
+- [x] B7: Nav avatar display (sprite + display name replaces "Profile" link)
+
 #### Remaining Workstreams
-- C: Favicon (convert PokeballLogo SVG to ico/png)
-- I: Monetization (donation model -- Buy Me a Coffee / Ko-fi)
-- B: Profile revamp (avatar system, display name, trainer card)
 - G: Data source ToS compliance (Game8 HIGH risk, Serebii MEDIUM)
 - F: Data pipeline improvements (centralized name resolver, freshness API, cron scheduling)
 - H: UX flow review (beginner/intermediate/pro user journeys)

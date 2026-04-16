@@ -16,6 +16,7 @@ from app.routers import (
     meta,
     moves,
     pokemon,
+    profile,
     teams,
     usage,
     user_pokemon,
@@ -68,6 +69,7 @@ app.include_router(draft.router)
 app.include_router(cheatsheet.router)
 app.include_router(matchups.router)
 app.include_router(ai_usage.router)
+app.include_router(profile.router)
 app.include_router(admin.router)
 
 

@@ -1,4 +1,5 @@
 import type { CheatsheetResponse } from "@/types/cheatsheet";
+import type { FullProfile, ProfileData, ProfileUpdate } from "@/types/profile";
 import type { DraftRequest, DraftResponse } from "@/types/draft";
 import type { ItemListResponse } from "@/types/item";
 import type {
@@ -446,6 +447,19 @@ export interface AiUsageResponse {
 
 export async function fetchAiUsage(): Promise<AiUsageResponse> {
   return apiFetch<AiUsageResponse>("/ai/usage");
+}
+
+// ── Profile ──
+
+export async function fetchProfile(): Promise<FullProfile> {
+  return apiFetch<FullProfile>("/profile");
+}
+
+export async function updateProfile(body: ProfileUpdate): Promise<ProfileData> {
+  return apiFetch<ProfileData>("/profile", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }
 
 export { apiFetch };

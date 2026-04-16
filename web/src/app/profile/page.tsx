@@ -3,75 +3,71 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import type { User } from "@supabase/supabase-js";
-
-interface ProfileStats {
-  teamCount: number;
-  rosterCount: number;
-  matchesPlayed: number;
-  winRate: number;
-}
+import { fetchProfile, updateProfile } from "@/lib/api";
+import { AvatarPickerModal } from "@/components/profile/avatar-picker-modal";
+import { TrainerCard } from "@/components/profile/trainer-card";
+import type { FullProfile } from "@/types/profile";
 
 export default function ProfilePage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<FullProfile | null>(null);
+  const [loading, setLoading] = useState(!!supabase);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+    if (!supabase) return;
 
-    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
-      if (!authUser) {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
         router.push("/login");
         return;
       }
-      setUser(authUser);
 
-      // Load stats inline to satisfy exhaustive-deps
-      (async () => {
-        try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-          const headers: HeadersInit = {};
-
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            headers["Authorization"] = `Bearer ${session.access_token}`;
-          }
-
-          const [teamsRes, rosterRes, statsRes] = await Promise.all([
-            fetch(`${apiUrl}/teams?limit=1`, { headers }),
-            fetch(`${apiUrl}/user-pokemon?limit=1`, { headers }),
-            fetch(`${apiUrl}/matchups/stats`, { headers }),
-          ]);
-
-          const teams = teamsRes.ok ? await teamsRes.json() : { count: 0 };
-          const roster = rosterRes.ok ? await rosterRes.json() : { count: 0 };
-          const matchStats = statsRes.ok
-            ? await statsRes.json()
-            : { overall: { total: 0, win_rate: 0 } };
-
-          setStats({
-            teamCount: teams.count || 0,
-            rosterCount: roster.count || 0,
-            matchesPlayed: matchStats.overall?.total || 0,
-            winRate: matchStats.overall?.win_rate || 0,
-          });
-        } catch {
-          // Stats are non-critical -- silently fail
-        } finally {
-          setLoading(false);
-        }
-      })();
+      fetchProfile()
+        .then(setProfile)
+        .catch(() => {})
+        .finally(() => setLoading(false));
     });
   }, [supabase, router]);
+
+  const handleUpdateDisplayName = async (name: string) => {
+    const updated = await updateProfile({
+      display_name: name || null,
+    });
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              display_name: updated.display_name,
+            },
+          }
+        : prev
+    );
+  };
+
+  const handleAvatarSelect = async (
+    pokemonId: number,
+    spriteUrl: string
+  ) => {
+    setAvatarPickerOpen(false);
+    const updated = await updateProfile({ avatar_pokemon_id: pokemonId });
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              avatar_pokemon_id: updated.avatar_pokemon_id,
+              avatar_sprite_url: updated.avatar_sprite_url ?? spriteUrl,
+            },
+          }
+        : prev
+    );
+  };
 
   const handleSignOut = async () => {
     if (!supabase) return;
@@ -86,23 +82,27 @@ export default function ProfilePage() {
         <div className="animate-pulse space-y-6">
           <div className="h-8 w-48 rounded bg-surface-high" />
           <div className="card p-8">
-            <div className="space-y-4">
-              <div className="h-5 w-64 rounded bg-surface-high" />
-              <div className="h-5 w-48 rounded bg-surface-high" />
+            <div className="flex items-start gap-5">
+              <div className="h-16 w-16 rounded-xl bg-surface-high" />
+              <div className="space-y-3">
+                <div className="h-6 w-40 rounded bg-surface-high" />
+                <div className="h-4 w-24 rounded bg-surface-high" />
+              </div>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-20 rounded-lg bg-surface-high" />
+            ))}
           </div>
         </div>
       </div>
     );
   }
 
-  if (!user) return null;
+  if (!profile) return null;
 
-  const memberSince = new Date(user.created_at).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const { stats } = profile;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
@@ -110,52 +110,124 @@ export default function ProfilePage() {
         Profile
       </h1>
       <p className="mb-8 font-body text-sm text-on-surface-muted">
-        Your account and activity overview
+        Your trainer card and battle stats
       </p>
 
-      {/* Account info */}
-      <div className="card p-6 mb-6">
-        <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-          Account
+      {/* Trainer Card */}
+      <TrainerCard
+        profile={profile.profile}
+        email={profile.email}
+        memberSince={profile.member_since}
+        matchesPlayed={stats.matches_played}
+        onUpdateDisplayName={handleUpdateDisplayName}
+        onOpenAvatarPicker={() => setAvatarPickerOpen(true)}
+      />
+
+      {/* Avatar Picker -- conditionally mounted so it remounts fresh each open */}
+      {avatarPickerOpen && (
+        <AvatarPickerModal
+          onClose={() => setAvatarPickerOpen(false)}
+          onSelect={handleAvatarSelect}
+          currentAvatarId={profile.profile.avatar_pokemon_id}
+        />
+      )}
+
+      {/* Core Stats */}
+      <div className="mt-6">
+        <h2 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+          Activity
         </h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-on-surface-muted">Email</span>
-            <span className="text-sm text-on-surface">{user.email}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-on-surface-muted">Member since</span>
-            <span className="text-sm text-on-surface">{memberSince}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-on-surface-muted">Email confirmed</span>
-            <span className="text-sm text-on-surface">
-              {user.email_confirmed_at ? "Yes" : "Pending"}
-            </span>
-          </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Teams" value={stats.team_count} />
+          <StatCard label="Roster" value={stats.roster_count} />
+          <StatCard label="Matches" value={stats.matches_played} />
+          <StatCard
+            label="Win Rate"
+            value={stats.matches_played > 0 ? `${stats.win_rate}%` : "--"}
+          />
         </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="card p-6 mb-6">
-          <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Activity
+      {/* Battle Stats */}
+      {stats.matches_played > 0 && (
+        <div className="mt-6">
+          <h2 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+            Battle Stats
           </h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard label="Teams" value={stats.teamCount} />
-            <StatCard label="Roster" value={stats.rosterCount} />
-            <StatCard label="Matches" value={stats.matchesPlayed} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard
-              label="Win Rate"
-              value={stats.matchesPlayed > 0 ? `${stats.winRate}%` : "--"}
+              label="Current Streak"
+              value={
+                stats.current_streak > 0
+                  ? `${stats.current_streak}${stats.streak_type === "win" ? "W" : "L"}`
+                  : "--"
+              }
+              accent={
+                stats.streak_type === "win"
+                  ? "text-green-500"
+                  : stats.streak_type === "loss"
+                    ? "text-primary"
+                    : undefined
+              }
             />
+            <StatCard
+              label="Best Win Streak"
+              value={stats.best_streak > 0 ? `${stats.best_streak}W` : "--"}
+            />
+            <StatCard label="This Week" value={stats.matches_this_week} />
+          </div>
+        </div>
+      )}
+
+      {/* Insights */}
+      {(stats.most_used_team || stats.most_faced_opponent) && (
+        <div className="mt-6">
+          <h2 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+            Insights
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {stats.most_used_team && (
+              <InsightCard label="Most Used Team" value={stats.most_used_team} />
+            )}
+            {stats.most_faced_opponent && (
+              <InsightCard
+                label="Most Faced Opponent"
+                value={stats.most_faced_opponent}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Form */}
+      {stats.recent_form.length > 0 && (
+        <div className="mt-6">
+          <h2 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+            Recent Form
+          </h2>
+          <div className="card flex items-center gap-2 p-4">
+            {stats.recent_form.map((entry, i) => (
+              <div
+                key={i}
+                title={`${entry.outcome === "win" ? "Win" : "Loss"} -- ${new Date(entry.played_at).toLocaleDateString()}`}
+                className={`h-6 w-6 rounded-full ${
+                  entry.outcome === "win"
+                    ? "bg-green-600"
+                    : "bg-primary"
+                }`}
+              />
+            ))}
+            {stats.recent_form.length < 10 && (
+              <span className="ml-2 font-body text-xs text-on-surface-muted">
+                {stats.recent_form.length}/10 recent
+              </span>
+            )}
           </div>
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex justify-end">
+      <div className="mt-8 flex justify-end">
         <button
           onClick={handleSignOut}
           className="btn-ghost px-6 py-2 font-display text-xs uppercase tracking-wider hover:text-tertiary hover:border-tertiary/30"
@@ -167,12 +239,37 @@ export default function ProfilePage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  accent?: string;
+}) {
   return (
     <div className="rounded-lg bg-surface-lowest p-4 text-center border border-outline-variant">
-      <div className="font-display text-2xl font-bold text-on-surface">{value}</div>
+      <div
+        className={`font-display text-2xl font-bold ${accent || "text-on-surface"}`}
+      >
+        {value}
+      </div>
       <div className="mt-1 font-display text-[0.6rem] uppercase tracking-widest text-on-surface-muted">
         {label}
+      </div>
+    </div>
+  );
+}
+
+function InsightCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-surface-lowest p-4 border border-outline-variant">
+      <div className="font-display text-[0.6rem] uppercase tracking-widest text-on-surface-muted">
+        {label}
+      </div>
+      <div className="mt-1 truncate font-display text-sm font-semibold text-on-surface">
+        {value}
       </div>
     </div>
   );
