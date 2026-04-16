@@ -2,7 +2,7 @@
 
 ## In Progress
 
-### Improvements Plan (see plan.md Phase 5+)
+### Improvements Plan v2 (see .claude/plans/rippling-stargazing-codd.md)
 - [x] D2: Per-user AI rate limiting + daily quotas + usage tracking
 - [x] E2: Terms of Service and Privacy Policy pages
 - [x] E2: Update disclaimers (footer attribution, AI disclaimers, copyright)
@@ -10,9 +10,15 @@
 - [x] I2: Support/donate page (Ko-fi)
 - [x] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
 - [x] B2: Profile features (display name, trainer card, expanded stats)
-- [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
 - [x] F2: Centralized name resolver + data freshness API
+- [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
 - [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)
+- [ ] K: Cheatsheet UX Overhaul (DB persistence, collapsible, team indicator, PDF fix, shareable)
+- [ ] L: Admin Panel (auth, dashboard, pokemon/moves/items manager, meta reviewer, legal QA)
+- [ ] M: Cost Controls (aggressive caching, tiered quotas, cost dashboard, prompt optimization, Haiku fallback, sponsor slot)
+- [ ] N: Analytics & SEO (Vercel Analytics, sitemap, OpenGraph, structured data, content SEO)
+- [ ] O: Support Visibility (top nav link, contextual prompts, supporter badge)
+- [ ] P: Strategy Content Ingestion (strategy_notes table, admin editor, wire into AI prompts)
 
 ### Visual Polish
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
@@ -43,6 +49,8 @@
 ---
 
 ## Done (2026-04-16)
+- [x] Fix: Ko-fi URL updated to real link (ko-fi.com/pokecompapp)
+- [x] Fix: Draft team selector showed UUIDs instead of Pokemon names/sprites -- resolved through rosterLookup + pokemonMap
 - [x] Fix: AI draft/cheatsheet 500 errors — `.single()` raised on cache miss, switched to `.maybe_single()` (PR #14)
 - [x] Fix: SSR `TypeError: Failed to parse URL` — resolved relative `/api` URL to absolute during server rendering
 - [x] Fix: Team fetch in draft/cheatsheet also used `.single()` which raised on missing teams

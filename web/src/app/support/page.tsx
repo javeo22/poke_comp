@@ -1,7 +1,6 @@
 "use client";
 
-// TODO: Replace with your actual Ko-fi username
-const KOFI_URL = "https://ko-fi.com/pokecomp";
+const KOFI_URL = "https://ko-fi.com/pokecompapp";
 
 export default function SupportPage() {
   return (

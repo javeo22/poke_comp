@@ -11,6 +11,7 @@ interface TeamCardProps {
   team: Team;
   rosterLookup: Map<string, UserPokemon>;
   pokemonMap: Map<number, Pokemon>;
+  hasCheatsheet?: boolean;
   onEdit: (team: Team) => void;
   onDelete: (id: string) => void;
   onClone: (team: Team) => void;
@@ -27,6 +28,7 @@ export function TeamCard({
   team,
   rosterLookup,
   pokemonMap,
+  hasCheatsheet,
   onEdit,
   onDelete,
   onClone,
@@ -60,6 +62,15 @@ export function TeamCard({
               <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
                 {team.archetype_tag}
               </span>
+            )}
+            {hasCheatsheet && (
+              <Link
+                href={`/cheatsheet?team=${team.id}`}
+                className="rounded-full bg-secondary-container/40 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-secondary transition-colors hover:bg-secondary-container/60"
+                title="View saved cheatsheet"
+              >
+                Cheatsheet
+              </Link>
             )}
           </div>
         </div>

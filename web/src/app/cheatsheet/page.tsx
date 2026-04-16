@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
-import { fetchTeams, generateCheatsheet, fetchAiUsage } from "@/lib/api";
+import {
+  fetchTeams,
+  generateCheatsheet,
+  fetchSavedCheatsheet,
+  fetchAiUsage,
+} from "@/lib/api";
 import type { AiUsageToday } from "@/lib/api";
 import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
@@ -41,6 +46,51 @@ const MOVE_CATEGORY_CLASSES: Record<string, string> = {
   utility: "bg-[#FBBF24]/10 text-[#FBBF24]",
 };
 
+// ── Collapsible Section ──
+
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="rounded-[1rem] bg-surface-low overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between p-6 pb-0 text-left transition-colors hover:bg-surface-mid/30"
+      >
+        <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+          {title}
+        </h3>
+        <svg
+          className={`h-4 w-4 text-on-surface-muted transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div
+        className={`transition-all duration-200 ease-in-out ${
+          isOpen ? "max-h-[2000px] opacity-100 p-6 pt-5" : "max-h-0 opacity-0 overflow-hidden p-0"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // ── Helpers ──
 
 function renderNoteWithBold(text: string) {
@@ -65,21 +115,23 @@ export default function CheatsheetPage() {
   const [selectedTeamId, setSelectedTeamId] = useState(preselectedTeamId);
   const [result, setResult] = useState<CheatsheetResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingTeams, setIsLoadingTeams] = useState(true);
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
+  const [isSavedResult, setIsSavedResult] = useState(false);
 
   const loadTeams = useCallback(async () => {
     setIsLoadingTeams(true);
     try {
       const teamsResult = await fetchTeams({ limit: 200 });
       setTeams(teamsResult.data);
-    } catch (err) {
-      console.error("Failed to load teams:", err);
       // Load AI quota (non-blocking)
       fetchAiUsage()
         .then((usage) => setQuota(usage.today))
         .catch(() => {});
+    } catch (err) {
+      console.error("Failed to load teams:", err);
     } finally {
       setIsLoadingTeams(false);
     }
@@ -88,6 +140,41 @@ export default function CheatsheetPage() {
   useEffect(() => {
     loadTeams();
   }, [loadTeams]);
+
+  // Auto-load saved cheatsheet when team is selected
+  useEffect(() => {
+    if (!selectedTeamId) {
+      setResult(null);
+      setIsSavedResult(false);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadSaved() {
+      setIsLoadingSaved(true);
+      setError(null);
+      try {
+        const saved = await fetchSavedCheatsheet(selectedTeamId);
+        if (!cancelled) {
+          setResult(saved);
+          setIsSavedResult(true);
+        }
+      } catch {
+        // 404 = no saved cheatsheet, that's fine
+        if (!cancelled) {
+          setResult(null);
+          setIsSavedResult(false);
+        }
+      } finally {
+        if (!cancelled) setIsLoadingSaved(false);
+      }
+    }
+
+    loadSaved();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTeamId]);
 
   const teamOptions: DropdownOption[] = useMemo(
     () =>
@@ -106,9 +193,11 @@ export default function CheatsheetPage() {
     setIsGenerating(true);
     setError(null);
     setResult(null);
+    setIsSavedResult(false);
     try {
       const response = await generateCheatsheet(selectedTeamId);
       setResult(response);
+      setIsSavedResult(false);
       fetchAiUsage()
         .then((usage) => setQuota(usage.today))
         .catch(() => {});
@@ -161,14 +250,18 @@ export default function CheatsheetPage() {
         </div>
       </div>
 
-      {/* Generate button */}
-      <div className="mb-8 flex items-center gap-4">
+      {/* Action buttons */}
+      <div className="mb-8 flex flex-wrap items-center gap-4">
         <button
           onClick={handleGenerate}
           disabled={!canGenerate || (quota !== null && quota.remaining <= 0)}
           className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isGenerating ? "Generating..." : "Generate Cheatsheet"}
+          {isGenerating
+            ? "Generating..."
+            : isSavedResult
+              ? "Regenerate"
+              : "Generate Cheatsheet"}
         </button>
         {result && !isGenerating && (
           <button
@@ -179,18 +272,23 @@ export default function CheatsheetPage() {
           </button>
         )}
         {quota !== null && (
-          <span className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}>
+          <span
+            className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}
+          >
             {quota.remaining <= 0
               ? "Daily limit reached -- resets at midnight UTC"
               : `${quota.used}/${quota.limit} analyses used today`}
           </span>
         )}
-        {result?.cached && (
-          <span className="font-display text-xs text-on-surface-muted">
-            Cached result
+        {result && isSavedResult && (
+          <span className="rounded-full bg-secondary-container/40 px-3 py-1 font-display text-[0.65rem] uppercase tracking-wider text-secondary">
+            Saved
           </span>
         )}
-        {result && !result.cached && (
+        {result?.cached && !isSavedResult && (
+          <span className="font-display text-xs text-on-surface-muted">Cached result</span>
+        )}
+        {result && !result.cached && !isSavedResult && (
           <span className="font-display text-xs text-on-surface-muted">
             ~${result.estimated_cost_usd.toFixed(3)}
           </span>
@@ -205,7 +303,7 @@ export default function CheatsheetPage() {
       )}
 
       {/* Loading skeleton */}
-      {isGenerating && (
+      {(isGenerating || isLoadingSaved) && !result && (
         <div className="flex flex-col gap-4 animate-stagger">
           <div className="h-20 animate-pulse rounded-[1rem] bg-surface-low" />
           <div className="h-48 animate-pulse rounded-[1rem] bg-surface-low" />
@@ -232,9 +330,9 @@ export default function CheatsheetPage() {
               </p>
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
-              {result.cached ? (
+              {result.cached || isSavedResult ? (
                 <span className="rounded-full bg-secondary-container/40 px-3 py-1 font-display text-[0.65rem] uppercase tracking-wider text-secondary">
-                  Cached
+                  {isSavedResult ? "Saved" : "Cached"}
                 </span>
               ) : (
                 <span className="rounded-full bg-surface-mid px-3 py-1 font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
@@ -248,137 +346,136 @@ export default function CheatsheetPage() {
           </div>
 
           {/* ── ROSTER TABLE ── */}
-          <div className="rounded-[1rem] bg-surface-low p-6 overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead>
-                <tr className="text-left">
-                  <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Pokemon
-                  </th>
-                  <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Item
-                  </th>
-                  <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Ability
-                  </th>
-                  <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Nature / SP
-                  </th>
-                  <th className="pb-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Moves
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.roster.map((mon, i) => (
-                  <tr
-                    key={i}
-                    className="group transition-colors hover:bg-surface-mid/40"
-                  >
-                    {/* Pokemon name + types */}
-                    <td className="py-3 pr-4 align-top">
-                      <div className="flex items-center gap-2">
-                        <span className="font-body text-sm font-bold text-on-surface">
-                          {mon.name}
-                        </span>
-                        {mon.is_mega && (
-                          <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
-                            Mega
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {mon.types.map((type) => (
-                          <span
-                            key={type}
-                            className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
-                              TYPE_COLORS[type.toLowerCase()] ??
-                              "bg-surface-mid text-on-surface-muted"
-                            }`}
-                          >
-                            {type}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    {/* Item */}
-                    <td className="py-3 pr-4 align-top">
-                      <span className="font-body text-xs text-[#FBBF24]">
-                        {mon.item ?? "--"}
-                      </span>
-                    </td>
-
-                    {/* Ability */}
-                    <td className="py-3 pr-4 align-top">
-                      <span className="font-body text-xs text-secondary">
-                        {mon.ability ?? "--"}
-                      </span>
-                    </td>
-
-                    {/* Nature / SP */}
-                    <td className="py-3 pr-4 align-top">
-                      <span className="font-body text-xs text-on-surface-muted">
-                        {mon.nature ?? "--"}
-                      </span>
-                      {mon.stat_points && (
-                        <p className="mt-0.5 font-body text-[0.6rem] text-on-surface-muted/60">
-                          {mon.stat_points}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Moves */}
-                    <td className="py-3 align-top">
-                      <div className="flex flex-wrap gap-1.5">
-                        {mon.moves.map((move, j) => (
-                          <span
-                            key={j}
-                            className={`rounded-full px-2.5 py-0.5 font-display text-[0.6rem] tracking-wide ${
-                              MOVE_CATEGORY_CLASSES[move.category] ??
-                              "bg-surface-mid text-on-surface-muted"
-                            }`}
-                          >
-                            {move.name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
+          <CollapsibleSection title="Roster" defaultOpen={true}>
+            <div className="overflow-x-auto -mt-1">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="text-left">
+                    <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Pokemon
+                    </th>
+                    <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Item
+                    </th>
+                    <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Ability
+                    </th>
+                    <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Nature / SP
+                    </th>
+                    <th className="pb-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Moves
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {result.roster.map((mon, i) => (
+                    <tr
+                      key={i}
+                      className="group transition-colors hover:bg-surface-mid/40"
+                    >
+                      {/* Pokemon name + types */}
+                      <td className="py-3 pr-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="font-body text-sm font-bold text-on-surface">
+                            {mon.name}
+                          </span>
+                          {mon.is_mega && (
+                            <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
+                              Mega
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {mon.types.map((type) => (
+                            <span
+                              key={type}
+                              className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
+                                TYPE_COLORS[type.toLowerCase()] ??
+                                "bg-surface-mid text-on-surface-muted"
+                              }`}
+                            >
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
 
-            {/* Legend */}
-            <div className="mt-4 flex items-center gap-5 pt-3">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-primary" />
-                <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-                  STAB
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#FBBF24]" />
-                <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-                  Utility
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-tertiary" />
-                <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-                  Priority
-                </span>
+                      {/* Item */}
+                      <td className="py-3 pr-4 align-top">
+                        <span className="font-body text-xs text-[#FBBF24]">
+                          {mon.item ?? "--"}
+                        </span>
+                      </td>
+
+                      {/* Ability */}
+                      <td className="py-3 pr-4 align-top">
+                        <span className="font-body text-xs text-secondary">
+                          {mon.ability ?? "--"}
+                        </span>
+                      </td>
+
+                      {/* Nature / SP */}
+                      <td className="py-3 pr-4 align-top">
+                        <span className="font-body text-xs text-on-surface-muted">
+                          {mon.nature ?? "--"}
+                        </span>
+                        {mon.stat_points && (
+                          <p className="mt-0.5 font-body text-[0.6rem] text-on-surface-muted/60">
+                            {mon.stat_points}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Moves */}
+                      <td className="py-3 align-top">
+                        <div className="flex flex-wrap gap-1.5">
+                          {mon.moves.map((move, j) => (
+                            <span
+                              key={j}
+                              className={`rounded-full px-2.5 py-0.5 font-display text-[0.6rem] tracking-wide ${
+                                MOVE_CATEGORY_CLASSES[move.category] ??
+                                "bg-surface-mid text-on-surface-muted"
+                              }`}
+                            >
+                              {move.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Legend */}
+              <div className="mt-4 flex items-center gap-5 pt-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                    STAB
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#FBBF24]" />
+                  <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                    Utility
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-tertiary" />
+                  <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                    Priority
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* ── 3-COLUMN GRID ── */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Game Plan */}
-            <div className="rounded-[1rem] bg-surface-low p-6">
-              <h3 className="mb-5 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-                Game Plan
-              </h3>
+            <CollapsibleSection title="Game Plan" defaultOpen={true}>
               <div className="flex flex-col gap-5">
                 {result.game_plan.map((step) => (
                   <div key={step.step} className="flex gap-3">
@@ -396,13 +493,10 @@ export default function CheatsheetPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
 
             {/* Speed Tiers */}
-            <div className="rounded-[1rem] bg-surface-low p-6">
-              <h3 className="mb-5 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-                Speed Tiers
-              </h3>
+            <CollapsibleSection title="Speed Tiers" defaultOpen={true}>
               <div className="flex flex-col gap-3">
                 {result.speed_tiers.map((tier, i) => (
                   <div key={i} className="flex flex-col gap-1">
@@ -432,111 +526,104 @@ export default function CheatsheetPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
 
             {/* Key Rules */}
-            <div className="rounded-[1rem] bg-surface-low p-6">
-              <h3 className="mb-5 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-                Key Rules
-              </h3>
+            <CollapsibleSection title="Key Rules" defaultOpen={true}>
               <div className="flex flex-col gap-4">
                 {result.key_rules.map((rule, i) => (
                   <div
                     key={i}
                     className="pl-4"
                     style={{
-                      borderLeft: "2px solid color-mix(in srgb, var(--color-primary) 40%, transparent)",
+                      borderLeft:
+                        "2px solid color-mix(in srgb, var(--color-primary) 40%, transparent)",
                     }}
                   >
-                    <p className="font-body text-sm font-bold text-primary">
-                      {rule.title}
-                    </p>
+                    <p className="font-body text-sm font-bold text-primary">{rule.title}</p>
                     <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
                       {rule.description}
                     </p>
                   </div>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
           </div>
 
           {/* ── LEAD MATCHUPS + WEAKNESSES ── */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Lead Matchups - 2 columns wide */}
-            <div className="lg:col-span-2 rounded-[1rem] bg-surface-low p-6">
-              <h3 className="mb-5 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-                Lead Matchups
-              </h3>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {result.lead_matchups.map((matchup, i) => (
-                  <div key={i} className="rounded-[1rem] bg-surface-mid/50 p-4">
-                    {/* Matchup header */}
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="font-mono text-xs font-medium text-[#FBBF24]">
-                        {matchup.archetype}
-                      </span>
-                      <span className="rounded-full bg-tertiary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-tertiary">
-                        {matchup.threat_tier}
-                      </span>
-                    </div>
-
-                    {/* Lead row */}
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
-                        Lead
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {matchup.lead.map((name, j) => (
-                          <span
-                            key={j}
-                            className="rounded-full bg-primary-container/30 px-2.5 py-0.5 font-display text-[0.6rem] text-primary"
-                          >
-                            {name}
-                          </span>
-                        ))}
+            <div className="lg:col-span-2">
+              <CollapsibleSection title="Lead Matchups" defaultOpen={true}>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {result.lead_matchups.map((matchup, i) => (
+                    <div key={i} className="rounded-[1rem] bg-surface-mid/50 p-4">
+                      {/* Matchup header */}
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="font-mono text-xs font-medium text-[#FBBF24]">
+                          {matchup.archetype}
+                        </span>
+                        <span className="rounded-full bg-tertiary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-tertiary">
+                          {matchup.threat_tier}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Back row */}
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
-                        Back
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {matchup.back.map((name, j) => (
-                          <span
-                            key={j}
-                            className="rounded-full bg-surface-high px-2.5 py-0.5 font-display text-[0.6rem] text-on-surface-muted"
-                          >
-                            {name}
-                          </span>
-                        ))}
+                      {/* Lead row */}
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
+                          Lead
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {matchup.lead.map((name, j) => (
+                            <span
+                              key={j}
+                              className="rounded-full bg-primary-container/30 px-2.5 py-0.5 font-display text-[0.6rem] text-primary"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Note */}
-                    {matchup.note && (
-                      <p className="font-body text-[0.65rem] leading-relaxed text-on-surface-muted">
-                        {renderNoteWithBold(matchup.note)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {/* Back row */}
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
+                          Back
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {matchup.back.map((name, j) => (
+                            <span
+                              key={j}
+                              className="rounded-full bg-surface-high px-2.5 py-0.5 font-display text-[0.6rem] text-on-surface-muted"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Note */}
+                      {matchup.note && (
+                        <p className="font-body text-[0.65rem] leading-relaxed text-on-surface-muted">
+                          {renderNoteWithBold(matchup.note)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
             </div>
 
             {/* Weaknesses */}
-            <div className="rounded-[1rem] bg-surface-low p-6">
-              <h3 className="mb-5 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-                Weaknesses
-              </h3>
+            <CollapsibleSection title="Weaknesses" defaultOpen={true}>
               <div className="flex flex-col gap-4">
                 {result.weaknesses.map((weakness, i) => (
                   <div
                     key={i}
                     className="pl-4"
                     style={{
-                      borderLeft: "2px solid color-mix(in srgb, var(--color-tertiary) 50%, transparent)",
+                      borderLeft:
+                        "2px solid color-mix(in srgb, var(--color-tertiary) 50%, transparent)",
                     }}
                   >
                     <p className="font-body text-sm font-bold text-[#FBBF24]">
@@ -548,13 +635,23 @@ export default function CheatsheetPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
           </div>
+
+          {/* ── AI DISCLAIMER ── */}
+          {result.ai_disclaimer && (
+            <div className="rounded-xl border border-outline-variant bg-surface-lowest px-5 py-3">
+              <p className="font-body text-xs leading-relaxed text-on-surface-muted">
+                {result.ai_disclaimer}
+              </p>
+            </div>
+          )}
 
           {/* ── FOOTER ── */}
           <div className="pt-2">
             <p className="font-display text-xs uppercase tracking-[0.15rem] text-on-surface-muted/50">
-              {result.team_name} &middot; {result.format} &middot; {result.archetype} &middot; Pokemon Champions Companion
+              {result.team_name} &middot; {result.format} &middot; {result.archetype} &middot;
+              Pokemon Champions Companion
             </p>
           </div>
         </div>

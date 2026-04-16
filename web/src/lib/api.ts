@@ -382,6 +382,17 @@ export async function generateCheatsheet(teamId: string): Promise<CheatsheetResp
   });
 }
 
+export async function fetchSavedCheatsheet(teamId: string): Promise<CheatsheetResponse> {
+  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`);
+}
+
+export async function fetchCheatsheetStatus(teamIds: string[]): Promise<Record<string, string>> {
+  if (teamIds.length === 0) return {};
+  return apiFetch<Record<string, string>>(`/cheatsheet/status`, {
+    params: { team_ids: teamIds.join(",") },
+  });
+}
+
 // ── Showdown Import / Export ──
 
 export interface ShowdownImportRequest {

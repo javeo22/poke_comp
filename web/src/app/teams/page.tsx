@@ -17,6 +17,7 @@ import {
   previewShowdownImport,
   importTeamFromShowdown,
   exportTeamToShowdown,
+  fetchCheatsheetStatus,
 } from "@/lib/api";
 import type { ShowdownImportRequest, ShowdownPreviewPokemon } from "@/lib/api";
 import { TeamCard } from "@/components/teams/team-card";
@@ -31,6 +32,7 @@ export default function TeamsPage() {
   const [rosterLookup, setRosterLookup] = useState<Map<string, UserPokemon>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [cheatsheetStatus, setCheatsheetStatus] = useState<Record<string, string>>({});
   const [formatFilter, setFormatFilter] = useState("");
 
   // Team form modal
@@ -77,6 +79,14 @@ export default function TeamsPage() {
         pMap.set(p.id, p);
       }
       setPokemonMap(pMap);
+
+      // Load cheatsheet status (non-blocking)
+      const teamIds = teamsResult.data.map((t: Team) => t.id);
+      if (teamIds.length > 0) {
+        fetchCheatsheetStatus(teamIds)
+          .then(setCheatsheetStatus)
+          .catch(() => {});
+      }
     } catch (err) {
       console.error("Failed to load teams data:", err);
       setTeams([]);
@@ -314,6 +324,7 @@ export default function TeamsPage() {
               team={team}
               rosterLookup={rosterLookup}
               pokemonMap={pokemonMap}
+              hasCheatsheet={!!cheatsheetStatus[team.id]}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onClone={handleClone}

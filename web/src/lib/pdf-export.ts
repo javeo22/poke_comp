@@ -1,59 +1,54 @@
 /**
- * Export the cheatsheet content div to PDF using browser print dialog.
- * Applies print-specific styles to hide everything except the cheatsheet.
+ * Export the cheatsheet content div to a downloadable PDF file.
+ * Uses html2canvas to capture the rendered DOM and jsPDF to create the PDF.
  */
-export function exportCheatsheetPDF(teamTitle: string): void {
-  // Create a print-specific style element
-  const style = document.createElement("style");
-  style.id = "cheatsheet-print-styles";
-  style.textContent = `
-    @media print {
-      /* Hide everything except the cheatsheet content */
-      body > *:not(main),
-      main > *:not(#cheatsheet-content),
-      nav,
-      footer,
-      .no-print,
-      button {
-        display: none !important;
-      }
+export async function exportCheatsheetPDF(teamTitle: string): Promise<void> {
+  const element = document.getElementById("cheatsheet-content");
+  if (!element) return;
 
-      /* Reset background for print */
-      html, body {
-        background: #0a0a0f !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
+  // Dynamically import to avoid SSR issues
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
 
-      #cheatsheet-content {
-        padding: 0 !important;
-        margin: 0 !important;
-      }
+  // Temporarily expand all collapsed sections for PDF capture
+  const collapsedSections = element.querySelectorAll<HTMLElement>("[data-collapsed='true']");
+  collapsedSections.forEach((el) => {
+    el.style.maxHeight = "none";
+    el.style.opacity = "1";
+    el.style.overflow = "visible";
+    el.style.padding = "1.5rem";
+  });
 
-      /* Force backgrounds to print */
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
+  const canvas = await html2canvas(element, {
+    backgroundColor: "#0a0a0f",
+    scale: 2,
+    useCORS: true,
+    logging: false,
+  });
 
-      @page {
-        size: landscape;
-        margin: 0.5cm;
-      }
-    }
-  `;
+  // Restore collapsed sections
+  collapsedSections.forEach((el) => {
+    el.style.maxHeight = "";
+    el.style.opacity = "";
+    el.style.overflow = "";
+    el.style.padding = "";
+  });
 
-  document.head.appendChild(style);
+  const imgData = canvas.toDataURL("image/png");
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
 
-  // Set document title for the PDF filename
-  const originalTitle = document.title;
-  document.title = `${teamTitle} - Cheat Sheet`;
+  // Use landscape A4, scale image to fit width
+  const pdf = new jsPDF({
+    orientation: imgWidth > imgHeight ? "landscape" : "portrait",
+    unit: "px",
+    format: [imgWidth, imgHeight],
+  });
 
-  window.print();
+  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
-  // Cleanup after print dialog closes
-  document.title = originalTitle;
-  const printStyle = document.getElementById("cheatsheet-print-styles");
-  if (printStyle) printStyle.remove();
+  const filename = `${teamTitle.replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "-")}-cheatsheet.pdf`;
+  pdf.save(filename);
 }

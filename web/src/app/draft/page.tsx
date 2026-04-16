@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Team } from "@/types/team";
+import Image from "next/image";
 import type { Pokemon } from "@/features/pokemon/types";
+import type { UserPokemon } from "@/types/user-pokemon";
 import type { DraftResponse } from "@/types/draft";
-import { fetchTeams, fetchPokemon, analyzeDraft, createMatchup, fetchAiUsage } from "@/lib/api";
+import { fetchTeams, fetchPokemon, fetchUserPokemon, analyzeDraft, createMatchup, fetchAiUsage } from "@/lib/api";
 import type { AiUsageToday } from "@/lib/api";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
@@ -22,6 +24,8 @@ export default function DraftPage() {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
+  const [rosterLookup, setRosterLookup] = useState<Map<string, UserPokemon>>(new Map());
+  const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   // Form state
@@ -43,9 +47,10 @@ export default function DraftPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [teamsResult, pokemonResult] = await Promise.allSettled([
+      const [teamsResult, pokemonResult, rosterResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchPokemon({ limit: 500, champions_only: true }),
+        fetchUserPokemon({ limit: 200 }),
       ]);
       if (teamsResult.status === "fulfilled") {
         setTeams(teamsResult.value.data);
@@ -53,6 +58,11 @@ export default function DraftPage() {
         console.error("Failed to load teams:", teamsResult.reason);
       }
       if (pokemonResult.status === "fulfilled") {
+        const pMap = new Map<number, Pokemon>();
+        for (const p of pokemonResult.value.data) {
+          pMap.set(p.id, p);
+        }
+        setPokemonMap(pMap);
         setPokemonOptions(
           pokemonResult.value.data.map((p: Pokemon) => ({
             value: p.name,
@@ -62,6 +72,15 @@ export default function DraftPage() {
         );
       } else {
         console.error("Failed to load Pokemon list:", pokemonResult.reason);
+      }
+      if (rosterResult.status === "fulfilled") {
+        const rMap = new Map<string, UserPokemon>();
+        for (const entry of rosterResult.value.data) {
+          rMap.set(entry.id, entry);
+        }
+        setRosterLookup(rMap);
+      } else {
+        console.error("Failed to load roster:", rosterResult.reason);
       }
       // Load AI quota (non-blocking)
       fetchAiUsage()
@@ -205,14 +224,27 @@ export default function DraftPage() {
                 if (!team) return null;
                 return (
                   <div className="flex flex-wrap gap-2">
-                    {team.pokemon_ids.map((pid, i) => (
-                      <span
-                        key={i}
-                        className="rounded-lg bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
-                      >
-                        #{pid}
-                      </span>
-                    ))}
+                    {team.pokemon_ids.map((pid, i) => {
+                      const entry = rosterLookup.get(pid);
+                      const poke = entry ? pokemonMap.get(entry.pokemon_id) : null;
+                      return (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
+                        >
+                          {poke?.sprite_url && (
+                            <Image
+                              src={poke.sprite_url}
+                              alt={poke.name}
+                              width={20}
+                              height={20}
+                              className="pixelated"
+                            />
+                          )}
+                          {poke?.name ?? `#${pid.slice(0, 6)}`}
+                        </span>
+                      );
+                    })}
                     {team.archetype_tag && (
                       <span className="rounded-lg bg-primary/20 px-3 py-1 font-display text-xs text-primary">
                         {team.archetype_tag}

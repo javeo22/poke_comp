@@ -33,6 +33,38 @@ router = APIRouter(prefix="/cheatsheet", tags=["cheatsheet"])
 
 CACHE_TTL_DAYS = 7
 
+
+# ═══════════════════════════════════════════════════════════════════
+# Saved cheatsheet persistence
+# ═══════════════════════════════════════════════════════════════════
+
+
+def _save_cheatsheet(team_id: str, user_id: str, response: CheatsheetResponse) -> None:
+    """Persist cheatsheet to team_cheatsheets table (upsert by team_id)."""
+    supabase.table("team_cheatsheets").upsert(
+        {
+            "team_id": team_id,
+            "user_id": user_id,
+            "cheatsheet_json": response.model_dump(mode="json"),
+        },
+        on_conflict="team_id",
+    ).execute()
+
+
+def _fetch_saved_cheatsheet(team_id: str, user_id: str) -> dict | None:
+    """Fetch a previously saved cheatsheet for a team."""
+    result = (
+        supabase.table("team_cheatsheets")
+        .select("cheatsheet_json, created_at, updated_at, is_public")
+        .eq("team_id", team_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    if result is None or not result.data:
+        return None
+    return result.data  # type: ignore[return-value]
+
 # ═══════════════════════════════════════════════════════════════════
 # Constants
 # ═══════════════════════════════════════════════════════════════════
@@ -455,6 +487,43 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 # ═══════════════════════════════════════════════════════════════════
 
 
+@router.get("/status")
+def cheatsheet_status(
+    team_ids: str = "",
+    user_id: str = Depends(get_current_user),
+):
+    """Check which teams have saved cheatsheets. Returns dict of team_id -> updated_at."""
+    if not team_ids:
+        return {}
+    ids = [t.strip() for t in team_ids.split(",") if t.strip()]
+    if not ids:
+        return {}
+    result = (
+        supabase.table("team_cheatsheets")
+        .select("team_id, updated_at")
+        .eq("user_id", user_id)
+        .in_("team_id", ids)
+        .execute()
+    )
+    rows: list[dict] = result.data  # type: ignore[assignment]
+    return {r["team_id"]: r["updated_at"] for r in rows}
+
+
+@router.get("/{team_id}")
+def get_saved_cheatsheet(
+    team_id: str,
+    user_id: str = Depends(get_current_user),
+):
+    """Fetch a previously saved cheatsheet for a team."""
+    saved = _fetch_saved_cheatsheet(team_id, user_id)
+    if not saved:
+        raise HTTPException(status_code=404, detail="No saved cheatsheet for this team")
+    data: dict = saved["cheatsheet_json"]
+    data["cached"] = True
+    data["estimated_cost_usd"] = 0.0
+    return data
+
+
 @router.post("/{team_id}", response_model=CheatsheetResponse)
 @limiter.limit("5/minute")
 def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(get_current_user)):
@@ -515,7 +584,10 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         cached["cached"] = True
         cached["estimated_cost_usd"] = 0.0
         log_ai_usage(user_id, "cheatsheet", "claude-sonnet-4-6", 0, 0, cached=True)
-        return CheatsheetResponse.model_validate(cached)
+        cached_response = CheatsheetResponse.model_validate(cached)
+        # Ensure persistent copy exists
+        _save_cheatsheet(team_id, user_id, cached_response)
+        return cached_response
 
     # 6b. Check daily quota (non-cached requests only)
     check_ai_quota(user_id)
@@ -574,8 +646,9 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         estimated_cost_usd=estimate_cost(message.usage.input_tokens, message.usage.output_tokens),
     )
 
-    # 10. Cache + log usage
+    # 10. Cache + log usage + persist
     _save_cache(cache_key, response)
+    _save_cheatsheet(team_id, user_id, response)
     log_ai_usage(
         user_id,
         "cheatsheet",
