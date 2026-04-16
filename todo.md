@@ -2,6 +2,18 @@
 
 ## In Progress
 
+### Improvements Plan (see plan.md Phase 5+)
+- [ ] D2: Per-user AI rate limiting + daily quotas + usage tracking
+- [ ] E2: Terms of Service and Privacy Policy pages
+- [ ] E2: Update disclaimers (footer attribution, AI disclaimers, copyright)
+- [ ] C1: Convert PokeballLogo to custom favicon (ico, svg, apple-icon)
+- [ ] I2: Support/donate page (Buy Me a Coffee / Ko-fi)
+- [ ] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
+- [ ] B2: Profile features (display name, trainer card, expanded stats)
+- [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
+- [ ] F2: Centralized name resolver + data freshness API
+- [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)
+
 ### Visual Polish
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
 
@@ -29,6 +41,14 @@
 - [ ] Speed tier reference page (/speed-tiers)
 
 ---
+
+## Done (2026-04-15)
+- [x] A1: Quick-Add mode for roster (search Pokemon, auto-fill ability from usage data, one-click save)
+- [x] A2: Add to Roster buttons on Meta detail panel and Pokedex detail page
+- [x] A3: Showdown import review step (preview parsed Pokemon before confirming import)
+- [x] POST /teams/import/preview endpoint (parse without creating data)
+- [x] Fix: ES256 JWT auth support (Supabase uses asymmetric tokens, not HS256)
+- [x] Fix: NEXT_PUBLIC_SUPABASE_ANON_KEY corrected (publishable key -> JWT format)
 
 ## Done
 - [x] Repository scaffold (api/, web/, supabase/, infra/, design/)

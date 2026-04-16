@@ -164,6 +164,32 @@
 - [x] Phase 7: Data validation agent (7 checks + /admin/data-health endpoint)
 - [x] Smoke test script for CI verification
 
+### Roster/Team UX Streamlining -- COMPLETE (2026-04-15)
+- [x] Quick-Add modal: search Pokemon, auto-fill top ability from Pikalytics, save as wishlist
+- [x] "Quick Add" + "Full Form" buttons on roster page
+- [x] ?add= deep link opens quick-add instead of full form
+- [x] "Add to Roster" + "View Details" buttons on meta detail panel
+- [x] POST /teams/import/preview endpoint (parse + resolve without creating data)
+- [x] ImportReview component: two-step import flow (paste -> preview -> confirm)
+- [x] Showdown import modal updated to preview-then-confirm flow
+
+### Auth Fix -- COMPLETE (2026-04-15)
+- [x] Fixed ES256 JWT verification (Supabase uses asymmetric signing for user tokens)
+- [x] auth.py now detects alg from token header: ES256 via JWKS, HS256 via JWT secret
+- [x] Fixed NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel (was publishable key, now JWT format)
+
+### Phase 5: Improvements (Planned, not started)
+See `.claude/plans/dreamy-honking-brooks.md` for the full improvement plan covering:
+- D: AI strategy (per-user rate limiting, quotas, cost tracking)
+- E: Disclaimers revision (Terms of Service, Privacy Policy pages)
+- C: Favicon (convert PokeballLogo SVG to ico/png)
+- I: Monetization (donation model -- Buy Me a Coffee / Ko-fi)
+- B: Profile revamp (avatar system, display name, trainer card)
+- G: Data source ToS compliance (Game8 HIGH risk, Serebii MEDIUM)
+- F: Data pipeline improvements (centralized name resolver, freshness API, cron scheduling)
+- H: UX flow review (beginner/intermediate/pro user journeys)
+- J: Custom AI strategy (phased: caching -> tiered models -> fine-tuning)
+
 ### Remaining
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements

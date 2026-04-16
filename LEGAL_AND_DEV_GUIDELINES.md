@@ -17,6 +17,24 @@ To maintain a sustainable and ethical project, all data acquisition must follow 
 2. **Secondary**: Manual entry/verification from official game sources.
 3. **Tertiary**: Scraped community meta-data (only when necessary and with attribution).
 
+### C. Data Source Terms of Use Audit (2026-04-15)
+
+| Source | Access Method | robots.txt | ToS | Risk | Action Required |
+|--------|-------------|-----------|-----|------|-----------------|
+| **PokeAPI** | Public REST API | Permissive | Open-source | LOW | None |
+| **Pikalytics** | HTML scraping (1.5s delay) | AI-friendly, explicitly welcomes Claude/GPT | No scraping restrictions found | LOW | Safe to use |
+| **Smogon/pkmn** | Public JSON API (pkmn.github.io) | Accessible | MIT license (code), attribution required | LOW | Ensure attribution |
+| **Limitless TCG** | Public REST API (1s delay) | No robots.txt (404) | ToS not publicly accessible | MEDIUM | Verify API terms with Limitless support |
+| **Serebii** | HTML scraping (0.5s delay, one-time) | Permissive (only blocks /hidden/) | No public ToS, all content copyrighted | MEDIUM | Email webmaster@serebii.net for permission |
+| **Game8** | HTML scraping -> Claude extraction | **Blocks GPTBot, dotbot, Google-Extended** | **Prohibits reverse engineering, unauthorized commercial use** | **HIGH** | **Must get written permission or stop using** |
+
+**Pikalytics note:** They attribute their own sprites to Smogon's Sprite Project. They provide dedicated `/ai/pokedex/` endpoints for AI access. No "do not scrape" clause found.
+
+**Game8 action items (URGENT):**
+1. Email Game8 requesting API/scraping permission for fan project use
+2. If denied, replace with: community-sourced tier lists (Reddit/Smogon forums) or manual entry
+3. Current Game8 scraper (`scripts/refresh_meta.py`) should be paused until permission is obtained
+
 ---
 
 ## 2. Intellectual Property (IP) Usage
