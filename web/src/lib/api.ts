@@ -498,5 +498,126 @@ export async function updateProfile(body: ProfileUpdate): Promise<ProfileData> {
   });
 }
 
+// ── Admin ──
+
+export interface AdminStats {
+  pokemon_champions: number;
+  moves_champions: number;
+  items_champions: number;
+  abilities_total: number;
+}
+
+export interface AdminAiCosts {
+  days: number;
+  total_cost: number;
+  total_requests: number;
+  cached_requests: number;
+  by_endpoint: Record<string, number>;
+  by_day: Record<string, number>;
+}
+
+export interface DataHealthReport {
+  overall: string;
+  total_issues: number;
+  checks: { name: string; status: string; issues: string[] }[];
+}
+
+export interface DataFreshness {
+  checked_at: string;
+  usage_data: Record<string, string>;
+  meta_snapshots: Record<string, string>;
+}
+
+export async function fetchAdminStats(): Promise<AdminStats> {
+  return apiFetch<AdminStats>("/admin/stats");
+}
+
+export async function fetchAdminAiCosts(
+  days: number = 30
+): Promise<AdminAiCosts> {
+  return apiFetch<AdminAiCosts>("/admin/ai-costs", {
+    params: { days },
+  });
+}
+
+export async function fetchAdminDataHealth(): Promise<DataHealthReport> {
+  return apiFetch<DataHealthReport>("/admin/data-health");
+}
+
+export async function fetchAdminDataFreshness(): Promise<DataFreshness> {
+  return apiFetch<DataFreshness>("/admin/data-freshness");
+}
+
+export async function fetchAdminPokemon(params: {
+  champions_only?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}): Promise<any[]> {
+  return apiFetch("/admin/pokemon", { params });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminPokemon(id: number, updates: any) {
+  return apiFetch(`/admin/pokemon/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function fetchAdminMoves(params: {
+  champions_only?: boolean;
+  search?: string;
+  type_filter?: string;
+  limit?: number;
+  offset?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}): Promise<any[]> {
+  return apiFetch("/admin/moves", { params });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminMove(id: number, updates: any) {
+  return apiFetch(`/admin/moves/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function fetchAdminItems(params: {
+  champions_only?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}): Promise<any[]> {
+  return apiFetch("/admin/items", { params });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminItem(id: number, updates: any) {
+  return apiFetch(`/admin/items/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function fetchAdminMetaSnapshots(params: {
+  format_filter?: string;
+  limit?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}): Promise<any[]> {
+  return apiFetch("/admin/meta-snapshots", { params });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminMetaSnapshot(id: string, updates: any) {
+  return apiFetch(`/admin/meta-snapshots/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
 export { apiFetch };
 
