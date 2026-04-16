@@ -87,7 +87,7 @@ def _fetch_team(team_id: str, user_id: str) -> dict:
         .maybe_single()
         .execute()
     )
-    if not result.data:
+    if result is None or not result.data:
         raise HTTPException(status_code=404, detail="Team not found")
     row: dict = result.data  # type: ignore[assignment]
     return row
@@ -294,7 +294,7 @@ def _check_cache(request_hash: str) -> dict | None:
         .maybe_single()
         .execute()
     )
-    if not result.data:
+    if result is None or not result.data:
         return None
 
     row: dict = result.data  # type: ignore[assignment]
