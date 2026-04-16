@@ -192,7 +192,7 @@ export default function MovesPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full" role="table">
+          <table className="w-full min-w-[700px]" role="table">
             <thead>
               <tr>
                 {["Name", "Type", "Category", "Power", "Accuracy", "Effect", "Learners"].map(
