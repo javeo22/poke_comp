@@ -14,12 +14,14 @@ import {
   updateTeam,
   deleteTeam,
   createUserPokemon,
+  previewShowdownImport,
   importTeamFromShowdown,
   exportTeamToShowdown,
 } from "@/lib/api";
-import type { ShowdownImportRequest } from "@/lib/api";
+import type { ShowdownImportRequest, ShowdownPreviewPokemon } from "@/lib/api";
 import { TeamCard } from "@/components/teams/team-card";
 import { TeamForm } from "@/components/teams/team-form";
+import { ImportReview } from "@/components/teams/import-review";
 import { RosterForm } from "@/components/roster/roster-form";
 
 export default function TeamsPage() {
@@ -46,6 +48,10 @@ export default function TeamsPage() {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  // Review step state
+  const [importStep, setImportStep] = useState<"paste" | "review">("paste");
+  const [previewPokemon, setPreviewPokemon] = useState<ShowdownPreviewPokemon[]>([]);
+  const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
 
   const loadData = useCallback(async (format?: string) => {
     setIsLoading(true);
@@ -169,15 +175,32 @@ export default function TeamsPage() {
     setImportFormat("doubles");
     setImportError(null);
     setImportWarnings([]);
+    setImportStep("paste");
+    setPreviewPokemon([]);
+    setPreviewWarnings([]);
     setShowImport(true);
   };
 
-  const handleImportSubmit = async (e: React.FormEvent) => {
+  const handleImportPreview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importPaste.trim() || !importTeamName.trim()) return;
     setImportLoading(true);
     setImportError(null);
-    setImportWarnings([]);
+    try {
+      const result = await previewShowdownImport(importPaste);
+      setPreviewPokemon(result.pokemon);
+      setPreviewWarnings(result.warnings);
+      setImportStep("review");
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Preview failed");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    setImportLoading(true);
+    setImportError(null);
     try {
       const body: ShowdownImportRequest = {
         paste: importPaste,
@@ -186,9 +209,7 @@ export default function TeamsPage() {
       };
       const result = await importTeamFromShowdown(body);
       setImportWarnings(result.warnings);
-      if (result.warnings.length === 0) {
-        setShowImport(false);
-      }
+      setShowImport(false);
       loadData(formatFilter);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed");
@@ -344,7 +365,9 @@ export default function TeamsPage() {
                   Import from Showdown
                 </h2>
                 <p className="mt-1 font-body text-xs text-on-surface-muted">
-                  Paste a Showdown team export to import it as a new team
+                  {importStep === "paste"
+                    ? "Paste a Showdown team export to preview before importing"
+                    : "Review the parsed team before confirming"}
                 </p>
               </div>
               <button
@@ -355,96 +378,95 @@ export default function TeamsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleImportSubmit} className="flex flex-col gap-4">
-              {/* Paste area */}
-              <div>
-                <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                  Showdown Paste
-                </label>
-                <textarea
-                  value={importPaste}
-                  onChange={(e) => setImportPaste(e.target.value)}
-                  placeholder={"Gengar @ Gengarite\nAbility: Shadow Tag\n..."}
-                  rows={10}
-                  className="input-field w-full resize-none font-mono text-xs"
-                  required
-                />
+            {/* Error */}
+            {importError && (
+              <div className="mb-4 rounded-[0.75rem] bg-tertiary/10 p-3">
+                <p className="font-body text-xs text-tertiary">{importError}</p>
               </div>
+            )}
 
-              {/* Team name + format row */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {importStep === "paste" ? (
+              <form onSubmit={handleImportPreview} className="flex flex-col gap-4">
+                {/* Paste area */}
                 <div>
                   <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Team Name
+                    Showdown Paste
                   </label>
-                  <input
-                    type="text"
-                    value={importTeamName}
-                    onChange={(e) => setImportTeamName(e.target.value)}
-                    placeholder="My Imported Team"
-                    className="input-field w-full"
+                  <textarea
+                    value={importPaste}
+                    onChange={(e) => setImportPaste(e.target.value)}
+                    placeholder={"Gengar @ Gengarite\nAbility: Shadow Tag\n..."}
+                    rows={10}
+                    className="input-field w-full resize-none font-mono text-xs"
                     required
                   />
                 </div>
-                <div>
-                  <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                    Format
-                  </label>
-                  <select
-                    value={importFormat}
-                    onChange={(e) => setImportFormat(e.target.value)}
-                    className="input-field w-full"
+
+                {/* Team name + format row */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Team Name
+                    </label>
+                    <input
+                      type="text"
+                      value={importTeamName}
+                      onChange={(e) => setImportTeamName(e.target.value)}
+                      placeholder="My Imported Team"
+                      className="input-field w-full"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                      Format
+                    </label>
+                    <select
+                      value={importFormat}
+                      onChange={(e) => setImportFormat(e.target.value)}
+                      className="input-field w-full"
+                    >
+                      {FORMATS.map((f) => (
+                        <option key={f} value={f}>
+                          {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImport(false)}
+                    className="btn-ghost h-10 px-6 font-display text-xs uppercase tracking-wider"
                   >
-                    {FORMATS.map((f) => (
-                      <option key={f} value={f}>
-                        {f.charAt(0).toUpperCase() + f.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={importLoading || !importPaste.trim() || !importTeamName.trim()}
+                    className="btn-primary h-10 px-6 font-display text-xs uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {importLoading ? "Parsing..." : "Preview Import"}
+                  </button>
                 </div>
-              </div>
-
-              {/* Error */}
-              {importError && (
-                <div className="rounded-[0.75rem] bg-tertiary/10 p-3">
-                  <p className="font-body text-xs text-tertiary">{importError}</p>
-                </div>
-              )}
-
-              {/* Warnings (after partial success) */}
-              {importWarnings.length > 0 && (
-                <div className="rounded-[0.75rem] bg-[#FBBF24]/10 p-3">
-                  <p className="mb-2 font-display text-[0.6rem] uppercase tracking-wider text-[#FBBF24]">
-                    Imported with warnings
-                  </p>
-                  <ul className="flex flex-col gap-1">
-                    {importWarnings.map((w, i) => (
-                      <li key={i} className="font-body text-xs text-on-surface-muted">
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowImport(false)}
-                  className="btn-ghost h-10 px-6 font-display text-xs uppercase tracking-wider"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={importLoading || !importPaste.trim() || !importTeamName.trim()}
-                  className="btn-primary h-10 px-6 font-display text-xs uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {importLoading ? "Importing..." : "Import Team"}
-                </button>
-              </div>
-            </form>
+              </form>
+            ) : (
+              <ImportReview
+                pokemon={previewPokemon}
+                warnings={previewWarnings}
+                teamName={importTeamName}
+                format={importFormat}
+                onConfirm={handleImportConfirm}
+                onBack={() => {
+                  setImportStep("paste");
+                  setImportError(null);
+                }}
+                importing={importLoading}
+              />
+            )}
           </div>
         </div>
       )}

@@ -14,6 +14,7 @@ import {
   deleteUserPokemon,
 } from "@/lib/api";
 import { CoverageSummary } from "@/components/roster/coverage-summary";
+import { QuickAddModal } from "@/components/roster/quick-add-modal";
 import { RosterCard } from "@/components/roster/roster-card";
 import { RosterForm } from "@/components/roster/roster-form";
 
@@ -30,6 +31,7 @@ export default function RosterPage() {
 
   // Form modal state
   const [showForm, setShowForm] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editing, setEditing] = useState<UserPokemon | null>(null);
   const [preselectedPokemonId, setPreselectedPokemonId] = useState<number | undefined>(
     addPokemonId ? Number(addPokemonId) : undefined
@@ -71,15 +73,38 @@ export default function RosterPage() {
     loadRoster(statusFilter);
   }, [statusFilter, loadRoster]);
 
-  // Auto-open form when ?add=pokemonId is in URL
+  // Auto-open quick-add when ?add=pokemonId is in URL
   useEffect(() => {
     if (preselectedPokemonId && !isLoading && pokemonMap.size > 0) {
       setEditing(null);
-      setShowForm(true);
+      setShowQuickAdd(true);
     }
   }, [preselectedPokemonId, isLoading, pokemonMap]);
 
   const handleCreate = () => {
+    setEditing(null);
+    setShowForm(true);
+  };
+
+  const handleQuickAdd = () => {
+    setPreselectedPokemonId(undefined);
+    setShowQuickAdd(true);
+  };
+
+  const handleQuickAddSubmit = async (data: { pokemon_id: number; ability?: string; build_status: string }) => {
+    try {
+      await createUserPokemon(data as UserPokemonCreate);
+      setShowQuickAdd(false);
+      setPreselectedPokemonId(undefined);
+      loadRoster(statusFilter);
+    } catch (err) {
+      console.error("Failed to quick-add:", err);
+    }
+  };
+
+  const handleQuickAddToFullForm = (pokemonId: number) => {
+    setShowQuickAdd(false);
+    setPreselectedPokemonId(pokemonId);
     setEditing(null);
     setShowForm(true);
   };
@@ -133,12 +158,20 @@ export default function RosterPage() {
             {count} Pokemon in collection
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
-        >
-          Add Pokemon
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleQuickAdd}
+            className="btn-primary h-10 px-5 font-display text-xs font-medium uppercase tracking-wider"
+          >
+            Quick Add
+          </button>
+          <button
+            onClick={handleCreate}
+            className="btn-ghost h-10 px-5 font-display text-xs font-medium uppercase tracking-wider"
+          >
+            Full Form
+          </button>
+        </div>
       </div>
 
       {/* Status summary */}
@@ -196,7 +229,7 @@ export default function RosterPage() {
           </p>
           {!statusFilter && (
             <button
-              onClick={handleCreate}
+              onClick={handleQuickAdd}
               className="mt-6 btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
             >
               Add Pokemon
@@ -218,7 +251,21 @@ export default function RosterPage() {
         </div>
       )}
 
-      {/* Form modal */}
+      {/* Quick-add modal */}
+      {showQuickAdd && (
+        <QuickAddModal
+          pokemonLookup={pokemonMap}
+          preselectedPokemonId={preselectedPokemonId}
+          onAdd={handleQuickAddSubmit}
+          onFullForm={handleQuickAddToFullForm}
+          onClose={() => {
+            setShowQuickAdd(false);
+            setPreselectedPokemonId(undefined);
+          }}
+        />
+      )}
+
+      {/* Full form modal */}
       {showForm && (
         <RosterForm
           editing={editing}

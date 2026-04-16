@@ -381,6 +381,32 @@ export interface ShowdownImportResponse {
   warnings: string[];
 }
 
+export interface ShowdownPreviewPokemon {
+  name: string;
+  pokemon_id: number | null;
+  item: string | null;
+  item_id: number | null;
+  ability: string | null;
+  nature: string | null;
+  stat_points: Record<string, number> | null;
+  moves: string[];
+  resolved: boolean;
+}
+
+export interface ShowdownPreviewResponse {
+  pokemon: ShowdownPreviewPokemon[];
+  warnings: string[];
+}
+
+export async function previewShowdownImport(
+  paste: string
+): Promise<ShowdownPreviewResponse> {
+  return apiFetch<ShowdownPreviewResponse>("/teams/import/preview", {
+    method: "POST",
+    body: JSON.stringify({ paste }),
+  });
+}
+
 export async function importTeamFromShowdown(
   body: ShowdownImportRequest
 ): Promise<ShowdownImportResponse> {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { PokemonUsage, UsageEntry } from "@/types/usage";
 import { fetchPokemon, fetchPokemonUsage } from "@/lib/api";
@@ -168,6 +169,24 @@ export function PokemonDetailPanel({
                 </div>
               </div>
             </div>
+
+            {/* Actions */}
+            {pokemon.champions_eligible && (
+              <div className="flex gap-2">
+                <Link
+                  href={`/roster?add=${pokemon.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-4 py-2 font-display text-xs uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+                >
+                  Add to Roster
+                </Link>
+                <Link
+                  href={`/pokemon/${pokemon.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-surface-mid px-4 py-2 font-display text-xs uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-surface-high hover:text-on-surface"
+                >
+                  View Details
+                </Link>
+              </div>
+            )}
 
             {/* Usage sections — the competitive intelligence */}
             {usage ? (

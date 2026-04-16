@@ -159,10 +159,64 @@ class ImportRequest(BaseModel):
     format: str = Field(pattern=r"^(singles|doubles|megas)$")
 
 
+class PreviewRequest(BaseModel):
+    paste: str = Field(description="Showdown paste text")
+
+
+class PreviewPokemon(BaseModel):
+    name: str
+    pokemon_id: int | None = None
+    item: str | None = None
+    item_id: int | None = None
+    ability: str | None = None
+    nature: str | None = None
+    stat_points: dict[str, int] | None = None
+    moves: list[str] = []
+    resolved: bool = False
+
+
+class PreviewResponse(BaseModel):
+    pokemon: list[PreviewPokemon]
+    warnings: list[str]
+
+
 class ImportResponse(BaseModel):
     team: TeamResponse
     pokemon_created: int
     warnings: list[str]
+
+
+@router.post("/import/preview", response_model=PreviewResponse)
+def preview_import(body: PreviewRequest, _user_id: str = Depends(get_current_user)):
+    """Preview a Showdown paste without creating any data.
+
+    Parses and resolves names to IDs so the user can review before confirming.
+    """
+    parsed = parse_showdown_paste(body.paste)
+    if not parsed.pokemon:
+        raise HTTPException(
+            status_code=400,
+            detail="No Pokemon found in paste. Check the format.",
+        )
+
+    parsed = resolve_pokemon_ids(parsed)
+
+    preview_pokemon = [
+        PreviewPokemon(
+            name=p.name,
+            pokemon_id=p.pokemon_id,
+            item=p.item,
+            item_id=p.item_id,
+            ability=p.ability,
+            nature=p.nature,
+            stat_points=p.stat_points,
+            moves=p.moves,
+            resolved=p.pokemon_id is not None,
+        )
+        for p in parsed.pokemon
+    ]
+
+    return PreviewResponse(pokemon=preview_pokemon, warnings=parsed.warnings)
 
 
 @router.post("/import", response_model=ImportResponse, status_code=201)
