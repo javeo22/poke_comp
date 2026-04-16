@@ -133,7 +133,7 @@ def _parse_with_claude(
         f"Page content:\n{page_text}"
     )
     message = client.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -194,7 +194,7 @@ def scrape_game8(request: Request, user_id: str = Depends(get_current_user)):
             total = sum(len(v) for v in tier_data.values())
             call_cost = estimate_cost(in_tok, out_tok)
             total_cost += call_cost
-            log_ai_usage(user_id, "meta_scrape", "claude-sonnet-4-6-20250514", in_tok, out_tok)
+            log_ai_usage(user_id, "meta_scrape", "claude-sonnet-4-6", in_tok, out_tok)
             results.append(ScrapeResult(format=format_name, pokemon_count=total, status="ok"))
         except httpx.HTTPStatusError as e:
             results.append(

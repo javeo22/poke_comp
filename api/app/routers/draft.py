@@ -428,7 +428,7 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     # Check cache
     cached = _check_cache(request_hash)
     if cached:
-        log_ai_usage(user_id, "draft", "claude-sonnet-4-6-20250514", 0, 0, cached=True)
+        log_ai_usage(user_id, "draft", "claude-sonnet-4-6", 0, 0, cached=True)
         return DraftResponse(analysis=cached, cached=True, estimated_cost_usd=0.0)
 
     # Check daily quota (non-cached requests only)
@@ -458,7 +458,7 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = ai.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=3000,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -493,6 +493,6 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     in_tok = message.usage.input_tokens
     out_tok = message.usage.output_tokens
     estimated_cost = estimate_cost(in_tok, out_tok)
-    log_ai_usage(user_id, "draft", "claude-sonnet-4-6-20250514", in_tok, out_tok)
+    log_ai_usage(user_id, "draft", "claude-sonnet-4-6", in_tok, out_tok)
 
     return DraftResponse(analysis=analysis, cached=False, estimated_cost_usd=estimated_cost)

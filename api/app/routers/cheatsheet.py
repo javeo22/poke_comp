@@ -514,7 +514,7 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         cached["speed_tiers"] = [s.model_dump(mode="json") for s in speed_tiers]
         cached["cached"] = True
         cached["estimated_cost_usd"] = 0.0
-        log_ai_usage(user_id, "cheatsheet", "claude-sonnet-4-6-20250514", 0, 0, cached=True)
+        log_ai_usage(user_id, "cheatsheet", "claude-sonnet-4-6", 0, 0, cached=True)
         return CheatsheetResponse.model_validate(cached)
 
     # 6b. Check daily quota (non-cached requests only)
@@ -535,7 +535,7 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = ai.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -579,7 +579,7 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
     log_ai_usage(
         user_id,
         "cheatsheet",
-        "claude-sonnet-4-6-20250514",
+        "claude-sonnet-4-6",
         message.usage.input_tokens,
         message.usage.output_tokens,
     )
