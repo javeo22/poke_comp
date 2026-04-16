@@ -215,9 +215,17 @@
 - [x] B6: Profile page revamp (trainer card + activity stats + battle stats + insights + recent form)
 - [x] B7: Nav avatar display (sprite + display name replaces "Profile" link)
 
+#### Workstream F: Data Pipeline Improvements -- PARTIAL (2026-04-15)
+- [x] F2: Centralized name resolver (`api/app/services/name_resolver.py`)
+  - resolve_name(), build_roster_index(), normalize_tier_data()
+  - Handles Game8/Smogon alt names: "Wash Rotom"→"Rotom-Wash", "Alolan X"→"X-Alola", regional forms, Urshifu variants
+  - Wired into meta.py scraper: tier_data normalized before upsert
+- [x] F2: `GET /admin/data-freshness` endpoint (latest snapshot dates by source/format)
+- [x] F2: validate_data check 8 — meta snapshot roster integrity
+- [ ] F: Cron scheduling for automated ingest
+
 #### Remaining Workstreams
 - G: Data source ToS compliance (Game8 HIGH risk, Serebii MEDIUM)
-- F: Data pipeline improvements (centralized name resolver, freshness API, cron scheduling)
 - H: UX flow review (beginner/intermediate/pro user journeys)
 - J: Custom AI strategy (phased: caching -> tiered models -> fine-tuning)
 

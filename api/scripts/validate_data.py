@@ -421,6 +421,60 @@ def check_format_integrity(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
+# Check 8: Meta snapshot roster integrity
+# =============================================================================
+
+
+def check_meta_snapshot_names(sb: Client, fix: bool = False) -> CheckResult:
+    """Verify Pokemon names in meta_snapshots tier_data exist in the Champions roster."""
+    # Build roster lookup
+    roster_result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
+    roster_rows: list[dict] = roster_result.data  # type: ignore[assignment]
+    roster_names = {row["name"] for row in roster_rows}
+    # Normalize for fuzzy matching
+    roster_normalized = {name.lower().replace("-", "").replace(" ", "") for name in roster_names}
+
+    # Get latest snapshot for each format
+    recent_snapshots: list[dict] = (
+        sb.table("meta_snapshots")
+        .select("id, format, snapshot_date, tier_data")
+        .order("snapshot_date", desc=True)
+        .limit(9)  # 3 formats x 3 recent dates max
+        .execute()
+        .data  # type: ignore[assignment]
+    )
+
+    unmatched: list[str] = []
+    seen: set[str] = set()
+
+    for snapshot in recent_snapshots:
+        tier_data = snapshot.get("tier_data") or {}
+        fmt = snapshot.get("format", "?")
+        for _tier, pokemon_list in tier_data.items():
+            for name in pokemon_list:
+                if name in seen:
+                    continue
+                seen.add(name)
+                # Fuzzy check
+                norm = name.lower().replace("-", "").replace(" ", "")
+                if name not in roster_names and norm not in roster_normalized:
+                    unmatched.append(f"{fmt}: {name!r}")
+
+    if unmatched:
+        return CheckResult(
+            name="meta_snapshot_names",
+            status="warn",
+            message=f"{len(unmatched)} tier list names not in Champions roster",
+            details=unmatched[:20],
+        )
+    return CheckResult(
+        name="meta_snapshot_names",
+        status="pass",
+        message="All tier list Pokemon names match the Champions roster",
+    )
+
+
+# =============================================================================
 # Runner
 # =============================================================================
 
@@ -433,6 +487,7 @@ ALL_CHECKS = [
     ("Source URL Verification", check_source_urls),
     ("Cross-Source Drift", check_cross_source_drift),
     ("Format Column Integrity", check_format_integrity),
+    ("Meta Snapshot Names", check_meta_snapshot_names),
 ]
 
 
