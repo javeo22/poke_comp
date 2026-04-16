@@ -286,6 +286,15 @@ def ingest_smogon_data(sb: Client) -> None:
         f"Upserting {len(upsert_batch)}..."
     )
 
+    # Clean old Smogon snapshots to avoid duplicate listings
+    try:
+        sb.table("pokemon_usage").delete().eq(
+            "source", "smogon"
+        ).neq("snapshot_date", today_date).execute()
+        print("  Cleaned old smogon snapshots")
+    except Exception:
+        pass
+
     batch_size = 100
     for i in range(0, len(upsert_batch), batch_size):
         chunk = upsert_batch[i : i + batch_size]

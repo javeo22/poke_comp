@@ -1,5 +1,3 @@
-"use client";
-
 const KOFI_URL = "https://ko-fi.com/pokecompapp";
 
 export default function SupportPage() {

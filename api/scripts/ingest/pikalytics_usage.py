@@ -382,7 +382,16 @@ def ingest_pikalytics(sb: Client) -> None:
 
         time.sleep(REQUEST_DELAY)
 
-    # Step 3: Upsert to database
+    # Step 3: Delete old Pikalytics rows for this format, then upsert new ones
+    #   Keeps only the current snapshot to avoid duplicate listings on the meta page
+    try:
+        sb.table("pokemon_usage").delete().eq(
+            "source", "pikalytics"
+        ).eq("format", "doubles").neq("snapshot_date", today_date).execute()
+        print("  Cleaned old pikalytics snapshots")
+    except Exception:
+        pass
+
     print(f"\nUpserting {len(upsert_batch)} records...")
     batch_size = 50
     for i in range(0, len(upsert_batch), batch_size):

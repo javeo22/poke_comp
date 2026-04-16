@@ -16,9 +16,8 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
-// All pages are "use client" -- force-dynamic avoids useSearchParams SSR errors.
-// ISR can be revisited when public pages are converted to server components.
-export const dynamic = "force-dynamic";
+// Static pages (terms, privacy, support) are server components.
+// Dynamic pages (cheatsheet, draft, roster) have their own layout with force-dynamic.
 
 export const metadata: Metadata = {
   title: {
