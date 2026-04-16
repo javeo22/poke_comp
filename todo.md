@@ -13,11 +13,15 @@
 - [x] F2: Centralized name resolver + data freshness API
 - [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
 - [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)
-- [ ] K: Cheatsheet UX Overhaul (DB persistence, collapsible, team indicator, PDF fix, shareable)
-- [ ] L: Admin Panel (auth, dashboard, pokemon/moves/items manager, meta reviewer, legal QA)
-- [ ] M: Cost Controls (aggressive caching, tiered quotas, cost dashboard, prompt optimization, Haiku fallback, sponsor slot)
-- [ ] N: Analytics & SEO (Vercel Analytics, sitemap, OpenGraph, structured data, content SEO)
-- [ ] O: Support Visibility (top nav link, contextual prompts, supporter badge)
+- [x] K1-K4: Cheatsheet UX (DB persistence, collapsible cards, team indicator badge, PDF export fix)
+- [ ] K5: Shareable cheatsheets (public profile page /u/{username})
+- [x] K2 rework: Cheatsheet page shows all saved cheatsheets as collapsible cards
+- [x] L1-L6: Admin Panel (auth, dashboard, Pokemon/moves/items managers, meta reviewer, AI cost tracking)
+- [x] M1: Aggressive caching (cheatsheet 30d, draft 7d)
+- [ ] M2-M6: Tiered quotas, prompt optimization, Haiku fallback, sponsor slot
+- [x] N1-N3: Analytics & SEO (Vercel Analytics, sitemap.xml, robots.txt, OpenGraph/Twitter meta)
+- [ ] N4-N5: Structured data, SSG/ISR for public pages
+- [x] O1-O2: Support Visibility (top nav link, contextual cost prompts on cheatsheet + draft)
 - [ ] P: Strategy Content Ingestion (strategy_notes table, admin editor, wire into AI prompts)
 
 ### Visual Polish
@@ -49,6 +53,18 @@
 ---
 
 ## Done (2026-04-16)
+- [x] K1: team_cheatsheets table + GET/POST saved cheatsheet endpoints + batch status check
+- [x] K2: Collapsible accordion sections on cheatsheet page (roster, game plan, speed tiers, key rules, leads, weaknesses)
+- [x] K3: "Cheatsheet" badge on team cards linking to saved cheatsheet
+- [x] K4: PDF export rewritten with html2canvas-pro + jsPDF (replaces window.print hack)
+- [x] K2 rework: Cheatsheet page shows all saved cheatsheets as collapsible cards with expand/collapse
+- [x] L1-L6: Admin panel -- auth (ADMIN_USER_IDS env), dashboard (stats + AI costs + data health + freshness), Pokemon/Moves/Items managers with Champions toggle, Meta snapshot viewer
+- [x] M1: Aggressive caching -- cheatsheet 30 days, draft 7 days
+- [x] N1: Vercel Analytics (@vercel/analytics)
+- [x] N2: sitemap.xml + robots.txt via Next.js MetadataRoute
+- [x] N3: OpenGraph + Twitter meta tags, title template, metadataBase
+- [x] O1: Support link in top nav (Compete section)
+- [x] O2: Contextual support prompts after AI generation (cheatsheet + draft pages)
 - [x] Fix: Ko-fi URL updated to real link (ko-fi.com/pokecompapp)
 - [x] Fix: Draft team selector showed UUIDs instead of Pokemon names/sprites -- resolved through rosterLookup + pokemonMap
 - [x] Fix: AI draft/cheatsheet 500 errors — `.single()` raised on cache miss, switched to `.maybe_single()` (PR #14)
