@@ -71,4 +71,51 @@ app.include_router(admin.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "jwt_secret_configured": bool(settings.supabase_jwt_secret),
+        "jwt_secret_length": len(settings.supabase_jwt_secret),
+        "supabase_url_configured": bool(settings.supabase_url),
+    }
+
+
+@app.get("/debug-auth")
+def debug_auth(request: Request):
+    """Temporary debug endpoint -- remove after fixing auth."""
+    import jwt as pyjwt
+
+    auth_header = request.headers.get("authorization", "")
+    has_token = bool(auth_header)
+    token_preview = ""
+    decode_error = None
+    token_segments = 0
+
+    if auth_header.startswith("Bearer "):
+        raw_token = auth_header[7:]
+        token_preview = raw_token[:20] + "..." if len(raw_token) > 20 else raw_token
+        token_segments = raw_token.count(".") + 1
+        try:
+            payload = pyjwt.decode(
+                raw_token,
+                settings.supabase_jwt_secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+            decode_error = None
+            return {
+                "has_token": True,
+                "token_segments": token_segments,
+                "decode": "success",
+                "role": payload.get("role"),
+                "sub": payload.get("sub", "")[:8] + "...",
+            }
+        except Exception as e:
+            decode_error = f"{type(e).__name__}: {e}"
+
+    return {
+        "has_token": has_token,
+        "token_preview": token_preview,
+        "token_segments": token_segments,
+        "jwt_secret_length": len(settings.supabase_jwt_secret),
+        "decode_error": decode_error,
+    }
