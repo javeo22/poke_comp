@@ -115,8 +115,7 @@ def get_usage_summary(user_id: str) -> dict:
     recent_result = (
         supabase.table("ai_usage_log")
         .select(
-            "endpoint, model, input_tokens, output_tokens,"
-            " estimated_cost_usd, cached, created_at"
+            "endpoint, model, input_tokens, output_tokens, estimated_cost_usd, cached, created_at"
         )
         .eq("user_id", user_id)
         .order("created_at", desc=True)
