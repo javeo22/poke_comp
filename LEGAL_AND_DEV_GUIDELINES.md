@@ -26,14 +26,25 @@ To maintain a sustainable and ethical project, all data acquisition must follow 
 | **Smogon/pkmn** | Public JSON API (pkmn.github.io) | Accessible | MIT license (code), attribution required | LOW | Ensure attribution |
 | **Limitless TCG** | Public REST API (1s delay) | No robots.txt (404) | ToS not publicly accessible | MEDIUM | Verify API terms with Limitless support |
 | **Serebii** | HTML scraping (0.5s delay, one-time) | Permissive (only blocks /hidden/) | No public ToS, all content copyrighted | MEDIUM | Email webmaster@serebii.net for permission |
-| **Game8** | HTML scraping -> Claude extraction | **Blocks GPTBot, dotbot, Google-Extended** | **Prohibits reverse engineering, unauthorized commercial use** | **HIGH** | **Must get written permission or stop using** |
+| **Game8** | ~~HTML scraping -> Claude extraction~~ **REMOVED** | **Blocks GPTBot, dotbot, Google-Extended** | **Prohibits reverse engineering, unauthorized commercial use** | **HIGH** | **Scraper removed (2026-04-16)** |
+| **Limitless VGC** | Public REST API (1s delay) | No robots.txt (404) | Public API, no explicit ToS; widely used by community tools | LOW-MEDIUM | Attribution required; monitor for ToS updates |
 
 **Pikalytics note:** They attribute their own sprites to Smogon's Sprite Project. They provide dedicated `/ai/pokedex/` endpoints for AI access. No "do not scrape" clause found.
 
-**Game8 action items (URGENT):**
-1. Email Game8 requesting API/scraping permission for fan project use
-2. If denied, replace with: community-sourced tier lists (Reddit/Smogon forums) or manual entry
-3. Current Game8 scraper (`scripts/refresh_meta.py`) should be paused until permission is obtained
+**Limitless note:** The Limitless VGC API is a public REST API used by many community tools (Victory Road, Pokemon tools). No published ToS or rate limit documentation found. We use a 1-second delay between requests and cache tournament data locally to minimize load.
+
+**Game8 resolution (2026-04-16):** Scraper removed from codebase. Game8's robots.txt explicitly blocks AI bots and their ToS prohibits reverse engineering. Rather than risk legal issues, tier list data now comes exclusively from Smogon usage stats, Pikalytics tournament data, and Limitless tournament results. The `POST /meta/scrape` endpoint and `scripts/refresh_meta.py` Game8 functionality have been disabled.
+
+---
+
+### D. Pokemon Champions IP Considerations (2026-04-16)
+
+Pokemon Champions launched April 8, 2026. As a new title:
+- **No established fan tool precedent** yet -- be conservative with game-specific assets and mechanics
+- **Competitive data** (tier lists, usage stats) is community-generated analysis, not copyrighted game content
+- **Move/ability/item names** are trademarked but factual references are standard in fan tools (Bulbapedia, Smogon, Serebii all do this)
+- **AI analysis** of team compositions is transformative use -- we generate strategic insight, not reproduced game content
+- Monitor The Pokemon Company's stance on Champions community tools as the ecosystem matures
 
 ---
 

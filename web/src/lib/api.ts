@@ -276,21 +276,6 @@ export async function fetchLatestMeta() {
   return apiFetch<MetaSnapshot[]>("/meta/latest");
 }
 
-export interface ScrapeResult {
-  format: string;
-  pokemon_count: number;
-  status: string;
-}
-
-export interface ScrapeResponse {
-  results: ScrapeResult[];
-  estimated_cost_usd: number;
-}
-
-export async function triggerMetaScrape(): Promise<ScrapeResponse> {
-  return apiFetch<ScrapeResponse>("/meta/scrape", { method: "POST" });
-}
-
 export interface MetaFilters {
   format?: string;
   limit?: number;
@@ -367,8 +352,12 @@ export async function deleteMatchup(id: string) {
 
 // ── Draft Analysis ──
 
-export async function analyzeDraft(body: DraftRequest): Promise<DraftResponse> {
-  return apiFetch<DraftResponse>("/draft/analyze", {
+export async function analyzeDraft(
+  body: DraftRequest,
+  model?: string
+): Promise<DraftResponse> {
+  const params = model ? `?model=${encodeURIComponent(model)}` : "";
+  return apiFetch<DraftResponse>(`/draft/analyze${params}`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -376,8 +365,12 @@ export async function analyzeDraft(body: DraftRequest): Promise<DraftResponse> {
 
 // ── Cheatsheet ──
 
-export async function generateCheatsheet(teamId: string): Promise<CheatsheetResponse> {
-  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`, {
+export async function generateCheatsheet(
+  teamId: string,
+  model?: string
+): Promise<CheatsheetResponse> {
+  const params = model ? `?model=${encodeURIComponent(model)}` : "";
+  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}${params}`, {
     method: "POST",
   });
 }
@@ -387,8 +380,10 @@ export async function fetchSavedCheatsheet(teamId: string): Promise<CheatsheetRe
 }
 
 export interface SavedCheatsheet {
+  id: string;
   team_id: string;
   cheatsheet_json: CheatsheetResponse;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -402,6 +397,77 @@ export async function fetchCheatsheetStatus(teamIds: string[]): Promise<Record<s
   return apiFetch<Record<string, string>>(`/cheatsheet/status`, {
     params: { team_ids: teamIds.join(",") },
   });
+}
+
+export async function toggleCheatsheetVisibility(
+  teamId: string
+): Promise<{ team_id: string; is_public: boolean }> {
+  return apiFetch(`/cheatsheet/${teamId}/visibility`, { method: "PATCH" });
+}
+
+// ── Public Endpoints (no auth) ──
+
+export interface PublicProfile {
+  username: string;
+  display_name: string | null;
+  avatar_pokemon_id: number | null;
+  avatar_sprite_url: string | null;
+  team_count: number;
+  cheatsheet_count: number;
+}
+
+export interface PublicCheatsheetSummary {
+  id: string;
+  team_name: string | null;
+  team_format: string | null;
+  updated_at: string;
+}
+
+export interface PublicCheatsheetDetail {
+  id: string;
+  team_name: string | null;
+  team_format: string | null;
+  cheatsheet_json: CheatsheetResponse;
+  owner_username: string | null;
+  owner_display_name: string | null;
+  owner_avatar_sprite_url: string | null;
+  updated_at: string;
+}
+
+export async function fetchPublicProfile(
+  username: string
+): Promise<PublicProfile> {
+  return apiFetch<PublicProfile>(`/public/u/${username}`);
+}
+
+export async function fetchPublicCheatsheets(
+  username: string
+): Promise<PublicCheatsheetSummary[]> {
+  return apiFetch<PublicCheatsheetSummary[]>(
+    `/public/u/${username}/cheatsheets`
+  );
+}
+
+export async function fetchPublicCheatsheet(
+  id: string
+): Promise<PublicCheatsheetDetail> {
+  return apiFetch<PublicCheatsheetDetail>(`/public/cheatsheet/${id}`);
+}
+
+export interface PublicStats {
+  pokemon_count: number;
+  teams_count: number;
+  matches_count: number;
+}
+
+export async function fetchPublicStats(): Promise<PublicStats> {
+  return apiFetch<PublicStats>("/public/stats");
+}
+
+export async function checkUsername(
+  username: string
+): Promise<{ available: boolean; username: string; reason?: string }> {
+  return apiFetch(`/profile/check-username/${username}`);
 }
 
 // ── Showdown Import / Export ──
@@ -464,6 +530,7 @@ export interface AiUsageToday {
   limit: number;
   remaining: number;
   resets_at: string;
+  available_models?: string[];
 }
 
 export interface AiUsageEntry {
@@ -496,6 +563,50 @@ export async function updateProfile(body: ProfileUpdate): Promise<ProfileData> {
     method: "PUT",
     body: JSON.stringify(body),
   });
+}
+
+// ── Strategy Notes ──
+
+export interface StrategyNote {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  tags: string[];
+  format: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchStrategyNotes(
+  includeInactive = false
+): Promise<StrategyNote[]> {
+  const params = includeInactive ? "?include_inactive=true" : "";
+  return apiFetch<StrategyNote[]>(`/strategy${params}`);
+}
+
+export async function createStrategyNote(
+  body: Omit<StrategyNote, "id" | "is_active" | "created_at" | "updated_at">
+): Promise<StrategyNote> {
+  return apiFetch<StrategyNote>("/strategy", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateStrategyNote(
+  id: string,
+  body: Partial<StrategyNote>
+): Promise<StrategyNote> {
+  return apiFetch<StrategyNote>(`/strategy/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteStrategyNote(id: string): Promise<void> {
+  await apiFetch(`/strategy/${id}`, { method: "DELETE" });
 }
 
 // ── Admin ──

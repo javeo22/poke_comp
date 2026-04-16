@@ -13,7 +13,12 @@ import {
   fetchAdminItems,
   updateAdminItem,
   fetchAdminMetaSnapshots,
+  fetchStrategyNotes,
+  createStrategyNote,
+  updateStrategyNote,
+  deleteStrategyNote,
 } from "@/lib/api";
+import type { StrategyNote } from "@/lib/api";
 import type {
   AdminStats,
   AdminAiCosts,
@@ -29,6 +34,7 @@ const TABS = [
   { id: "moves", label: "Moves" },
   { id: "items", label: "Items" },
   { id: "meta", label: "Meta" },
+  { id: "strategy", label: "Strategy" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -98,6 +104,7 @@ export default function AdminPage() {
       {activeTab === "moves" && <MovesTab onError={setError} />}
       {activeTab === "items" && <ItemsTab onError={setError} />}
       {activeTab === "meta" && <MetaTab onError={setError} />}
+      {activeTab === "strategy" && <StrategyTab onError={setError} />}
     </div>
   );
 }
@@ -608,6 +615,136 @@ function MetaTab({ onError }: { onError: (msg: string | null) => void }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+const CATEGORIES = ["archetype", "matchup", "general", "tip"] as const;
+
+function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
+  const [notes, setNotes] = useState<StrategyNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<string>("general");
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    fetchStrategyNotes(true)
+      .then(setNotes)
+      .catch((err) => onError(err instanceof Error ? err.message : "Failed"))
+      .finally(() => setLoading(false));
+  }, [onError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const resetForm = () => {
+    setTitle(""); setCategory("general"); setContent(""); setTags(""); setEditing(null);
+  };
+
+  const startEdit = (note: StrategyNote) => {
+    setTitle(note.title); setCategory(note.category);
+    setContent(note.content); setTags(note.tags.join(", ")); setEditing(note.id);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() || !content.trim()) return;
+    setSaving(true);
+    try {
+      const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      if (editing) {
+        await updateStrategyNote(editing, { title: title.trim(), category, content: content.trim(), tags: tagList });
+      } else {
+        await createStrategyNote({ title: title.trim(), category, content: content.trim(), tags: tagList, format: "vgc2026" });
+      }
+      resetForm(); load();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to save");
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="h-48 animate-pulse rounded-[1rem] bg-surface-low" />;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Form */}
+      <div className="rounded-[1rem] border border-outline-variant bg-surface-low p-5">
+        <h3 className="mb-4 font-display text-xs uppercase tracking-wider text-on-surface-muted">
+          {editing ? "Edit Note" : "New Strategy Note"}
+        </h3>
+        <div className="flex flex-col gap-3">
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title" className="input-field" />
+          <div className="flex gap-3">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field w-40">
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+            </select>
+            <input type="text" value={tags} onChange={(e) => setTags(e.target.value)}
+              placeholder="Tags (comma-separated)" className="input-field flex-1" />
+          </div>
+          <textarea value={content} onChange={(e) => setContent(e.target.value)}
+            placeholder="Strategy content..." rows={4} className="input-field resize-y" />
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving || !title.trim() || !content.trim()}
+              className="btn-primary px-6 py-2 font-display text-xs uppercase tracking-wider disabled:opacity-50">
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
+            </button>
+            {editing && (
+              <button onClick={resetForm} className="btn-ghost px-4 py-2 font-display text-xs uppercase tracking-wider">
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Notes list */}
+      <div className="flex flex-col gap-3">
+        {notes.map((note) => (
+          <div key={note.id} className={`rounded-[1rem] border bg-surface-low p-4 ${
+            note.is_active ? "border-outline-variant" : "border-outline-variant/30 opacity-50"
+          }`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-display text-sm font-bold text-on-surface truncate">{note.title}</h4>
+                  <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary shrink-0">
+                    {note.category}
+                  </span>
+                  {!note.is_active && (
+                    <span className="rounded-full bg-tertiary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-tertiary shrink-0">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 font-body text-xs text-on-surface-muted line-clamp-2">{note.content}</p>
+                {note.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {note.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.5rem] text-on-surface-muted">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => startEdit(note)} className="btn-ghost px-3 py-1 font-display text-[0.6rem] uppercase tracking-wider">Edit</button>
+                <button onClick={async () => {
+                  if (note.is_active) { await deleteStrategyNote(note.id); } else { await updateStrategyNote(note.id, { is_active: true }); }
+                  load();
+                }} className="btn-ghost px-3 py-1 font-display text-[0.6rem] uppercase tracking-wider">
+                  {note.is_active ? "Deactivate" : "Activate"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {notes.length === 0 && (
+          <p className="py-8 text-center text-sm text-on-surface-muted">No strategy notes yet. Create one above.</p>
+        )}
+      </div>
     </div>
   );
 }

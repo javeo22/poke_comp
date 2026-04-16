@@ -131,7 +131,7 @@ export default function MetaPage() {
           {filteredSnapshots.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <p className="font-display text-lg text-on-surface-muted">No tier data yet</p>
-              <p className="mt-2 text-sm text-on-surface-muted">Tier data is refreshed automatically from Game8.</p>
+              <p className="mt-2 text-sm text-on-surface-muted">Tier data is sourced from Smogon, Pikalytics, and Limitless.</p>
             </div>
           ) : (
             filteredSnapshots.map((snapshot) => (
@@ -148,7 +148,7 @@ export default function MetaPage() {
       {/* Attribution */}
       <div className="mt-12 text-center">
         <p className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-          Usage data from Pikalytics. Tier data from Game8. Pokemon data from Serebii and PokeAPI.
+          Usage data from Pikalytics. Tier data from Smogon and Limitless. Pokemon data from Serebii and PokeAPI.
         </p>
       </div>
 

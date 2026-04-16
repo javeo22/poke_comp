@@ -162,6 +162,8 @@ def get_profile(user_id: str = Depends(get_current_user)):
         display_name=profile_data.get("display_name"),
         avatar_pokemon_id=profile_data.get("avatar_pokemon_id"),
         avatar_sprite_url=avatar_sprite_url,
+        username=profile_data.get("username"),
+        supporter=profile_data.get("supporter", False),
         created_at=profile_data["created_at"],
         updated_at=profile_data["updated_at"],
     )
@@ -191,13 +193,50 @@ def get_profile(user_id: str = Depends(get_current_user)):
     )
 
 
+@router.get("/check-username/{username}")
+def check_username(username: str):
+    """Check if a username is available. No auth required."""
+    import re
+
+    if not re.match(r"^[a-z0-9_-]{3,20}$", username):
+        return {
+            "available": False,
+            "reason": "3-20 chars: lowercase letters, numbers, hyphens, underscores",
+        }
+    result = (
+        supabase.table("user_profiles")
+        .select("user_id")
+        .eq("username", username)
+        .execute()
+    )
+    taken = bool(result.data)
+    return {"available": not taken, "username": username}
+
+
 @router.put("", response_model=ProfileResponse)
 def update_profile(body: ProfileUpdate, user_id: str = Depends(get_current_user)):
-    """Update display name and/or avatar Pokemon."""
+    """Update display name, avatar, and/or username."""
     update_data: dict = {}
 
     if body.display_name is not None:
         update_data["display_name"] = body.display_name.strip() if body.display_name else None
+
+    if body.username is not None:
+        username = body.username.strip().lower()
+        if username:
+            # Check uniqueness (excluding current user)
+            existing = (
+                supabase.table("user_profiles")
+                .select("user_id")
+                .eq("username", username)
+                .neq("user_id", user_id)
+                .execute()
+            )
+            if existing.data:
+                raise HTTPException(status_code=409, detail="Username already taken")
+            update_data["username"] = username
+        else:
+            update_data["username"] = None
 
     if body.avatar_pokemon_id is not None:
         # Validate Pokemon exists and is Champions-eligible
@@ -240,6 +279,8 @@ def update_profile(body: ProfileUpdate, user_id: str = Depends(get_current_user)
         display_name=row.get("display_name"),
         avatar_pokemon_id=row.get("avatar_pokemon_id"),
         avatar_sprite_url=avatar_sprite_url,
+        username=row.get("username"),
+        supporter=row.get("supporter", False),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

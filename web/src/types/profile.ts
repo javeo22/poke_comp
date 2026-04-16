@@ -3,6 +3,8 @@ export interface ProfileData {
   display_name: string | null;
   avatar_pokemon_id: number | null;
   avatar_sprite_url: string | null;
+  username: string | null;
+  supporter: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -37,4 +39,5 @@ export interface FullProfile {
 export interface ProfileUpdate {
   display_name?: string | null;
   avatar_pokemon_id?: number | null;
+  username?: string | null;
 }

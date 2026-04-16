@@ -49,6 +49,21 @@ export default function ProfilePage() {
     );
   };
 
+  const handleUpdateUsername = async (username: string) => {
+    const updated = await updateProfile({ username: username || null });
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              username: updated.username,
+            },
+          }
+        : prev
+    );
+  };
+
   const handleAvatarSelect = async (
     pokemonId: number,
     spriteUrl: string
@@ -120,6 +135,7 @@ export default function ProfilePage() {
         memberSince={profile.member_since}
         matchesPlayed={stats.matches_played}
         onUpdateDisplayName={handleUpdateDisplayName}
+        onUpdateUsername={handleUpdateUsername}
         onOpenAvatarPicker={() => setAvatarPickerOpen(true)}
       />
 

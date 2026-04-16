@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class ProfileUpdate(BaseModel):
     display_name: str | None = Field(None, max_length=30)
     avatar_pokemon_id: int | None = None
+    username: str | None = Field(None, pattern=r"^[a-z0-9_-]{3,20}$")
 
 
 class ProfileResponse(BaseModel):
@@ -13,6 +14,8 @@ class ProfileResponse(BaseModel):
     display_name: str | None = None
     avatar_pokemon_id: int | None = None
     avatar_sprite_url: str | None = None
+    username: str | None = None
+    supporter: bool = False
     created_at: datetime
     updated_at: datetime
 

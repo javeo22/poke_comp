@@ -17,6 +17,8 @@ from app.routers import (
     moves,
     pokemon,
     profile,
+    public,
+    strategy,
     teams,
     usage,
     user_pokemon,
@@ -53,7 +55,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
@@ -71,6 +73,8 @@ app.include_router(matchups.router)
 app.include_router(ai_usage.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
+app.include_router(public.router)
+app.include_router(strategy.router)
 
 
 @app.get("/health")

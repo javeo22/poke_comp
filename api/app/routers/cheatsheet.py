@@ -10,9 +10,16 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from app.ai_quota import check_ai_quota, estimate_cost, log_ai_usage
+from app.ai_quota import (
+    DEFAULT_MODEL,
+    HAIKU_MODEL,
+    check_ai_quota,
+    estimate_cost,
+    get_available_models,
+    log_ai_usage,
+)
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
@@ -486,7 +493,16 @@ mitigation for each.
 - lead and back arrays must contain exactly 2 Pokemon names each, \
 drawn from the team roster.
 
-Return ONLY the JSON object, no markdown fences or explanation."""
+Return ONLY the JSON object, no markdown fences or explanation.
+
+{_get_strategy_section(team_format)}"""
+
+
+def _get_strategy_section(team_format: str) -> str:
+    from app.services.strategy_context import fetch_strategy_context
+
+    ctx = fetch_strategy_context(format=team_format)
+    return ctx if ctx else ""
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -500,7 +516,7 @@ def list_cheatsheets(user_id: str = Depends(get_current_user)):
     try:
         result = (
             supabase.table("team_cheatsheets")
-            .select("team_id, cheatsheet_json, created_at, updated_at")
+            .select("id, team_id, cheatsheet_json, is_public, created_at, updated_at")
             .eq("user_id", user_id)
             .order("updated_at", desc=True)
             .execute()
@@ -509,6 +525,29 @@ def list_cheatsheets(user_id: str = Depends(get_current_user)):
         return rows
     except Exception:
         return []
+
+
+@router.patch("/{team_id}/visibility")
+def toggle_visibility(team_id: str, user_id: str = Depends(get_current_user)):
+    """Toggle a cheatsheet's public visibility."""
+    # Fetch current state
+    result = (
+        supabase.table("team_cheatsheets")
+        .select("id, is_public")
+        .eq("team_id", team_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    if result is None or not result.data:
+        raise HTTPException(status_code=404, detail="Cheatsheet not found")
+
+    new_value = not result.data.get("is_public", False)
+    supabase.table("team_cheatsheets").update(
+        {"is_public": new_value}
+    ).eq("id", result.data["id"]).execute()
+
+    return {"team_id": team_id, "is_public": new_value}
 
 
 @router.get("/status")
@@ -553,10 +592,20 @@ def get_saved_cheatsheet(
 
 @router.post("/{team_id}", response_model=CheatsheetResponse)
 @limiter.limit("5/minute")
-def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(get_current_user)):
+def generate_cheatsheet(
+    request: Request,
+    team_id: str,
+    model: str = Query(DEFAULT_MODEL, pattern=r"^claude-"),
+    user_id: str = Depends(get_current_user),
+):
     """Generate an AI-powered pre-match cheat sheet for a team."""
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
+
+    # Validate model choice
+    available = get_available_models(user_id)
+    if model not in available:
+        model = HAIKU_MODEL
 
     # 1. Fetch team
     team = _fetch_team(team_id, user_id)
@@ -610,14 +659,15 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         cached["speed_tiers"] = [s.model_dump(mode="json") for s in speed_tiers]
         cached["cached"] = True
         cached["estimated_cost_usd"] = 0.0
-        log_ai_usage(user_id, "cheatsheet", "claude-sonnet-4-6", 0, 0, cached=True)
+        log_ai_usage(user_id, "cheatsheet", model, 0, 0, cached=True)
         cached_response = CheatsheetResponse.model_validate(cached)
         # Ensure persistent copy exists
         _save_cheatsheet(team_id, user_id, cached_response)
         return cached_response
 
-    # 6b. Check daily quota (non-cached requests only)
-    check_ai_quota(user_id)
+    # 6b. Check daily quota (non-cached requests only) -- Haiku bypasses
+    if model != HAIKU_MODEL:
+        check_ai_quota(user_id)
 
     # 7. Fetch meta context (filtered by team's format)
     tier_data, usage_data = _fetch_meta_context(team["format"])
@@ -634,7 +684,7 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = ai.messages.create(
-        model="claude-sonnet-4-6",
+        model=model,
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -670,7 +720,9 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
         lead_matchups=[LeadMatchup.model_validate(m) for m in raw.get("lead_matchups", [])],
         weaknesses=[Weakness.model_validate(w) for w in raw.get("weaknesses", [])],
         cached=False,
-        estimated_cost_usd=estimate_cost(message.usage.input_tokens, message.usage.output_tokens),
+        estimated_cost_usd=estimate_cost(
+            message.usage.input_tokens, message.usage.output_tokens, model
+        ),
     )
 
     # 10. Cache + log usage + persist
@@ -679,7 +731,7 @@ def generate_cheatsheet(request: Request, team_id: str, user_id: str = Depends(g
     log_ai_usage(
         user_id,
         "cheatsheet",
-        "claude-sonnet-4-6",
+        model,
         message.usage.input_tokens,
         message.usage.output_tokens,
     )

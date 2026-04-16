@@ -18,6 +18,7 @@ interface TrainerCardProps {
   memberSince: string;
   matchesPlayed: number;
   onUpdateDisplayName: (name: string) => Promise<void>;
+  onUpdateUsername: (username: string) => Promise<void>;
   onOpenAvatarPicker: () => void;
 }
 
@@ -27,6 +28,7 @@ export function TrainerCard({
   memberSince,
   matchesPlayed,
   onUpdateDisplayName,
+  onUpdateUsername,
   onOpenAvatarPicker,
 }: TrainerCardProps) {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -34,10 +36,27 @@ export function TrainerCard({
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameValue, setUsernameValue] = useState(profile.username || "");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const usernameRef = useRef<HTMLInputElement>(null);
+
   // Sync when profile changes externally
   useEffect(() => {
     setNameValue(profile.display_name || "");
   }, [profile.display_name]);
+
+  useEffect(() => {
+    setUsernameValue(profile.username || "");
+  }, [profile.username]);
+
+  useEffect(() => {
+    if (isEditingUsername && usernameRef.current) {
+      usernameRef.current.focus();
+      usernameRef.current.select();
+    }
+  }, [isEditingUsername]);
 
   useEffect(() => {
     if (isEditingName && inputRef.current) {
@@ -77,6 +96,39 @@ export function TrainerCard({
     } else if (e.key === "Escape") {
       setNameValue(profile.display_name || "");
       setIsEditingName(false);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    const trimmed = usernameValue.trim().toLowerCase();
+    if (trimmed === (profile.username || "")) {
+      setIsEditingUsername(false);
+      setUsernameError("");
+      return;
+    }
+    if (trimmed && !/^[a-z0-9_-]{3,20}$/.test(trimmed)) {
+      setUsernameError("3-20 chars: a-z, 0-9, hyphens, underscores");
+      return;
+    }
+    setUsernameSaving(true);
+    setUsernameError("");
+    try {
+      await onUpdateUsername(trimmed);
+      setIsEditingUsername(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      setUsernameError(msg.includes("409") ? "Username taken" : msg);
+    } finally {
+      setUsernameSaving(false);
+    }
+  };
+
+  const handleUsernameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSaveUsername();
+    else if (e.key === "Escape") {
+      setUsernameValue(profile.username || "");
+      setIsEditingUsername(false);
+      setUsernameError("");
     }
   };
 
@@ -159,6 +211,66 @@ export function TrainerCard({
           <p className="mt-2 font-body text-xs text-on-surface-muted">
             Member since {formattedDate}
           </p>
+
+          {/* Username */}
+          <div className="mt-3 border-t border-outline-variant pt-3">
+            <p className="mb-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+              Public Username
+            </p>
+            {isEditingUsername ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-on-surface-muted">@</span>
+                  <input
+                    ref={usernameRef}
+                    type="text"
+                    value={usernameValue}
+                    onChange={(e) =>
+                      setUsernameValue(e.target.value.toLowerCase())
+                    }
+                    onBlur={handleSaveUsername}
+                    onKeyDown={handleUsernameKeyDown}
+                    maxLength={20}
+                    placeholder="choose_username"
+                    className={`input-field w-full max-w-[180px] text-sm ${
+                      usernameSaving ? "opacity-50" : ""
+                    }`}
+                  />
+                </div>
+                {usernameError && (
+                  <p className="mt-1 text-xs text-error">{usernameError}</p>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsEditingUsername(true)}
+                className="group flex items-center gap-1.5 text-left"
+                title="Set your public username"
+              >
+                <span className="text-sm text-on-surface">
+                  {profile.username ? `@${profile.username}` : "Set username"}
+                </span>
+                <svg
+                  className="h-3 w-3 text-on-surface-muted opacity-0 transition-opacity group-hover:opacity-100"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125"
+                  />
+                </svg>
+              </button>
+            )}
+            {profile.username && !isEditingUsername && (
+              <p className="mt-1 text-[0.65rem] text-on-surface-muted">
+                pokecomp.app/u/{profile.username}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

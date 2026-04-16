@@ -3,9 +3,16 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from app.ai_quota import check_ai_quota, estimate_cost, log_ai_usage
+from app.ai_quota import (
+    DEFAULT_MODEL,
+    HAIKU_MODEL,
+    check_ai_quota,
+    estimate_cost,
+    get_available_models,
+    log_ai_usage,
+)
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
@@ -408,15 +415,34 @@ Focus on:
 
 Return ONLY the JSON object, no markdown fences or explanation."""
 
-    return f"{header}\n\n{my_team_section}\n\n{opp_section}\n\n{task_section}"
+    # Strategy notes enrichment
+    from app.services.strategy_context import fetch_strategy_context
+
+    strategy_ctx = fetch_strategy_context(format=my_team.get("format", "vgc2026"))
+    strategy_section = f"\n\n{strategy_ctx}" if strategy_ctx else ""
+
+    return (
+        f"{header}\n\n{my_team_section}\n\n{opp_section}"
+        f"{strategy_section}\n\n{task_section}"
+    )
 
 
 @router.post("/analyze", response_model=DraftResponse)
 @limiter.limit("5/minute")
-def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(get_current_user)):
+def analyze_draft(
+    request: Request,
+    body: DraftRequest,
+    model: str = Query(DEFAULT_MODEL, pattern=r"^claude-"),
+    user_id: str = Depends(get_current_user),
+):
     """Analyze a team preview matchup and recommend bring-4 + leads."""
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
+
+    # Validate model choice
+    available = get_available_models(user_id)
+    if model not in available:
+        model = HAIKU_MODEL  # fallback to Haiku if Sonnet quota exhausted
 
     # Fetch my team data
     my_team = _fetch_team_pokemon(body.my_team_id, user_id)
@@ -428,11 +454,12 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     # Check cache
     cached = _check_cache(request_hash)
     if cached:
-        log_ai_usage(user_id, "draft", "claude-sonnet-4-6", 0, 0, cached=True)
+        log_ai_usage(user_id, "draft", model, 0, 0, cached=True)
         return DraftResponse(analysis=cached, cached=True, estimated_cost_usd=0.0)
 
-    # Check daily quota (non-cached requests only)
-    check_ai_quota(user_id)
+    # Check daily quota (non-cached requests only) -- Haiku bypasses quota
+    if model != HAIKU_MODEL:
+        check_ai_quota(user_id)
 
     # Enrich with data
     opponent_pokemon = _fetch_opponent_pokemon(body.opponent_team)
@@ -458,7 +485,7 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = ai.messages.create(
-        model="claude-sonnet-4-6",
+        model=model,
         max_tokens=3000,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -492,7 +519,7 @@ def analyze_draft(request: Request, body: DraftRequest, user_id: str = Depends(g
     # Log usage with real token counts
     in_tok = message.usage.input_tokens
     out_tok = message.usage.output_tokens
-    estimated_cost = estimate_cost(in_tok, out_tok)
-    log_ai_usage(user_id, "draft", "claude-sonnet-4-6", in_tok, out_tok)
+    estimated_cost = estimate_cost(in_tok, out_tok, model)
+    log_ai_usage(user_id, "draft", model, in_tok, out_tok)
 
     return DraftResponse(analysis=analysis, cached=False, estimated_cost_usd=estimated_cost)

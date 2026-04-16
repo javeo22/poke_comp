@@ -11,18 +11,18 @@
 - [x] B1: Avatar system (Pokemon sprite picker, display in nav/profile)
 - [x] B2: Profile features (display name, trainer card, expanded stats)
 - [x] F2: Centralized name resolver + data freshness API
-- [ ] G3: Update LEGAL_AND_DEV_GUIDELINES.md with data source ToS research
-- [ ] H: UX flow improvements (landing page, onboarding, beginner/pro paths)
+- [x] G3: Legal guidelines update -- Game8 scraper removed, Limitless terms added, Champions IP section
+- [x] H: Landing page with hero/features/stats, onboarding rework deferred to visual polish phase
 - [x] K1-K4: Cheatsheet UX (DB persistence, collapsible cards, team indicator badge, PDF export fix)
-- [ ] K5: Shareable cheatsheets (public profile page /u/{username})
+- [x] K5: Shareable cheatsheets -- username system, /u/{username} public profiles, share toggle, /share/{id} pages
 - [x] K2 rework: Cheatsheet page shows all saved cheatsheets as collapsible cards
 - [x] L1-L6: Admin Panel (auth, dashboard, Pokemon/moves/items managers, meta reviewer, AI cost tracking)
 - [x] M1: Aggressive caching (cheatsheet 30d, draft 7d)
-- [ ] M2-M6: Tiered quotas, prompt optimization, Haiku fallback, sponsor slot
+- [x] M2-M6: Tiered quotas (free 3/day, supporter 10/day), Haiku fallback, model-aware pricing, sponsor banner
 - [x] N1-N3: Analytics & SEO (Vercel Analytics, sitemap.xml, robots.txt, OpenGraph/Twitter meta)
-- [ ] N4-N5: Structured data, SSG/ISR for public pages
+- [x] N4-N5: JSON-LD WebSite structured data added; ISR deferred (all pages are "use client")
 - [x] O1-O2: Support Visibility (top nav link, contextual cost prompts on cheatsheet + draft)
-- [ ] P: Strategy Content Ingestion (strategy_notes table, admin editor, wire into AI prompts)
+- [x] P: Strategy content -- strategy_notes table, admin Strategy tab, wired into draft/cheatsheet AI prompts
 
 ### Visual Polish
 - [ ] Full visual consistency audit (responsive testing at 375/768/1280px)
@@ -51,6 +51,15 @@
 - [ ] Speed tier reference page (/speed-tiers)
 
 ---
+
+## Done (2026-04-16) - Session 2
+- [x] G3: Game8 scraper removed from meta.py, LEGAL_AND_DEV_GUIDELINES.md updated with Limitless terms + Champions IP section
+- [x] K5: username column + supporter flag migration, public.py router (public profiles + shared cheatsheets), visibility toggle on cheatsheet, /u/[username] + /share/[id] pages, CheatsheetContent extracted to shared component
+- [x] M2-M6: Tiered quotas (free 3/day, supporter 10/day) in ai_quota.py, Haiku fallback (model param in draft + cheatsheet), model-aware pricing, sponsor-banner component
+- [x] N4: JSON-LD WebSite schema in layout.tsx
+- [x] N5: ISR investigation -- all pages are "use client" so force-dynamic stays on layout; ISR needs server component migration
+- [x] P: strategy_notes migration, strategy.py CRUD router, StrategyTab in admin page, strategy_context.py service wired into draft + cheatsheet AI prompts
+- [x] H: Landing page with hero, 4 feature cards, live stats counter, /public/stats API endpoint
 
 ## Done (2026-04-16)
 - [x] K1: team_cheatsheets table + GET/POST saved cheatsheet endpoints + batch status check

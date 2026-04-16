@@ -16,8 +16,8 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
-// All pages fetch data client-side; skip static prerendering to avoid
-// build-time fetch failures (relative API_URL is invalid on the server).
+// All pages are "use client" -- force-dynamic avoids useSearchParams SSR errors.
+// ISR can be revisited when public pages are converted to server components.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -59,6 +59,24 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${plusJakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "PokeComp",
+              url: "https://pokecomp.app",
+              description:
+                "AI-powered competitive Pokemon Champions companion for roster tracking, team building, draft analysis, and meta insights.",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: "https://pokecomp.app/pokemon?q={search_term_string}",
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
         <Providers>
           <Analytics />
           <Nav />
