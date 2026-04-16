@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     cors_origins: str = "http://localhost:3000,https://pokecomp.app,https://www.pokecomp.app"
     admin_user_ids: str = ""  # comma-separated Supabase user UUIDs
+    cron_secret: str = ""  # shared secret for Vercel Cron HTTP invocations
 
     model_config = {"env_file": ".env"}
 

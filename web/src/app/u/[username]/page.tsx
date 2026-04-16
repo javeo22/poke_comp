@@ -9,6 +9,7 @@ import {
   fetchPublicCheatsheets,
 } from "@/lib/api";
 import type { PublicProfile, PublicCheatsheetSummary } from "@/lib/api";
+import { SupporterBadge } from "@/components/profile/supporter-badge";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -94,9 +95,12 @@ export default function PublicProfilePage() {
             )}
           </div>
           <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-on-surface">
-              {displayName}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-xl font-bold tracking-tight text-on-surface">
+                {displayName}
+              </h1>
+              {profile.supporter ? <SupporterBadge size="sm" /> : null}
+            </div>
             <p className="mt-0.5 text-sm text-on-surface-muted">
               @{profile.username}
             </p>

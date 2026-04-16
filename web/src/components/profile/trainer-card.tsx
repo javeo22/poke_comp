@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { SupporterBadge } from "@/components/profile/supporter-badge";
 import type { ProfileData } from "@/types/profile";
 
 function getTrainerTitle(matchesPlayed: number): string {
@@ -178,28 +179,31 @@ export function TrainerCard({
               }`}
             />
           ) : (
-            <button
-              onClick={() => setIsEditingName(true)}
-              className="group flex items-center gap-2 text-left"
-              title="Click to edit display name"
-            >
-              <span className="font-display text-lg font-bold tracking-tight text-on-surface">
-                {displayName}
-              </span>
-              <svg
-                className="h-3.5 w-3.5 text-on-surface-muted opacity-0 transition-opacity group-hover:opacity-100"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsEditingName(true)}
+                className="group flex items-center gap-2 text-left"
+                title="Click to edit display name"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125"
-                />
-              </svg>
-            </button>
+                <span className="font-display text-lg font-bold tracking-tight text-on-surface">
+                  {displayName}
+                </span>
+                <svg
+                  className="h-3.5 w-3.5 text-on-surface-muted opacity-0 transition-opacity group-hover:opacity-100"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125"
+                  />
+                </svg>
+              </button>
+              {profile.supporter ? <SupporterBadge /> : null}
+            </div>
           )}
 
           {/* Title */}

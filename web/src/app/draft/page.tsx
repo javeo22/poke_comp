@@ -8,7 +8,8 @@ import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { DraftResponse } from "@/types/draft";
 import { fetchTeams, fetchPokemon, fetchUserPokemon, analyzeDraft, createMatchup, fetchAiUsage } from "@/lib/api";
-import type { AiUsageToday } from "@/lib/api";
+import type { AiUsageMonth, AiUsageToday } from "@/lib/api";
+import { QuotaIndicator } from "@/components/quota-indicator";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 
@@ -43,6 +44,8 @@ export default function DraftPage() {
   const [saveLeads, setSaveLeads] = useState<[string, string]>(["", ""]);
   const [saveNotes, setSaveNotes] = useState("");
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
+  const [quotaMonth, setQuotaMonth] = useState<AiUsageMonth | null>(null);
+  const [isSupporter, setIsSupporter] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -84,7 +87,11 @@ export default function DraftPage() {
       }
       // Load AI quota (non-blocking)
       fetchAiUsage()
-        .then((usage) => setQuota(usage.today))
+        .then((usage) => {
+          setQuota(usage.today);
+          setQuotaMonth(usage.month);
+          setIsSupporter(usage.supporter);
+        })
         .catch(() => {});
     } finally {
       setIsLoading(false);
@@ -129,7 +136,11 @@ export default function DraftPage() {
       setResult(response);
       // Refresh quota after analysis
       fetchAiUsage()
-        .then((usage) => setQuota(usage.today))
+        .then((usage) => {
+          setQuota(usage.today);
+          setQuotaMonth(usage.month);
+          setIsSupporter(usage.supporter);
+        })
         .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
@@ -289,11 +300,7 @@ export default function DraftPage() {
           {isAnalyzing ? "Analyzing..." : "Analyze Matchup"}
         </button>
         {quota !== null && (
-          <span className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}>
-            {quota.remaining <= 0
-              ? "Daily limit reached -- resets at midnight UTC"
-              : `${quota.used}/${quota.limit} analyses used today`}
-          </span>
+          <QuotaIndicator today={quota} month={quotaMonth} supporter={isSupporter} />
         )}
         {result?.cached && (
           <span className="font-display text-xs text-on-surface-muted">

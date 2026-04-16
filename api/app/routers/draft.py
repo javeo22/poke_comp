@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 import anthropic
@@ -19,15 +20,31 @@ from app.database import supabase
 from app.limiter import limiter
 from app.models.draft import DraftAnalysis, DraftRequest, DraftResponse
 from app.prompt_guard import sanitize_user_text
+from app.services.cache_utils import (
+    CACHE_VERSION,
+    cache_hash_v2,
+    normalize_opponent_names,
+)
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/draft", tags=["draft"])
 
 
 CACHE_TTL_HOURS = 168  # 7 days
 
 
-def _make_hash(opponent: list[str], my_pokemon_ids: list[str]) -> str:
-    """Deterministic hash: sorted opponent names + sorted team pokemon IDs."""
+def _make_hash_v2(opponent: list[str], my_pokemon_ids: list[str]) -> str:
+    return cache_hash_v2(
+        {
+            "kind": "draft",
+            "opponent": normalize_opponent_names(opponent),
+            "my_team": sorted(str(pid) for pid in my_pokemon_ids),
+        }
+    )
+
+
+def _make_hash_v1(opponent: list[str], my_pokemon_ids: list[str]) -> str:
+    """Legacy hash format (pre-normalization) kept for the 14-day grace window."""
     key = json.dumps(
         {
             "opponent": sorted(n.lower().strip() for n in opponent),
@@ -38,38 +55,53 @@ def _make_hash(opponent: list[str], my_pokemon_ids: list[str]) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
-def _check_cache(request_hash: str) -> DraftAnalysis | None:
-    result = (
-        supabase.table("ai_analyses")
-        .select("response_json, expires_at")
-        .eq("request_hash", request_hash)
-        .maybe_single()
-        .execute()
-    )
-    if result is None or not result.data:
-        return None
+def _check_cache(
+    opponent: list[str], my_pokemon_ids: list[str]
+) -> DraftAnalysis | None:
+    """Try v2 key first, fall back to legacy v1 during grace window."""
+    for request_hash, is_legacy in (
+        (_make_hash_v2(opponent, my_pokemon_ids), False),
+        (_make_hash_v1(opponent, my_pokemon_ids), True),
+    ):
+        result = (
+            supabase.table("ai_analyses")
+            .select("response_json, expires_at")
+            .eq("request_hash", request_hash)
+            .maybe_single()
+            .execute()
+        )
+        if result is None or not result.data:
+            continue
 
-    row: dict = result.data  # type: ignore[assignment]
-    expires = row.get("expires_at")
-    if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
-        return None
+        row: dict = result.data  # type: ignore[assignment]
+        expires = row.get("expires_at")
+        if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+            supabase.table("ai_analyses").delete().eq(
+                "request_hash", request_hash
+            ).execute()
+            continue
 
-    return DraftAnalysis.model_validate(row["response_json"])
+        if is_legacy:
+            logger.info("draft cache v1 hit (grace window): %s", request_hash[:12])
+        return DraftAnalysis.model_validate(row["response_json"])
+    return None
 
 
 def _save_cache(
-    request_hash: str,
+    opponent: list[str],
+    my_pokemon_ids: list[str],
     opponent_team: list[str],
     my_team: dict,
     analysis: DraftAnalysis,
 ) -> None:
+    request_hash = _make_hash_v2(opponent, my_pokemon_ids)
     supabase.table("ai_analyses").upsert(
         {
             "request_hash": request_hash,
             "opponent_team": opponent_team,
             "my_team": my_team,
             "response_json": analysis.model_dump(),
+            "cache_version": CACHE_VERSION,
             "expires_at": (
                 datetime.now(timezone.utc) + timedelta(hours=CACHE_TTL_HOURS)
             ).isoformat(),
@@ -449,10 +481,9 @@ def analyze_draft(
 
     # Build cache key
     my_pokemon_ids = [str(p["name"]) for p in my_team["pokemon"]]
-    request_hash = _make_hash(body.opponent_team, my_pokemon_ids)
 
-    # Check cache
-    cached = _check_cache(request_hash)
+    # Check cache (tries v2 first, falls back to v1 during grace window)
+    cached = _check_cache(body.opponent_team, my_pokemon_ids)
     if cached:
         log_ai_usage(user_id, "draft", model, 0, 0, cached=True)
         return DraftResponse(analysis=cached, cached=True, estimated_cost_usd=0.0)
@@ -508,9 +539,10 @@ def analyze_draft(
             detail=f"Failed to parse Claude response: {e}",
         )
 
-    # Cache the result
+    # Cache the result (v2 key + cache_version=2)
     _save_cache(
-        request_hash,
+        body.opponent_team,
+        my_pokemon_ids,
         body.opponent_team,
         {"team_id": body.my_team_id, "pokemon": my_pokemon_ids},
         analysis,

@@ -412,6 +412,7 @@ export interface PublicProfile {
   display_name: string | null;
   avatar_pokemon_id: number | null;
   avatar_sprite_url: string | null;
+  supporter: boolean;
   team_count: number;
   cheatsheet_count: number;
 }
@@ -533,6 +534,13 @@ export interface AiUsageToday {
   available_models?: string[];
 }
 
+export interface AiUsageMonth {
+  used: number;
+  soft_cap: number;
+  remaining: number;
+  resets_at: string;
+}
+
 export interface AiUsageEntry {
   endpoint: string;
   model: string;
@@ -545,6 +553,8 @@ export interface AiUsageEntry {
 
 export interface AiUsageResponse {
   today: AiUsageToday;
+  month: AiUsageMonth | null;
+  supporter: boolean;
   recent: AiUsageEntry[];
 }
 

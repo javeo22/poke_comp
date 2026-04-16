@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { resetOnboardingTour } from "@/components/onboarding-tour";
 import { PokeballLogo } from "@/components/pokeball-logo";
+import { SupportPill } from "@/components/support-pill";
 import { fetchProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
 
@@ -46,7 +47,6 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[]; dim
       { href: "/draft", label: "Draft" },
       { href: "/cheatsheet", label: "Cheatsheet" },
       { href: "/matches", label: "Matches" },
-      { href: "/support", label: "Support" },
     ],
   },
 ];
@@ -136,6 +136,11 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Buy Me a Coffee pill -- desktop only (mobile shows in slide-down menu) */}
+          <div className="hidden sm:block">
+            <SupportPill />
+          </div>
+
           {/* Auth buttons -- always visible */}
           <div className="hidden sm:flex sm:items-center sm:gap-2">
             <AuthButtons user={user} profileBrief={profileBrief} pathname={pathname} onSignOut={handleSignOut} />
@@ -182,6 +187,7 @@ export function Nav() {
             </div>
           ))}
           <div className="mt-4 flex items-center gap-2 border-t border-outline-variant pt-3 sm:hidden">
+            <SupportPill onClick={closeMobile} />
             <AuthButtons user={user} profileBrief={profileBrief} pathname={pathname} onSignOut={handleSignOut} onClick={closeMobile} />
           </div>
         </div>

@@ -1,6 +1,6 @@
 """Per-user AI usage quota enforcement and logging."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from postgrest.types import CountMethod
@@ -9,7 +9,8 @@ from app.database import supabase
 
 # ── Tier limits ──
 FREE_DAILY_LIMIT = 3
-SUPPORTER_DAILY_LIMIT = 10
+SUPPORTER_DAILY_LIMIT = 30
+SUPPORTER_MONTHLY_SOFT_CAP = 600
 
 # ── Model pricing (per token) ──
 MODEL_PRICING: dict[str, dict[str, float]] = {
@@ -34,15 +35,33 @@ def _today_start_utc() -> str:
 
 
 def _tomorrow_start_utc() -> str:
-    """Return midnight UTC tomorrow as ISO string (quota reset time)."""
+    """Return midnight UTC tomorrow as ISO string (daily quota reset)."""
     now = datetime.now(timezone.utc)
-    tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    tomorrow = tomorrow.replace(day=tomorrow.day + 1)
-    return tomorrow.isoformat()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return (today + timedelta(days=1)).isoformat()
 
 
-def _get_user_limit(user_id: str) -> int:
-    """Look up the daily limit based on supporter status."""
+def _monthly_start_utc() -> str:
+    """Return first day of current month at 00:00 UTC as ISO string."""
+    now = datetime.now(timezone.utc)
+    return now.replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+
+
+def _next_month_start_utc() -> str:
+    """Return first day of next month at 00:00 UTC as ISO string."""
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start.month == 12:
+        nxt = start.replace(year=start.year + 1, month=1)
+    else:
+        nxt = start.replace(month=start.month + 1)
+    return nxt.isoformat()
+
+
+def _is_supporter(user_id: str) -> bool:
+    """Return True if the user has supporter status set on user_profiles."""
     try:
         result = (
             supabase.table("user_profiles")
@@ -52,19 +71,40 @@ def _get_user_limit(user_id: str) -> int:
             .execute()
         )
         if result and result.data and result.data.get("supporter"):
-            return SUPPORTER_DAILY_LIMIT
+            return True
     except Exception:
         pass
-    return FREE_DAILY_LIMIT
+    return False
+
+
+def _get_user_limit(user_id: str) -> int:
+    """Look up the daily limit based on supporter status."""
+    return SUPPORTER_DAILY_LIMIT if _is_supporter(user_id) else FREE_DAILY_LIMIT
+
+
+def _get_monthly_usage(user_id: str) -> int:
+    """Count non-cached AI requests for the user in the current UTC month."""
+    month_start = _monthly_start_utc()
+    result = (
+        supabase.table("ai_usage_log")
+        .select("id", count=CountMethod.exact)
+        .eq("user_id", user_id)
+        .eq("cached", False)
+        .gte("created_at", month_start)
+        .execute()
+    )
+    return result.count or 0
 
 
 def check_ai_quota(user_id: str) -> dict:
-    """Check if user is within their daily AI quota.
+    """Check if user is within their daily AI quota and (for supporters)
+    under the monthly fair-use soft cap.
 
     Returns usage info dict. Raises HTTPException 429 if quota exceeded.
     """
     today = _today_start_utc()
-    limit = _get_user_limit(user_id)
+    supporter = _is_supporter(user_id)
+    limit = SUPPORTER_DAILY_LIMIT if supporter else FREE_DAILY_LIMIT
 
     result = (
         supabase.table("ai_usage_log")
@@ -94,6 +134,25 @@ def check_ai_quota(user_id: str) -> dict:
                 "haiku_available": True,
             },
         )
+
+    if supporter:
+        monthly_used = _get_monthly_usage(user_id)
+        if monthly_used >= SUPPORTER_MONTHLY_SOFT_CAP:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "message": (
+                        "Monthly fair-use soft cap reached "
+                        f"({SUPPORTER_MONTHLY_SOFT_CAP} analyses per month). "
+                        "Contact support for reset."
+                    ),
+                    "soft_cap_hit": True,
+                    "monthly_used": monthly_used,
+                    "monthly_soft_cap": SUPPORTER_MONTHLY_SOFT_CAP,
+                    "resets_at": _next_month_start_utc(),
+                    "haiku_available": True,
+                },
+            )
 
     return {
         "used": used,
@@ -161,10 +220,15 @@ def log_ai_usage(
 
 
 def get_usage_summary(user_id: str) -> dict:
-    """Get today's usage summary and recent history for a user."""
+    """Get today's usage summary and recent history for a user.
+
+    Supporter users also receive a `month` block reporting monthly usage
+    against the fair-use soft cap. Non-supporters get `month: None`.
+    """
     today = _today_start_utc()
     resets_at = _tomorrow_start_utc()
-    limit = _get_user_limit(user_id)
+    supporter = _is_supporter(user_id)
+    limit = SUPPORTER_DAILY_LIMIT if supporter else FREE_DAILY_LIMIT
 
     # Today's count (non-cached only)
     count_result = (
@@ -191,6 +255,16 @@ def get_usage_summary(user_id: str) -> dict:
 
     models = get_available_models(user_id)
 
+    month_block: dict | None = None
+    if supporter:
+        monthly_used = _get_monthly_usage(user_id)
+        month_block = {
+            "used": monthly_used,
+            "soft_cap": SUPPORTER_MONTHLY_SOFT_CAP,
+            "remaining": max(0, SUPPORTER_MONTHLY_SOFT_CAP - monthly_used),
+            "resets_at": _next_month_start_utc(),
+        }
+
     return {
         "today": {
             "used": used,
@@ -199,5 +273,7 @@ def get_usage_summary(user_id: str) -> dict:
             "resets_at": resets_at,
             "available_models": models,
         },
+        "month": month_block,
+        "supporter": supporter,
         "recent": recent_result.data or [],
     }

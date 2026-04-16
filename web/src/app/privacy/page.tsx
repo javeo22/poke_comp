@@ -5,7 +5,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="font-body text-xs text-on-surface-muted mb-8">
-        Last updated: April 15, 2026
+        Last updated: April 16, 2026
       </p>
 
       <div className="flex flex-col gap-8 font-body text-sm leading-relaxed text-on-surface">
@@ -106,12 +106,96 @@ export default function PrivacyPage() {
               </a>
               .
             </li>
+            <li>
+              <strong>Ko-fi</strong> &mdash; Optional donations and supporter
+              memberships are handled by Ko-fi. PokeComp does not process or
+              store payment information. See{" "}
+              <a
+                href="https://more.ko-fi.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 underline"
+              >
+                Ko-fi Privacy Policy
+              </a>
+              .
+            </li>
           </ul>
         </section>
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            4. Data Security
+            4. Third-Party Data Sources
+          </h2>
+          <p>
+            PokeComp aggregates publicly available competitive Pokemon data
+            from the following community sources. We do not send your personal
+            data to any of them; requests are made server-side using public
+            endpoints.
+          </p>
+          <ul className="list-disc pl-6 mt-3 flex flex-col gap-2">
+            <li>
+              <strong>PokeAPI</strong> &mdash; Base game data (species, moves,
+              items, abilities). See{" "}
+              <a
+                href="https://pokeapi.co"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 underline"
+              >
+                pokeapi.co
+              </a>
+              .
+            </li>
+            <li>
+              <strong>Pikalytics</strong> &mdash; Tournament-weighted usage
+              statistics.
+            </li>
+            <li>
+              <strong>Smogon (pkmn project)</strong> &mdash; Usage stats and
+              format metadata; MIT-licensed community data.
+            </li>
+            <li>
+              <strong>Limitless VGC</strong> &mdash; Tournament team listings
+              and results via the Limitless public API.
+            </li>
+            <li>
+              <strong>Serebii</strong> &mdash; Champions-verified movepool and
+              form references, fetched with a conservative rate limit.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
+            5. Advertising
+          </h2>
+          <p>
+            PokeComp displays privacy-first contextual advertising on public
+            content pages (Pokedex, Meta, Moves, Items, Type Chart, Speed
+            Tiers, Calculator) via{" "}
+            <a
+              href="https://www.ethicalads.io/advertisers/ethics/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 underline"
+            >
+              EthicalAds
+            </a>
+            . Ads are matched to page content, not to your identity or browsing
+            history. EthicalAds does not use tracking cookies, does not profile
+            users, and does not sell personal data.
+          </p>
+          <p className="mt-2">
+            Ko-fi supporters receive an ad-free experience. Ads also never
+            appear on authenticated tools (Draft, Cheatsheet, Roster, Teams,
+            Matches, Profile), the auth flow, or legal pages.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
+            6. Data Security
           </h2>
           <p>
             All data is transmitted over HTTPS. User data is protected by Supabase
@@ -122,7 +206,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            5. Data Retention
+            7. Data Retention
           </h2>
           <p>
             Your account data and user-created content are retained as long as your
@@ -133,7 +217,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            6. Cookies
+            8. Cookies
           </h2>
           <p>
             PokeComp uses localStorage for onboarding tour state and session
@@ -143,7 +227,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            7. Your Rights
+            9. Your Rights
           </h2>
           <p>
             You can view, export, or delete your data at any time through the
@@ -154,7 +238,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            8. Changes to This Policy
+            10. Changes to This Policy
           </h2>
           <p>
             We may update this policy as the service evolves. Significant changes will

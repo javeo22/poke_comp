@@ -7,6 +7,7 @@ weaknesses) into a single printable reference card.
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 import anthropic
@@ -34,6 +35,13 @@ from app.models.cheatsheet import (
     SpeedTier,
     Weakness,
 )
+from app.services.cache_utils import (
+    CACHE_VERSION,
+    cache_hash_v2,
+    normalize_roster,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cheatsheet", tags=["cheatsheet"])
 
@@ -327,39 +335,63 @@ def _build_speed_tiers(
 # ═══════════════════════════════════════════════════════════════════
 
 
-def _make_cache_key(roster: list[RosterEntry]) -> str:
+def _make_cache_key_v2(roster: list[RosterEntry]) -> str:
+    return cache_hash_v2(
+        {
+            "kind": "cheatsheet",
+            "roster": normalize_roster([r.model_dump(mode="json") for r in roster]),
+        }
+    )
+
+
+def _make_cache_key_v1(roster: list[RosterEntry]) -> str:
+    """Legacy pre-normalization key, retained for the 14-day grace window."""
     key_data = json.dumps([r.model_dump(mode="json") for r in roster], sort_keys=True)
     return "cheatsheet:" + hashlib.sha256(key_data.encode()).hexdigest()
 
 
-def _check_cache(request_hash: str) -> dict | None:
-    result = (
-        supabase.table("ai_analyses")
-        .select("response_json, expires_at")
-        .eq("request_hash", request_hash)
-        .maybe_single()
-        .execute()
-    )
-    if result is None or not result.data:
-        return None
+def _check_cache(roster: list[RosterEntry]) -> dict | None:
+    """Try v2 key first, fall back to legacy v1 during grace window."""
+    for request_hash, is_legacy in (
+        (_make_cache_key_v2(roster), False),
+        (_make_cache_key_v1(roster), True),
+    ):
+        result = (
+            supabase.table("ai_analyses")
+            .select("response_json, expires_at")
+            .eq("request_hash", request_hash)
+            .maybe_single()
+            .execute()
+        )
+        if result is None or not result.data:
+            continue
 
-    row: dict = result.data  # type: ignore[assignment]
-    expires = row.get("expires_at")
-    if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
-        return None
+        row: dict = result.data  # type: ignore[assignment]
+        expires = row.get("expires_at")
+        if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+            supabase.table("ai_analyses").delete().eq(
+                "request_hash", request_hash
+            ).execute()
+            continue
 
-    response: dict = row["response_json"]
-    return response
+        if is_legacy:
+            logger.info(
+                "cheatsheet cache v1 hit (grace window): %s", request_hash[:12]
+            )
+        response: dict = row["response_json"]
+        return response
+    return None
 
 
-def _save_cache(request_hash: str, response: CheatsheetResponse) -> None:
+def _save_cache(roster: list[RosterEntry], response: CheatsheetResponse) -> None:
+    request_hash = _make_cache_key_v2(roster)
     supabase.table("ai_analyses").upsert(
         {
             "request_hash": request_hash,
             "opponent_team": [],
             "my_team": {"type": "cheatsheet"},
             "response_json": response.model_dump(mode="json"),
+            "cache_version": CACHE_VERSION,
             "expires_at": (datetime.now(timezone.utc) + timedelta(days=CACHE_TTL_DAYS)).isoformat(),
         },
         on_conflict="request_hash",
@@ -542,10 +574,11 @@ def toggle_visibility(team_id: str, user_id: str = Depends(get_current_user)):
     if result is None or not result.data:
         raise HTTPException(status_code=404, detail="Cheatsheet not found")
 
-    new_value = not result.data.get("is_public", False)
+    row: dict = result.data  # type: ignore[assignment]
+    new_value = not row.get("is_public", False)
     supabase.table("team_cheatsheets").update(
         {"is_public": new_value}
-    ).eq("id", result.data["id"]).execute()
+    ).eq("id", row["id"]).execute()
 
     return {"team_id": team_id, "is_public": new_value}
 
@@ -650,9 +683,8 @@ def generate_cheatsheet(
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 
-    # 6. Check cache
-    cache_key = _make_cache_key(roster)
-    cached = _check_cache(cache_key)
+    # 6. Check cache (tries v2 first, falls back to v1 during grace window)
+    cached = _check_cache(roster)
     if cached:
         # Re-inject live roster/speed data (may have changed)
         cached["roster"] = [r.model_dump(mode="json") for r in roster]
@@ -725,8 +757,8 @@ def generate_cheatsheet(
         ),
     )
 
-    # 10. Cache + log usage + persist
-    _save_cache(cache_key, response)
+    # 10. Cache + log usage + persist (v2 key + cache_version=2)
+    _save_cache(roster, response)
     _save_cheatsheet(team_id, user_id, response)
     log_ai_usage(
         user_id,

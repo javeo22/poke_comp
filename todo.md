@@ -41,10 +41,32 @@
 ---
 
 ## Up Next
-- [ ] Supabase Auth: enable email confirmation in dashboard, set redirect URL to `https://pokecomp.app/login`
-  - Dashboard > Auth > URL Configuration > Site URL: `https://pokecomp.app`
-  - Dashboard > Auth > URL Configuration > Redirect URLs: add `https://pokecomp.app/**`
-  - Dashboard > Auth > Email Templates: customize confirmation email (optional)
+- [x] Supabase Auth: email confirmation enabled, Site URL + redirect URLs configured (2026-04-16)
+- [x] Completion plan approved -- see `.claude/plans/lets-plan-mode-for-async-curry.md` for phased roadmap to June 5 MVP
+- [x] Week 1 chunks 0.1/0.2/0.3/1.1/1.2 landed (2026-04-16)
+  - 0.1 Shared UI primitives: LoadingSkeleton, ErrorCard, EmptyState at web/src/components/ui/
+  - 0.2 Cache normalization utilities at api/app/services/cache_utils.py + migrations 20260417 and 20260601 + refactor draft/cheatsheet with v1/v2 fallback
+  - 0.3 CRON_SECRET added to api/app/config.py and .env.example
+  - 1.1 Nav "Support" -> "Buy Me a Coffee" SupportPill (Potion sprite, amber accent)
+  - 1.2 Supporter quota 10 -> 30/day + 600/mo soft cap + QuotaIndicator component wired into draft and cheatsheet
+
+### Outstanding user actions (Week 1 handoff)
+- [x] CRON_SECRET generated and set on Vercel Production (2026-04-16). Preview scope NOT set -- CLI 51.1.0 cannot add preview-for-all-branches non-interactively; add via Vercel Dashboard if preview testing needs it, otherwise skip (Vercel Cron only runs on production)
+- [x] cache_version migration applied to Supabase prod (2026-04-16, confirmed column exists on ai_analyses with default 1)
+- [ ] Submit EthicalAds publisher application at ethicalads.io/publishers/ (approval 1-3 business days, needed for Phase 1.4)
+- [ ] Optional: upgrade Vercel CLI to 51.5.1+ (`npm i -g vercel@latest`) -- unblocks non-interactive preview env adds
+- [ ] June 1: apply 20260601000000_drop_v1_cache.sql to Supabase prod (scheduled v1 cleanup)
+
+### Week 2 (Apr 23-29) -- LANDED (2026-04-16)
+- [x] 1.3 Supporter badge: `SupporterBadge` component (Potion icon + amber chip) wired into TrainerCard on /profile and public /u/[username] page. `PublicProfile` API response extended with `supporter: boolean`
+- [x] 1.4 EthicalAds integration: `ad-routes.ts` helper, `EthicalAds` component (no-ops without `NEXT_PUBLIC_ETHICAL_ADS_PUBLISHER_ID`), `AdSlot` client wrapper rendered below main in root layout. Gated on pathname allowlist + supporter flag
+- [x] 1.5 Privacy Policy updates: Ko-fi added to Third-Party Services, new Section 4 Third-Party Data Sources (PokeAPI/Pikalytics/Smogon/Limitless/Serebii), new Section 5 Advertising (EthicalAds disclosure). Terms: Section 4 AI rate limit language updated for tiered quotas, new Section 5 Supporter Benefits
+- [x] 2.1 Game8 cleanup: migration 20260418000000_clear_game8_snapshots.sql applied to Supabase prod, removed 3 stale rows (source='Game8') plus all embedded stale Pokemon name references
+
+### Week 3 (Apr 30 - May 6) -- ready to start
+- [ ] 2.2 Refactor ingest scripts (smogon_meta, pikalytics_usage, limitless_teams) to expose `async run(dry_run=False) -> IngestResult`. Create `api/app/models/ingest.py`
+- [ ] 2.3 Vercel Cron endpoints: new `api/app/routers/admin_cron.py` with `require_cron_secret` dependency. Add `crons` array to vercel.json (Smogon Mon 06:00 UTC, Pikalytics Mon 07:00, Limitless daily 08:00, validate-data Mon 09:30, cache-warmup Tue 10:00)
+- [ ] 2.4 Workstream G ToS audit: confirm Game8 removal, re-audit Serebii 24hr delay, add EthicalAds as third-party recipient in LEGAL_AND_DEV_GUIDELINES.md
 
 ---
 

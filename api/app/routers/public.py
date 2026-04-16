@@ -44,6 +44,7 @@ class PublicProfile(BaseModel):
     display_name: str | None = None
     avatar_pokemon_id: int | None = None
     avatar_sprite_url: str | None = None
+    supporter: bool = False
     team_count: int = 0
     cheatsheet_count: int = 0
 
@@ -71,7 +72,7 @@ def get_public_profile(username: str):
     """Get a user's public profile by username."""
     result = (
         supabase.table("user_profiles")
-        .select("user_id, username, display_name, avatar_pokemon_id")
+        .select("user_id, username, display_name, avatar_pokemon_id, supporter")
         .eq("username", username)
         .execute()
     )
@@ -105,6 +106,7 @@ def get_public_profile(username: str):
         display_name=profile.get("display_name"),
         avatar_pokemon_id=profile.get("avatar_pokemon_id"),
         avatar_sprite_url=avatar_sprite_url,
+        supporter=bool(profile.get("supporter")),
         team_count=teams.count or 0,
         cheatsheet_count=cheatsheets.count or 0,
     )

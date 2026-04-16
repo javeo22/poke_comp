@@ -10,7 +10,8 @@ import {
   fetchAiUsage,
   toggleCheatsheetVisibility,
 } from "@/lib/api";
-import type { AiUsageToday, SavedCheatsheet } from "@/lib/api";
+import type { AiUsageMonth, AiUsageToday, SavedCheatsheet } from "@/lib/api";
+import { QuotaIndicator } from "@/components/quota-indicator";
 import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
@@ -40,6 +41,8 @@ export default function CheatsheetPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
+  const [quotaMonth, setQuotaMonth] = useState<AiUsageMonth | null>(null);
+  const [isSupporter, setIsSupporter] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -51,7 +54,11 @@ export default function CheatsheetPage() {
       if (teamsResult.status === "fulfilled") setTeams(teamsResult.value.data);
       if (cheatsheetsResult.status === "fulfilled") setSavedCheatsheets(cheatsheetsResult.value);
       fetchAiUsage()
-        .then((usage) => setQuota(usage.today))
+        .then((usage) => {
+          setQuota(usage.today);
+          setQuotaMonth(usage.month);
+          setIsSupporter(usage.supporter);
+        })
         .catch(() => {});
     } finally {
       setIsLoading(false);
@@ -101,7 +108,11 @@ export default function CheatsheetPage() {
       setExpandedId(selectedTeamId);
       setSelectedTeamId("");
       fetchAiUsage()
-        .then((usage) => setQuota(usage.today))
+        .then((usage) => {
+          setQuota(usage.today);
+          setQuotaMonth(usage.month);
+          setIsSupporter(usage.supporter);
+        })
         .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate cheatsheet");
@@ -170,13 +181,7 @@ export default function CheatsheetPage() {
             {isGenerating ? "Generating..." : "Generate"}
           </button>
           {quota !== null && (
-            <span
-              className={`font-display text-xs ${quota.remaining <= 0 ? "text-tertiary" : "text-on-surface-muted"}`}
-            >
-              {quota.remaining <= 0
-                ? "Daily limit reached"
-                : `${quota.used}/${quota.limit} analyses today`}
-            </span>
+            <QuotaIndicator today={quota} month={quotaMonth} supporter={isSupporter} />
           )}
         </div>
         {error && (

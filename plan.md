@@ -239,5 +239,116 @@
 - [ ] F7: Damage calculator
 - [ ] F8: Sprite display improvements
 - [ ] Speed tier reference page
-- [ ] Open source release (MIT or Apache 2.0)
-- [ ] README with setup instructions
+- [x] Open source release (MIT LICENSE committed 2026-04-16)
+- [x] README with setup instructions (committed 2026-04-16)
+
+---
+
+## Phase 5: Completion Roadmap (2026-04-16 -> June 5 MVP)
+
+Sequenced plan to finish every remaining item. Ordered by dependency and value.
+
+### 5A: Monetization block (1 session, ~4 hr)
+Goal: open a revenue channel without violating scan-speed UX. Ad approval runs in parallel.
+- [ ] Submit EthicalAds publisher application (blocker for ad rendering; approval 1-3 business days)
+- [ ] Rename "Support" nav link to "Buy Me a Coffee" + Potion sprite icon (PokeAPI item id 17). Move out of Compete nav group into primary nav
+- [ ] Quota bump: supporter tier 10/day -> 30/day with 600/mo soft cap in `ai_quota.py`. Add monthly aggregation query. Update quota indicator component copy
+- [ ] Supporter badge on trainer card (uses existing `supporter` flag on user_profiles)
+- [ ] EthicalAds integration once approved: client component gated on `!user.supporter`, server-fetched in layout, `next/script` with `afterInteractive`. Single below-fold slot on pokedex/meta/moves/items/type-chart. Skip on auth/settings/admin/share routes
+- [ ] Privacy Policy: one-line disclosure of EthicalAds (privacy-first contextual ads, no personal tracking)
+
+### 5B: MVP feature completion (3-4 sessions, ~12-18 hr)
+Goal: close F7/F8/speed-tiers so F1-F8 are all shipped.
+- [ ] Speed tier reference page `/speed-tiers` (~3 hr)
+  - Use existing `pokemon_usage` data + base stats
+  - Sortable table: Pokemon, Base Speed, +Speed nature, Max Scarf, common variants
+  - Filter by Champions-eligible, format (regulation toggle), tier
+  - Link from stat editor and roster coverage panel
+- [ ] F7: Damage calculator (~8-12 hr, split across 2 sessions)
+  - Session 1: backend damage engine in `api/app/services/damage_calc.py`. Pure function: attacker/defender stats + move + field state -> min/max damage. Covers STAB, type effectiveness, weather (rain/sun/sand/snow), terrain (electric/grassy/psychic/misty), items (Life Orb, Choice Band/Specs, Assault Vest), abilities (Levitate, Sap Sipper, weather boosters), crit multiplier, random factor (85-100%). Pydantic request/response models. POST /calc endpoint. Unit tests against known Smogon calc values
+  - Session 2: frontend `/calc` page. Two-panel attacker/defender picker (dropdowns from roster + meta), move selector, field state toggles (weather/terrain/screens). Result card: min/max damage, percent of defender HP, OHKO/2HKO/3HKO verdict. Copy-to-clipboard share string. Link from meta detail panel and draft results
+- [ ] F8: Sprite display improvements (~2-4 hr)
+  - Replace static default sprites with PokeAPI front_default for consistency (audit which pages use animated vs static)
+  - Add gender differences where they exist (rare but notable: Pikachu, Meowstic)
+  - Form variants (Rotom, Urshifu, Ogerpon) -- verify correct sprite loads via `name_resolver`
+  - Shiny toggle on Pokemon detail page (persist in user preferences)
+  - Fallback placeholder for missing sprites (currently shows broken image)
+
+### 5C: Data infrastructure (1-2 sessions, ~4-6 hr)
+Goal: data stays fresh without manual script runs; legal risk closed.
+- [ ] Clear 31 stale Game8 meta snapshot names (one-off SQL cleanup, ~30 min) -- use `name_resolver.normalize_tier_data()` or hard-delete rows from pre-removal-date snapshots
+- [ ] Vercel Cron scheduling (`vercel.ts` crons config, ~2-3 hr)
+  - Smogon ingest: weekly Monday 06:00 UTC
+  - Pikalytics: weekly Monday 07:00 UTC
+  - Limitless teams: daily 08:00 UTC
+  - `scripts/validate_data.py --fix` after each ingest
+  - Admin Slack/email webhook on validation failures (stretch)
+- [ ] Workstream G: ToS compliance follow-up (~1-2 hr)
+  - Confirm Game8 scraper is fully removed and no references remain
+  - Re-audit Serebii scrape frequency/rate limit (MEDIUM risk per memory)
+  - Document final data source matrix in LEGAL_AND_DEV_GUIDELINES.md with current risk levels
+  - Update Terms/Privacy if any data sources change
+
+### 5D: UX polish (2-3 sessions, ~8-12 hr)
+Goal: every page feels finished, not just functional.
+- [ ] Workstream H: UX flow review (~3-4 hr)
+  - Walkthrough as three personas: new user (first visit -> first team -> first analysis), intermediate (roster built, running drafts weekly), pro (tournament prep, cheatsheet + matchup log loop)
+  - Output a `ux-findings.md` with ranked friction points
+  - Rework onboarding if flow surfaces gaps (previously deferred per H: Landing page completion)
+- [ ] Error handling and loading states across all pages (~3-4 hr)
+  - Audit every `fetch` for: loading skeleton, error card with retry, empty state
+  - Standardize on existing `LoadingSkeleton` / `ErrorCard` / `EmptyState` components (create if missing)
+  - 429 rate limit UX already covered; verify consistency
+- [ ] Performance optimization (~2-3 hr)
+  - Bundle analyzer pass (`pnpm build --analyze`)
+  - Next.js Image for all sprite rendering (currently `<img>` in places)
+  - Verify ISR revalidate intervals are reasonable
+  - Lighthouse audit all public pages, target >= 90 on Performance
+
+### 5E: AI strategy (Workstream J, 1-2 sessions, ~4-6 hr)
+Goal: reduce per-request AI cost and improve cache hit rate.
+- [ ] Deeper caching (already have 24h draft, 7d cheatsheet)
+  - Semantic cache key: normalize opponent team composition (alphabetize Pokemon names) so "Miraidon + Calyrex-S + ..." matches regardless of order
+  - Separate cache namespaces by model (Sonnet vs Haiku) to allow differential invalidation
+  - Admin cache warmup script: precompute cheatsheets for top 20 meta teams from `tournament_teams`
+- [ ] Tiered model routing (Haiku for draft thread 1, Sonnet for cheatsheet final) -- mostly in place from M2-M6, document the decision tree
+- [ ] Skip fine-tuning for MVP (cost vs benefit not worth it pre-launch; revisit post-MVP)
+
+### Execution order
+Recommended sequence across ~7 remaining weeks:
+1. Week of Apr 16: 5A (monetization block) + start 5C (meta cleanup, cron)
+2. Week of Apr 23: 5B damage calc backend + speed tier page
+3. Week of Apr 30: 5B damage calc frontend + F8 sprites
+4. Week of May 7: 5D UX flow review + error/loading pass
+5. Week of May 14: 5D performance + 5E AI caching
+6. Weeks of May 21-Jun 5: buffer for beta testing, bug fixes, Champions launch prep (Apr 8 release has already happened so this is post-launch polish + stability)
+
+---
+
+## Phase 5 Execution Log
+
+### Week 1 (Apr 16, 2026) -- LANDED
+Full roadmap at `.claude/plans/lets-plan-mode-for-async-curry.md`.
+
+- [x] **0.1 Shared UI primitives** -- `web/src/components/ui/{loading-skeleton,error-card,empty-state}.tsx`. Rollout to pages deferred to Phase 4.2 per plan.
+- [x] **0.2 Cache normalization** -- `api/app/services/cache_utils.py` with `normalize_opponent_names`, `normalize_roster`, `cache_hash_v2`. Migrations `20260417000000_cache_version.sql` (v1/v2 column) and `20260601000000_drop_v1_cache.sql` (queued for June 1 cleanup). `draft.py` and `cheatsheet.py` cache helpers refactored to try v2 first with 14-day v1 grace-window fallback. Verification script at `api/scripts/test_cache_utils.py` passes 9/9 assertions.
+- [x] **0.3 CRON_SECRET** -- added to `Settings` in `api/app/config.py` and `.env.example`. No code consumes it yet; endpoints land in Phase 2.3.
+- [x] **1.1 Nav rework** -- `SupportPill` at `web/src/components/support-pill.tsx` (Potion sprite + "Buy Me a Coffee" label, amber tertiary accent). "Support" link removed from Compete nav group. Potion sprite hosted locally at `web/public/sprites/items/potion.png`.
+- [x] **1.2 Quota bump + monthly soft cap** -- `SUPPORTER_DAILY_LIMIT=30`, new `SUPPORTER_MONTHLY_SOFT_CAP=600`. Added `_is_supporter`, `_get_monthly_usage`, `_monthly_start_utc`, `_next_month_start_utc` helpers. `check_ai_quota` now raises 429 with `soft_cap_hit=True` when supporter exceeds monthly cap. `get_usage_summary` returns new `month` and `supporter` fields. Frontend: `QuotaIndicator` component at `web/src/components/quota-indicator.tsx` consumed by draft and cheatsheet pages. `AiUsageResponse` type extended with `month` and `supporter`.
+
+**Fixed bug encountered during 1.2**: existing `_tomorrow_start_utc` used `day=tomorrow.day + 1` which would break on month boundaries (next failure would have been Apr 30). Replaced with `timedelta(days=1)` arithmetic.
+
+**Follow-ups spawned**: pyright narrowing fix for Supabase `result.data.get()` pattern (11 pre-existing errors in cheatsheet.py, 5 in ai_quota.py).
+
+**Outstanding user actions**: generate `CRON_SECRET` + `vercel env add`, submit EthicalAds publisher application, apply migration `20260417000000_cache_version.sql` to Supabase prod.
+
+### Week 2 (Apr 16, 2026) -- LANDED
+
+- [x] **1.3 Supporter badge** -- `web/src/components/profile/supporter-badge.tsx` (Potion icon + amber chip, `size="sm"|"md"`). Wired into `TrainerCard` on /profile and public /u/[username]. Backend `PublicProfile` now returns `supporter: boolean` (pulled from user_profiles.supporter). `api/app/routers/public.py` updated.
+- [x] **1.4 EthicalAds integration** -- three files: `web/src/lib/ad-routes.ts` (AD_ALLOWED_ROUTES + isAdRoute helper), `web/src/components/ethical-ads.tsx` (script injection + placement, no-op when NEXT_PUBLIC_ETHICAL_ADS_PUBLISHER_ID unset), `web/src/components/ad-slot.tsx` (client wrapper: usePathname + supporter check via fetchProfile). Wired into `web/src/app/layout.tsx` below main, above footer. Gates: pathname in AD_ALLOWED_ROUTES AND !supporter.
+- [x] **1.5 Privacy + Terms** -- Privacy gained Ko-fi in Section 3, new Section 4 "Third-Party Data Sources" (PokeAPI/Pikalytics/Smogon/Limitless/Serebii), new Section 5 "Advertising" (EthicalAds disclosure with link to their ethics page). Terms Section 4 rate-limit language updated for tiered quotas (free 3/day, supporter 30/day + 600/mo soft cap). Terms Section 5 new: "Supporter Benefits" (ad-free, 30/day quota, monthly soft cap, badge). Last-updated dates bumped to 2026-04-16.
+- [x] **2.1 Game8 cleanup** -- migration `20260418000000_clear_game8_snapshots.sql` applied to Supabase prod (`sutslbmqsjczlfnsmgxt`). Match is `LOWER(source) = 'game8' OR source_url ILIKE '%game8%'` for safety. Verified: 3 rows deleted (all snapshot_date=2026-04-10, source='Game8'), meta_snapshots now empty.
+
+**Follow-up notes**: (1) `meta_snapshots` is empty until a non-Game8 tier source is wired; admin data-health dashboard may show "no snapshots" until then. (2) `validate_data.py` check 8 will pass trivially (no rows). (3) Browser preview verification for Week 2 UI changes (1.3, 1.4) deferred to end of Phase 1 -- needs EthicalAds publisher ID to exercise 1.4 fully anyway.
+
+**Outstanding user actions after Week 2**: submit EthicalAds publisher application (unblocks 1.4 ad rendering). All other outstanding items already handled (CRON_SECRET set, cache_version migration applied).

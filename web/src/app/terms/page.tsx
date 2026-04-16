@@ -5,7 +5,7 @@ export default function TermsPage() {
         Terms of Service
       </h1>
       <p className="font-body text-xs text-on-surface-muted mb-8">
-        Last updated: April 15, 2026
+        Last updated: April 16, 2026
       </p>
 
       <div className="flex flex-col gap-8 font-body text-sm leading-relaxed text-on-surface">
@@ -55,14 +55,38 @@ export default function TermsPage() {
             may contain errors or outdated information.
           </p>
           <p className="mt-2">
-            AI analysis is rate-limited to 10 requests per day per user to manage costs.
-            Cached results do not count against this limit.
+            AI analysis is rate-limited on a per-user daily basis to manage
+            costs. Free accounts receive 3 non-cached requests per day;
+            supporters receive 30 per day with a fair-use monthly soft cap (see
+            Section 5). Cached results do not count against any limit.
           </p>
         </section>
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            5. Acceptable Use
+            5. Supporter Benefits
+          </h2>
+          <p>
+            PokeComp is free to use. Ko-fi supporters receive:
+          </p>
+          <ul className="list-disc pl-6 mt-2 flex flex-col gap-1">
+            <li>Ad-free experience across all pages</li>
+            <li>30 AI analyses per day (vs 3 for free accounts)</li>
+            <li>
+              600 AI analyses per month fair-use soft cap; contact support to
+              discuss a reset if you hit it through legitimate use
+            </li>
+            <li>A Supporter badge on your trainer card and public profile</li>
+          </ul>
+          <p className="mt-2">
+            Supporter status is tied to an active Ko-fi membership. Donations
+            are voluntary; all core features remain free.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
+            6. Acceptable Use
           </h2>
           <p>You agree not to:</p>
           <ul className="list-disc pl-6 mt-2 flex flex-col gap-1">
@@ -76,7 +100,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            6. Data Sources and Attribution
+            7. Data Sources and Attribution
           </h2>
           <p>
             PokeComp aggregates publicly available competitive Pokemon data from
@@ -88,7 +112,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            7. Intellectual Property
+            8. Intellectual Property
           </h2>
           <p>
             Pokemon, Pokemon Champions, and all related trademarks, characters, and
@@ -100,7 +124,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            8. Service Availability
+            9. Service Availability
           </h2>
           <p>
             PokeComp is provided &ldquo;as is&rdquo; without warranties of any kind.
@@ -112,7 +136,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            9. Limitation of Liability
+            10. Limitation of Liability
           </h2>
           <p>
             To the fullest extent permitted by law, PokeComp and its developer shall
@@ -124,7 +148,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg font-semibold text-on-surface mb-3">
-            10. Contact
+            11. Contact
           </h2>
           <p>
             For questions about these terms, contact the developer via the project&apos;s
