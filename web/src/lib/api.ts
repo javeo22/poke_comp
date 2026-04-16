@@ -29,7 +29,21 @@ import { createClient } from "@/utils/supabase/client";
 
 // Production (Vercel): "/api" — same-origin Python function at /api/*
 // Development: "http://localhost:8000" — local FastAPI server
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+//
+// During SSR, relative URLs like "/api" are invalid (no origin to resolve
+// against).  Resolve them to an absolute URL using the Vercel deployment host
+// or localhost so that server-side fetches work.
+const API_URL = (() => {
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  if (base.startsWith("http")) return base;
+  // Client-side: relative URLs resolve against window.location — fine as-is
+  if (typeof window !== "undefined") return base;
+  // Server-side: build an absolute URL
+  const origin = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+  return `${origin}${base}`;
+})();
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;

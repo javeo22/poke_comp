@@ -36,7 +36,7 @@ def _check_cache(request_hash: str) -> DraftAnalysis | None:
         supabase.table("ai_analyses")
         .select("response_json, expires_at")
         .eq("request_hash", request_hash)
-        .single()
+        .maybe_single()
         .execute()
     )
     if not result.data:
@@ -78,7 +78,7 @@ def _fetch_team_pokemon(team_id: str, user_id: str) -> dict:
         .select("*")
         .eq("id", team_id)
         .eq("user_id", user_id)
-        .single()
+        .maybe_single()
         .execute()
     )
     if not team.data:
