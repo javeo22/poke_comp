@@ -42,6 +42,12 @@
 
 ---
 
+## Done (2026-04-16)
+- [x] Fix: AI draft/cheatsheet 500 errors — `.single()` raised on cache miss, switched to `.maybe_single()` (PR #14)
+- [x] Fix: SSR `TypeError: Failed to parse URL` — resolved relative `/api` URL to absolute during server rendering
+- [x] Fix: Team fetch in draft/cheatsheet also used `.single()` which raised on missing teams
+- [x] Fix: UUID pokemon_ids type mismatch — `teams.pokemon_ids` are UUID[] (user_pokemon refs), not PokeAPI int[]; draft/cheatsheet were calling `int(pid)` on UUIDs. Fixed by resolving through user_pokemon table first.
+
 ## Done (2026-04-15)
 - [x] F2: Centralized name resolver (`api/app/services/name_resolver.py`) wired into meta scraper
 - [x] F2: `GET /admin/data-freshness` endpoint (latest snapshot dates by source/format)

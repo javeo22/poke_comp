@@ -224,6 +224,12 @@
 - [x] F2: validate_data check 8 — meta snapshot roster integrity
 - [ ] F: Cron scheduling for automated ingest
 
+#### Bug Fixes -- COMPLETE (2026-04-16)
+- [x] AI endpoint 500s: `_check_cache()` in draft.py and cheatsheet.py used `.single()` which raises on zero rows; every uncached request hit this. Fixed with `.maybe_single()`.
+- [x] Team fetches in draft/cheatsheet had same `.single()` bug for missing teams.
+- [x] SSR URL error: `NEXT_PUBLIC_API_URL="/api"` (relative) fails during server-side rendering. Added origin resolution via `VERCEL_URL` in `web/src/lib/api.ts`.
+- [x] UUID pokemon_ids: `teams.pokemon_ids` is UUID[] (refs to `user_pokemon.id`), not PokeAPI int[]. draft.py and cheatsheet.py called `int(pid)` on UUIDs causing ValueError. Fixed by resolving UUIDs through user_pokemon table to get species IDs first.
+
 #### Remaining Workstreams
 - G: Data source ToS compliance (Game8 HIGH risk, Serebii MEDIUM)
 - H: UX flow review (beginner/intermediate/pro user journeys)
