@@ -305,7 +305,6 @@ def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
     print(f"  Auto-marked {marked} items.")
 
 
-
 def ingest_pikalytics(sb: Client) -> None:
     """Scrape Pikalytics Champions Tournaments usage data and upsert into pokemon_usage.
 
