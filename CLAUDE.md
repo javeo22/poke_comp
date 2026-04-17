@@ -82,12 +82,31 @@ After completing any implementation work, always update:
 - **Seed user data:** `cd api && uv run python ../scripts/seed_user_data.py`
 
 ## Data Pipeline
+
+**Source of truth (2026-04-17 onward): the live Supabase DB.**
+
+The curated roster + items + moves + abilities in the `pokecomp` Supabase project
+is the authoritative state. External sources (PokeAPI, Serebii, seed script lists)
+sometimes list things that aren't actually in the Champions shop / game (e.g. 21
+held items that exist in PokeAPI but have never shipped to the live shop), or
+have ingest-time bugs that cause category drift (e.g. berries miscategorized as
+mega_stone pre-2026-04-17).
+
+Changes to static game data (new Pokemon, new items, movepool updates) should
+happen via **on-demand migrations** after manual verification in-game, not via
+blanket re-runs of the destructive seed/ingest scripts. `seed_champions.py` and
+`serebii_static.py` require `--confirm-destructive` to run for this reason.
+
+Usage data (Smogon / Pikalytics / Limitless) can continue to auto-refresh via
+Vercel Cron -- tournament stats are time-series, not game state.
+
 Scripts are organized into three layers:
 
-**One-time setup** (run once, re-run on game patches):
+**One-time setup** (run ONCE on a fresh DB; NOT re-run on minor patches):
 - `scripts/import_pokeapi.py` -- PokeAPI bulk import (pokemon, moves, abilities)
-- `scripts/seed_champions.py` -- Champions roster flags, items, mega links
-- `scripts/ingest/serebii_static.py` -- Champions-verified movepools, abilities, items, moves, mega data
+- `scripts/seed_champions.py` -- Champions roster flags, items, mega links. Requires `--confirm-destructive`.
+- `scripts/ingest/serebii_static.py` -- Champions-verified movepools, abilities, items, moves, mega data. Requires `--confirm-destructive`.
+- `scripts/validate_champions_sources.py` -- read-only audit against Serebii + PokeAPI; produces `api/champions_validation_report.json`.
 
 **Automated refresh** (Vercel Cron, wired in `vercel.json`):
 - `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon (gen9vgc2026) -> `pokemon_usage` table (Mon 06:00 UTC)

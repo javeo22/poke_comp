@@ -1,5 +1,6 @@
 {
   "run_date": "2026-04-17",
+  "policy": "live DB is source of truth as of 2026-04-17; destructive seed scripts now require --confirm-destructive",
   "sources": {
     "db": "supabase sutslbmqsjczlfnsmgxt (pokecomp prod)",
     "serebii_roster": "https://www.serebii.net/pokemonchampions/pokemon.shtml",
@@ -64,10 +65,11 @@
       "migration": "20260421000000_champions_data_audit_fixes.sql"
     },
     {
-      "issue": "21 Champions-staple held items missing from items table",
-      "root_cause": "seed_champions.py HELD_ITEMS list was extended after initial seed; subsequent serebii_static ingest overwrote without preserving",
-      "data_fix": "Inserted Assault Vest, Choice Band, Choice Specs, Clear Amulet, Covert Cloak, Eject Button/Pack, Expert Belt, Grassy Seed, Iron Ball, Life Orb, Light Clay, Loaded Dice, Protective Pads, Rocky Helmet, Room Service, Safety Goggles, Terrain Extender, Throat Spray, Weakness Policy, Wide Lens (IDs 30001-30021)",
-      "migration": "20260421000000_champions_data_audit_fixes.sql"
+      "issue": "21 'staple' held items initially inserted then REVERTED 2026-04-17",
+      "root_cause": "I treated PokeAPI + seed_champions HELD_ITEMS + Serebii items.shtml as authoritative for the Champions shop. User confirmed these items exist in the game's source code but have never shipped to the live shop / are not selectable in-game. Reverted.",
+      "data_fix": "DELETE FROM items WHERE id BETWEEN 30001 AND 30021 (revert).",
+      "migration": "20260421100000_revert_source_code_only_items.sql",
+      "lesson": "Serebii / PokeAPI / seed lists are NOT authoritative for what is visible in the Champions shop. The live DB, curated against in-game inspection, is the source of truth."
     },
     {
       "issue": "2 held items incorrectly archived (King's Rock, Quick Claw)",
@@ -98,6 +100,26 @@
       "rationale": "These are PokeAPI canonical form slugs; our Pikalytics ingest normalizes to the same form so aliases work end-to-end. Could add display-name override column in a future UX pass but not a correctness issue."
     }
   ],
+  "stats_validation_spot_check": {
+    "method": "WebFetch Serebii Champions detail pages, compare types/abilities/base_stats directly against DB via Supabase MCP",
+    "samples_checked": [
+      "Incineroar (base) - 727",
+      "Sinistcha (base) - 1013",
+      "Garchomp (base) - 445",
+      "Greninja (base) - 658",
+      "Sableye (base) - 302",
+      "Mega Dragonite - 20004 (new Champions mega)",
+      "Mega Gardevoir - 10051 (classic mega)",
+      "Mega Meganium - 20005 (new Champions mega)",
+      "Mega Charizard X - 10034 (classic mega)",
+      "Mega Charizard Y - 10035 (classic mega)",
+      "Mega Greninja - 20016 (new Champions mega)",
+      "Mega Sableye - 10066 (classic mega)",
+      "Mega Garchomp - 10058 (classic mega)"
+    ],
+    "result": "13/13 stat lines (types, abilities, all 6 base stats) match Serebii exactly. 0 discrepancies.",
+    "conclusion": "Sampled Champions Pokemon + megas have correct stats. Full population (186 base + 74 megas) not exhaustively checked, but broad sanity metrics (no empty/null fields, BST in 400-780 range, no 0 stats) all pass."
+  },
   "deferred_validations": [
     {
       "name": "per_pokemon_movepool_vs_serebii",

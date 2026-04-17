@@ -824,6 +824,24 @@ async def async_main(
 
 
 def main() -> None:
+    # 2026-04-17 safety gate: the live DB is the source of truth. This script
+    # overwrites Pokemon abilities/movepools, items, and moves from whatever
+    # Serebii is currently serving -- which is sometimes wrong or ahead of
+    # the actual Champions shop. Audit on 2026-04-17 surfaced items Serebii
+    # lists that aren't in-game, plus a category state-machine bug (fixed)
+    # that had miscategorized 28 berries. Re-running without review risks
+    # re-introducing those kinds of drift.
+    if "--confirm-destructive" not in sys.argv:
+        print(
+            "REFUSED: serebii_static.py is destructive.\n"
+            "The live DB is the source of truth as of 2026-04-17 (see plan.md).\n"
+            "Re-running overwrites curated Pokemon + item + move data with\n"
+            "whatever Serebii currently serves, which may disagree with the\n"
+            "live Champions shop.\n"
+            "If you really want a full re-import, pass --confirm-destructive."
+        )
+        sys.exit(2)
+
     print("=== Serebii Champions Data Import ===")
     start = time.time()
 

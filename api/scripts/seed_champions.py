@@ -1,7 +1,26 @@
 """Seed Champions-specific data: eligible roster, items, mega evolutions, meta.
 
+⚠ WARNING (2026-04-17): THE LIVE DB IS NOW THE SOURCE OF TRUTH.
+
+This script's hardcoded lists (CHAMPIONS_ROSTER, HELD_ITEMS, BERRIES,
+MEGA_STONES) reflect the Champions launch roster as understood on
+2026-04-10. The game has since been manually validated against Serebii
++ in-game playtesting; the live DB has been curated to match what is
+actually visible + usable in the Champions shop / roster.
+
+Re-running this script will OVERWRITE that curated state with the
+launch-era assumptions, including items that exist in Pokemon Champions
+source code but have never shipped to the live shop (Assault Vest,
+Choice Band, Life Orb, etc.). Multi-source audit on 2026-04-17 confirmed
+21 such items are source-code-only and should NOT be added.
+
+SAFE USE: only run on a fresh DB or when the user has explicitly
+greenlit a full re-seed after a game patch. For incremental changes,
+apply on-demand migrations.
+
 Usage:
-    uv run python -m scripts.seed_champions
+    uv run python -m scripts.seed_champions   # full seed, destructive
+    uv run python -m scripts.seed_champions --confirm-destructive
 
 Run this AFTER import_pokeapi.py. This script:
 1. Flags champions_eligible on Pokemon in the actual Champions roster
@@ -887,6 +906,18 @@ def seed_initial_meta(supabase: Client) -> None:
 
 
 def main() -> None:
+    # 2026-04-17 safety gate: live DB is the source of truth. A full re-seed
+    # will overwrite the curated roster/items (including clobbering the
+    # 2026-04-17 audit fixes that removed ~21 source-code-only items).
+    if "--confirm-destructive" not in sys.argv:
+        print(
+            "REFUSED: seed_champions.py is destructive.\n"
+            "The live DB is the source of truth as of 2026-04-17 (see plan.md).\n"
+            "Re-running will overwrite curated data with launch-era assumptions.\n"
+            "If you really want to re-seed (e.g. fresh DB), pass --confirm-destructive."
+        )
+        sys.exit(2)
+
     db = create_client(settings.supabase_url, settings.supabase_service_key)
 
     seed_champions_roster(db)

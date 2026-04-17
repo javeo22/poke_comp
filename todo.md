@@ -49,6 +49,13 @@
 - [x] Regional forms as separate roster entries: migration `20260419000000_flag_regional_forms.sql` flags 15 regional variants (Raichu-Alola through Tauros-Paldea) as `champions_eligible=true`. `seed_champions.py` updated with new `CHAMPIONS_REGIONAL_FORMS` list so future re-seeds preserve the flag. Applied to prod (verified 15/15).
 - [x] AI hallucination guardrails: `api/app/services/ai_verifier.py` cross-checks every draft claim against the DB (bring-4 in my team, leads in bring-4, threats in opponent preview, cited moves exist in `moves` table, calc attacker/defender/move all valid). Annotates each item with `verified` + `verification_note`; populates `DraftAnalysis.warnings`. Prompt strengthened with "CRITICAL ACCURACY RULES" block instructing AI to say 'uncertain' instead of fabricating. Frontend: amber warnings banner + per-item ⚠ badges with tooltip notes. Unit test with 4 injected hallucinations caught all 4.
 
+### Source-of-Truth Policy + Mega Stats Validation (2026-04-17) -- LANDED
+- [x] 21 "staple" held items I inserted (Assault Vest, Choice Band, Life Orb, etc.) REVERTED via migration `20260421100000`. User confirmed these are in PokeAPI/source but NOT in the live Champions shop. Final item count: 116 (58 mega + 30 held + 28 berry) — matches Serebii exactly.
+- [x] **Policy**: live Supabase DB is now the authoritative source of truth. External sources (Serebii, PokeAPI, seed lists) may drift. Future additions go through on-demand migrations after in-game verification.
+- [x] `scripts/seed_champions.py` and `scripts/ingest/serebii_static.py` now require `--confirm-destructive` to run. Both have updated docstrings + guarded `main()` entrypoints.
+- [x] CLAUDE.md Data Pipeline section rewritten with the source-of-truth rationale.
+- [x] **Mega + base Pokemon stats spot-check vs Serebii** (13 samples across base forms, classic megas, new Champions megas): 13/13 stat lines match Serebii exactly. Types, abilities, all 6 base stats verified for Incineroar, Sinistcha, Garchomp, Greninja, Sableye + Mega Dragonite/Gardevoir/Meganium/Charizard X/Charizard Y/Greninja/Sableye/Garchomp.
+
 ### Multi-Source Champions Validation (2026-04-17) -- LANDED
 - [x] New `api/scripts/validate_champions_sources.py` validator cross-checks Serebii + PokeAPI + live DB. Reusable via `cd api && uv run python -m scripts.validate_champions_sources` (needs Supabase DNS).
 - [x] Found + fixed 4 categories of discrepancies (migration `20260421000000_champions_data_audit_fixes.sql`):

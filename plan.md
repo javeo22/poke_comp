@@ -396,6 +396,25 @@ Context: user surfaced 7 real-world issues from dogfooding. Grouped into 3 sessi
 - True SSE streaming for draft (carried over from Session A deferral).
 - Regional forms in `name_resolver.py` match "Raichu-Alola"-style hyphenated names but the DB stores them space-separated. Works through normalization but worth a pass if the matching ever surfaces misses.
 
+### Source-of-truth policy + mega stats validation (Apr 17, 2026) -- LANDED
+
+- [x] **Reverted the 21 'staple' items added earlier today** -- user confirmed they exist in Pokemon Champions source code / Serebii listings but are NOT visible or usable in the live Champions shop (Assault Vest, Choice Band, Choice Specs, Life Orb, Clear Amulet, Covert Cloak, Safety Goggles, Rocky Helmet, Weakness Policy, Wide Lens, Loaded Dice, Eject Button/Pack, Throat Spray, Room Service, Grassy Seed, Iron Ball, Light Clay, Terrain Extender, Protective Pads, Expert Belt). Migration `20260421100000_revert_source_code_only_items.sql` deletes IDs 30001-30021. Final shop count 116 items (58 mega_stone + 30 held + 28 berry) -- exactly matches Serebii's items.shtml listing and in-game inspection.
+
+- [x] **Source-of-truth policy** -- the live Supabase DB is now authoritative for static game data (roster, items, moves, abilities, mega linkages). External sources (Serebii, PokeAPI, `seed_champions.HELD_ITEMS`) may list things that never shipped to the live game. Cross-source audits catch drift but the final word is the user's in-game inspection.
+  - `scripts/seed_champions.py` `main()` now refuses to run without `--confirm-destructive`; docstring warns the list reflects launch-era assumptions including 21 items that never shipped.
+  - `scripts/ingest/serebii_static.py` `main()` now refuses to run without `--confirm-destructive`; docstring notes it will overwrite curated data with whatever Serebii is serving.
+  - `CLAUDE.md` Data Pipeline section rewritten with the rationale; labels one-time-setup scripts as "run ONCE on a fresh DB; NOT re-run on minor patches".
+  - Usage data ingests (Smogon / Pikalytics / Limitless) continue to auto-refresh via Vercel Cron -- tournament stats are time-series, not game state.
+
+- [x] **Stats spot-check for base Pokemon + megas vs Serebii** -- user asked specifically about mega stats coverage. Sampled 13 Pokemon via Serebii Champions detail pages and cross-checked types + abilities + all 6 base stats against the DB via Supabase MCP:
+  - Base forms: Incineroar (727), Sinistcha (1013), Garchomp (445), Greninja (658), Sableye (302)
+  - Classic megas: Mega Gardevoir (10051), Mega Charizard X (10034), Mega Charizard Y (10035), Mega Sableye (10066), Mega Garchomp (10058)
+  - New Champions megas: Mega Dragonite (20004), Mega Meganium (20005), Mega Greninja (20016)
+
+  **Result: 13/13 stat lines match Serebii exactly. Zero discrepancies.** Types match, abilities match, all 6 base stats match. This confirms the mega data we store was correctly ingested from Serebii's per-Pokemon detail pages during the original serebii_static run. Full population (186 base + 74 megas) not exhaustively checked but broad sanity metrics (0 empty/null stat fields, BST in 400-780 range, 0 stats == 0) all pass across the whole table.
+
+  **Minor note (not fixed)**: Charizard's `pokemon.mega_evolution_id` points only to Mega Charizard Y; Mega Charizard X exists with correct stats but isn't reachable from the Charizard row's direct link. Team builder UX implication -- only Y appears when picking a mega for a Charizard team. Could add a secondary mega link column or surface both via name lookup, but since the data is correct and the decision may be intentional (Y is the more common VGC pick), leaving as-is per source-of-truth policy.
+
 ### Multi-source Champions validation (Apr 17, 2026) -- LANDED
 
 - [x] **Extensive validation across multiple sources** -- user requested "do an extensive validation across multiple sources to make sure we have the correct data for champions." Built new `api/scripts/validate_champions_sources.py` that cross-checks the live DB against Serebii's Champions dex/items/megas pages and PokeAPI for canonical stats. Local Supabase DNS was temporarily unresolvable from the dev machine so the checks were executed via the Supabase MCP and `WebFetch` rather than the script's in-process httpx client; the script is committed and documented so it can be run end-to-end from any networked environment.
