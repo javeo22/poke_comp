@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { PokemonUsage } from "@/types/usage";
 
 interface UsageListProps {
@@ -20,9 +21,25 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
           className="group flex items-center gap-4 rounded-xl card p-4 text-left transition-all hover:bg-surface-mid hover:-translate-y-0.5"
         >
           {/* Rank */}
-          <span className="w-8 text-right font-display text-sm font-bold text-on-surface-muted">
+          <span className="w-8 shrink-0 text-right font-display text-sm font-bold text-on-surface-muted">
             {i + 1}
           </span>
+
+          {/* Sprite */}
+          <div className="h-10 w-10 shrink-0">
+            {entry.sprite_url ? (
+              <Image
+                src={entry.sprite_url}
+                alt={entry.pokemon_name}
+                width={40}
+                height={40}
+                className="image-rendering-pixelated"
+                unoptimized
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-surface-mid" />
+            )}
+          </div>
 
           {/* Name + usage bar */}
           <div className="min-w-0 flex-1">

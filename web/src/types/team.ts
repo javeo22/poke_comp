@@ -5,6 +5,7 @@ export interface Team {
   format: "singles" | "doubles" | "megas";
   pokemon_ids: string[];
   mega_pokemon_id: string | null;
+  mega_form_pokemon_id: number | null;
   notes: string | null;
   archetype_tag: string | null;
   created_at: string;
@@ -21,6 +22,7 @@ export interface TeamCreate {
   format: "singles" | "doubles" | "megas";
   pokemon_ids: string[];
   mega_pokemon_id?: string | null;
+  mega_form_pokemon_id?: number | null;
   notes?: string | null;
   archetype_tag?: string | null;
 }
@@ -30,6 +32,7 @@ export interface TeamUpdate {
   format?: "singles" | "doubles" | "megas";
   pokemon_ids?: string[];
   mega_pokemon_id?: string | null;
+  mega_form_pokemon_id?: number | null;
   notes?: string | null;
   archetype_tag?: string | null;
 }

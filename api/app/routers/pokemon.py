@@ -53,9 +53,35 @@ def list_pokemon(
         query = query.eq("generation", generation)
 
     result = query.order("id").range(offset, offset + limit - 1).execute()
+    rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    # Batch-resolve mega form names for all rows in one query
+    all_mega_ids: set[int] = set()
+    for row in rows:
+        for mid in row.get("mega_evolution_ids") or []:
+            all_mega_ids.add(mid)
+    mega_name_map: dict[int, str] = {}
+    if all_mega_ids:
+        mega_rows = (
+            supabase.table("pokemon")
+            .select("id, name")
+            .in_("id", list(all_mega_ids))
+            .execute()
+        )
+        for m in mega_rows.data:  # type: ignore[union-attr]
+            mega_name_map[m["id"]] = m["name"]
+
+    pokemon_list = []
+    for row in rows:
+        mega_ids: list[int] = row.get("mega_evolution_ids") or []
+        row["mega_evolution_names"] = [
+            mega_name_map[mid] for mid in mega_ids if mid in mega_name_map
+        ]
+        pokemon_list.append(PokemonBase.model_validate(row))
+
     return PokemonList(
-        data=[PokemonBase.model_validate(row) for row in result.data],
-        count=result.count or len(result.data),
+        data=pokemon_list,
+        count=result.count or len(rows),
     )
 
 
@@ -129,19 +155,27 @@ def get_pokemon_detail(pokemon_id: int):
                 )
             )
 
-    # Resolve mega evolution name if linked
-    mega_name: str | None = None
-    mega_id = poke_row.get("mega_evolution_id")
-    if mega_id:
-        mega_result = supabase.table("pokemon").select("name").eq("id", mega_id).execute()
-        mega_rows: list[dict[str, Any]] = mega_result.data  # type: ignore[assignment]
-        if mega_rows:
-            mega_name = mega_rows[0]["name"]
+    # Resolve mega form names (supports multiple megas e.g. Charizard X + Y)
+    detail_mega_ids: list[int] = poke_row.get("mega_evolution_ids") or []
+    if not detail_mega_ids and poke_row.get("mega_evolution_id"):
+        detail_mega_ids = [poke_row["mega_evolution_id"]]
+
+    mega_names: list[str] = []
+    if detail_mega_ids:
+        mega_res = (
+            supabase.table("pokemon")
+            .select("id, name")
+            .in_("id", detail_mega_ids)
+            .execute()
+        )
+        id_to_name = {r["id"]: r["name"] for r in mega_res.data}  # type: ignore[union-attr]
+        mega_names = [id_to_name[mid] for mid in detail_mega_ids if mid in id_to_name]
 
     return PokemonDetail(
         **base.model_dump(),
         move_details=move_details,
         ability_details=ability_details,
         usage=usage,
-        mega_evolution_name=mega_name,
+        mega_evolution_name=mega_names[0] if mega_names else None,
+        mega_evolution_names=mega_names,
     )

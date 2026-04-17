@@ -117,6 +117,7 @@ export default function TeamsPage() {
         format: team.format,
         pokemon_ids: team.pokemon_ids,
         mega_pokemon_id: team.mega_pokemon_id,
+        mega_form_pokemon_id: team.mega_form_pokemon_id,
         notes: team.notes,
         archetype_tag: team.archetype_tag,
       });

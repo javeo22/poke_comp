@@ -20,6 +20,7 @@ interface SelectedPokemon {
 export default function MetaPage() {
   const [snapshots, setSnapshots] = useState<MetaSnapshot[]>([]);
   const [usageData, setUsageData] = useState<PokemonUsage[]>([]);
+  const [usageFallback, setUsageFallback] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [formatFilter, setFormatFilter] = useState("doubles");
   const [viewMode, setViewMode] = useState<ViewMode>("usage");
@@ -27,13 +28,21 @@ export default function MetaPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setUsageFallback(false);
     try {
       const [metaData, usage] = await Promise.all([
         fetchLatestMeta(),
         fetchUsage(formatFilter, 50),
       ]);
       setSnapshots(metaData);
-      setUsageData(usage.data);
+
+      if (usage.data.length === 0 && formatFilter !== "doubles") {
+        const fallback = await fetchUsage("doubles", 50);
+        setUsageData(fallback.data);
+        setUsageFallback(true);
+      } else {
+        setUsageData(usage.data);
+      }
     } catch (err) {
       console.error("Failed to load meta data:", err);
       setSnapshots([]);
@@ -124,7 +133,16 @@ export default function MetaPage() {
             <p className="mt-2 text-sm text-on-surface-muted">Usage data is refreshed automatically from Pikalytics.</p>
           </div>
         ) : (
-          <UsageList data={usageData} onPokemonClick={handlePokemonClick} />
+          <>
+            {usageFallback && (
+              <div className="mb-4 rounded-lg bg-surface-mid px-4 py-2.5">
+                <p className="font-display text-xs text-on-surface-muted">
+                  No {formatFilter} tournament data available yet — showing doubles usage.
+                </p>
+              </div>
+            )}
+            <UsageList data={usageData} onPokemonClick={handlePokemonClick} />
+          </>
         )
       ) : (
         <div className="animate-stagger flex flex-col gap-6">

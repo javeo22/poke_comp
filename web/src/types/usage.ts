@@ -14,6 +14,7 @@ export interface PokemonUsage {
   teammates: UsageEntry[] | null;
   snapshot_date: string;
   source: string | null;
+  sprite_url: string | null;
 }
 
 export interface PokemonUsageList {

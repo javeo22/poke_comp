@@ -31,13 +31,17 @@ export function TeamForm({
   const [format, setFormat] = useState<string>(editing?.format ?? "doubles");
   const [selectedIds, setSelectedIds] = useState<string[]>(editing?.pokemon_ids ?? []);
   const [megaId, setMegaId] = useState<string | null>(editing?.mega_pokemon_id ?? null);
+  const [megaFormId, setMegaFormId] = useState<number | null>(editing?.mega_form_pokemon_id ?? null);
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [archetypeTag, setArchetypeTag] = useState(editing?.archetype_tag ?? "");
 
   const toggleSlot = (rosterEntryId: string) => {
     if (selectedIds.includes(rosterEntryId)) {
       setSelectedIds(selectedIds.filter((id) => id !== rosterEntryId));
-      if (megaId === rosterEntryId) setMegaId(null);
+      if (megaId === rosterEntryId) {
+        setMegaId(null);
+        setMegaFormId(null);
+      }
     } else if (selectedIds.length < 6) {
       setSelectedIds([...selectedIds, rosterEntryId]);
     }
@@ -54,6 +58,7 @@ export function TeamForm({
         format: format as TeamCreate["format"],
         pokemon_ids: selectedIds,
         mega_pokemon_id: megaId,
+        mega_form_pokemon_id: megaFormId,
         notes: notes.trim() || undefined,
         archetype_tag: archetypeTag.trim() || undefined,
       };
@@ -64,6 +69,7 @@ export function TeamForm({
         format: format as TeamCreate["format"],
         pokemon_ids: selectedIds,
         mega_pokemon_id: megaId,
+        mega_form_pokemon_id: megaFormId,
         notes: notes.trim() || undefined,
         archetype_tag: archetypeTag.trim() || undefined,
       };
@@ -81,10 +87,13 @@ export function TeamForm({
     })
     .filter((t): t is string[] => t !== null);
 
-  // Check which roster entries have mega evolutions
-  const getMegaInfo = (entry: UserPokemon) => {
+  const getMegaForms = (entry: UserPokemon): { formId: number; formName: string }[] => {
     const poke = pokemonMap.get(entry.pokemon_id);
-    return poke?.mega_evolution_id != null;
+    if (!poke || poke.mega_evolution_ids.length === 0) return [];
+    return poke.mega_evolution_ids.map((id, i) => ({
+      formId: id,
+      formName: poke.mega_evolution_names[i] ?? `Mega Form ${i + 1}`,
+    }));
   };
 
   return (
@@ -231,7 +240,7 @@ export function TeamForm({
                   const poke = pokemonMap.get(entry.pokemon_id);
                   if (!poke) return null;
                   const isSelected = selectedIds.includes(entry.id);
-                  const hasMega = getMegaInfo(entry);
+                  const megaForms = getMegaForms(entry);
 
                   return (
                     <button
@@ -259,9 +268,9 @@ export function TeamForm({
                         <span className="block truncate font-body text-xs text-on-surface">
                           {poke.name}
                         </span>
-                        {hasMega && (
+                        {megaForms.length > 0 && (
                           <span className="font-display text-[0.5rem] uppercase text-primary">
-                            Mega available
+                            {megaForms.length > 1 ? `${megaForms.length} megas` : "Mega available"}
                           </span>
                         )}
                       </div>
@@ -278,27 +287,40 @@ export function TeamForm({
           </div>
         </div>
 
-        {/* Mega selector (only if format is megas or team has mega-capable Pokemon) */}
+        {/* Mega selector — one option per mega form; Charizard shows X and Y separately */}
         {selectedIds.length > 0 && (
           <div className="mb-5">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
               Mega Evolution
             </label>
             <select
-              value={megaId ?? ""}
-              onChange={(e) => setMegaId(e.target.value || null)}
+              value={megaId && megaFormId ? `${megaId}:${megaFormId}` : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  setMegaId(null);
+                  setMegaFormId(null);
+                } else {
+                  const [rosterId, formId] = val.split(":");
+                  setMegaId(rosterId);
+                  setMegaFormId(Number(formId));
+                }
+              }}
               className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
             >
               <option value="">None</option>
-              {selectedIds.map((id) => {
+              {selectedIds.flatMap((id) => {
                 const entry = rosterLookup.get(id);
                 const poke = entry ? pokemonMap.get(entry.pokemon_id) : undefined;
-                if (!poke || !poke.mega_evolution_id) return null;
-                return (
-                  <option key={id} value={id}>
-                    {poke.name}
-                  </option>
-                );
+                if (!poke || poke.mega_evolution_ids.length === 0) return [];
+                return poke.mega_evolution_ids.map((formId, i) => {
+                  const formName = poke.mega_evolution_names[i] ?? `${poke.name} Mega`;
+                  return (
+                    <option key={`${id}:${formId}`} value={`${id}:${formId}`}>
+                      {formName}
+                    </option>
+                  );
+                });
               })}
             </select>
           </div>

@@ -19,6 +19,7 @@ class PokemonUsageResponse(BaseModel):
     teammates: list[UsageEntry] | None = None
     snapshot_date: date
     source: str | None = None
+    sprite_url: str | None = None
 
 
 class PokemonUsageList(BaseModel):

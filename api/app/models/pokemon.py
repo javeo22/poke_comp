@@ -11,6 +11,8 @@ class PokemonBase(BaseModel):
     champions_eligible: bool
     generation: int | None = None
     mega_evolution_id: int | None = None
+    mega_evolution_ids: list[int] = []
+    mega_evolution_names: list[str] = []
     sprite_url: str | None = None
 
 
@@ -54,4 +56,4 @@ class PokemonDetail(PokemonBase):
     move_details: list[MoveDetail] = []
     ability_details: list[AbilityDetail] = []
     usage: list[PokemonUsageSummary] = []
-    mega_evolution_name: str | None = None
+    mega_evolution_name: str | None = None  # kept for compat; prefer mega_evolution_names

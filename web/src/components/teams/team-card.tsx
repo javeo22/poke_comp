@@ -126,9 +126,18 @@ export function TeamCard({
             <span className="max-w-14 truncate text-center font-display text-[0.5rem] text-on-surface-muted">
               {poke.name}
             </span>
-            {team.mega_pokemon_id === entry.id && (
-              <span className="font-display text-[0.45rem] uppercase text-primary">M</span>
-            )}
+            {team.mega_pokemon_id === entry.id && (() => {
+              let label = "M";
+              if (poke.mega_evolution_ids.length > 1 && team.mega_form_pokemon_id) {
+                const idx = poke.mega_evolution_ids.indexOf(team.mega_form_pokemon_id);
+                const formName = poke.mega_evolution_names[idx];
+                if (formName) {
+                  const suffix = formName.split(" ").at(-1) ?? "";
+                  label = suffix.length <= 2 ? `M-${suffix}` : "M";
+                }
+              }
+              return <span className="font-display text-[0.45rem] uppercase text-primary">{label}</span>;
+            })()}
           </div>
         ))}
         {/* Empty slots */}

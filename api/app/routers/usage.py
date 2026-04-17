@@ -18,9 +18,25 @@ def list_usage(
     )
 
     result = query.order("usage_percent", desc=True).range(offset, offset + limit - 1).execute()
+    usage_rows = result.data
+
+    sprite_map: dict[str, str | None] = {}
+    if usage_rows:
+        names = [row["pokemon_name"] for row in usage_rows]
+        sprite_result = (
+            supabase.table("pokemon")
+            .select("name, sprite_url")
+            .in_("name", names)
+            .execute()
+        )
+        sprite_map = {row["name"]: row.get("sprite_url") for row in sprite_result.data}
+
+    for row in usage_rows:
+        row["sprite_url"] = sprite_map.get(row["pokemon_name"])
+
     return PokemonUsageList(
-        data=[PokemonUsageResponse.model_validate(row) for row in result.data],
-        count=result.count or len(result.data),
+        data=[PokemonUsageResponse.model_validate(row) for row in usage_rows],
+        count=result.count or len(usage_rows),
     )
 
 

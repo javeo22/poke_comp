@@ -15,6 +15,8 @@ export interface Pokemon {
   champions_eligible: boolean;
   generation: number | null;
   mega_evolution_id: number | null;
+  mega_evolution_ids: number[];
+  mega_evolution_names: string[];
   sprite_url: string | null;
 }
 

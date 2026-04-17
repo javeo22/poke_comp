@@ -56,6 +56,11 @@
 - [x] CLAUDE.md Data Pipeline section rewritten with the source-of-truth rationale.
 - [x] **Mega + base Pokemon stats spot-check vs Serebii** (13 samples across base forms, classic megas, new Champions megas): 13/13 stat lines match Serebii exactly. Types, abilities, all 6 base stats verified for Incineroar, Sinistcha, Garchomp, Greninja, Sableye + Mega Dragonite/Gardevoir/Meganium/Charizard X/Charizard Y/Greninja/Sableye/Garchomp.
 
+### Dual-Mega Support (2026-04-17) -- LANDED
+- [x] Migration `20260422000000_dual_mega_support.sql`: added `pokemon.mega_evolution_ids INT[]` (backfilled from `mega_evolution_id`; Charizard set to `[10034, 10035]`), added `teams.mega_form_pokemon_id INT` FK to record specific mega form selection.
+- [x] API: `PokemonBase` gains `mega_evolution_ids` + `mega_evolution_names` (batch-resolved in list endpoint). Team models gain `mega_form_pokemon_id`. Lints + TS types clean.
+- [x] Team form: mega selector now shows one option per mega form (e.g. "Mega Charizard X" and "Mega Charizard Y" as separate options); stores both `mega_pokemon_id` (roster entry) and `mega_form_pokemon_id` (form ID). Team card shows "M-X"/"M-Y" label when form suffix ≤2 chars.
+
 ### Multi-Source Champions Validation (2026-04-17) -- LANDED
 - [x] New `api/scripts/validate_champions_sources.py` validator cross-checks Serebii + PokeAPI + live DB. Reusable via `cd api && uv run python -m scripts.validate_champions_sources` (needs Supabase DNS).
 - [x] Found + fixed 4 categories of discrepancies (migration `20260421000000_champions_data_audit_fixes.sql`):
