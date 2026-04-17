@@ -306,6 +306,8 @@ export interface MatchupFilters {
   outcome?: string;
   my_team_id?: string;
   opponent_pokemon?: string;
+  format?: string;
+  tag?: string;
   limit?: number;
   offset?: number;
 }

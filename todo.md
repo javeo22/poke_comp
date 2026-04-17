@@ -45,6 +45,16 @@
 ### Session A: Deferred
 - [ ] True SSE streaming for draft — scoped for a follow-up session. Haiku + progress UX covers ~90% of the "takes too long" complaint for team-preview use.
 
+### Session B (2026-04-16) -- LANDED
+- [x] Regional forms as separate roster entries: migration `20260419000000_flag_regional_forms.sql` flags 15 regional variants (Raichu-Alola through Tauros-Paldea) as `champions_eligible=true`. `seed_champions.py` updated with new `CHAMPIONS_REGIONAL_FORMS` list so future re-seeds preserve the flag. Applied to prod (verified 15/15).
+- [x] AI hallucination guardrails: `api/app/services/ai_verifier.py` cross-checks every draft claim against the DB (bring-4 in my team, leads in bring-4, threats in opponent preview, cited moves exist in `moves` table, calc attacker/defender/move all valid). Annotates each item with `verified` + `verification_note`; populates `DraftAnalysis.warnings`. Prompt strengthened with "CRITICAL ACCURACY RULES" block instructing AI to say 'uncertain' instead of fabricating. Frontend: amber warnings banner + per-item ⚠ badges with tooltip notes. Unit test with 4 injected hallucinations caught all 4.
+
+### Session C (2026-04-16) -- LANDED
+- [x] Matchup log schema: migration `20260419100000_matchup_log_fields.sql` adds `format` (ladder|bo1|bo3|tournament|friendly), `tags` (TEXT[]), `close_type` (blowout|close|comeback|standard), `mvp_pokemon`. GIN index on tags + partial index on format. Applied to prod.
+- [x] Matchup log backend: `MatchupCreate`/`MatchupUpdate`/`MatchupResponse` extended; `list_matchups` accepts `?format=` and `?tag=` filters; `get_stats` returns new `by_format` + `by_tag` breakdowns.
+- [x] Matchup log UI: form gained Format/Match-feel dropdowns + Tags input + MVP dropdown; cards show format badge, close-type chip, tag chips, MVP line, full notes (not truncated); filter bar gains Format select; Stats view gets two new panels (By Format, By Archetype Tag) beneath existing breakdowns.
+- [x] Draft team-preview polish: last-used team persists to `localStorage` (`pokecomp_draft_last_team`), hydrates on mount unless `?team=` URL param overrides. Quick-paste bar above opponent slots accepts 6 names via comma/newline/semicolon separators, resolves against Champions options (case-insensitive), reports unresolved names in amber hint.
+
 ### Data
 - [x] Pikalytics ingest: 25 Pokemon with full usage data (2026-04-16)
 

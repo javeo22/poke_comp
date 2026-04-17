@@ -4,12 +4,16 @@ export interface ThreatInfo {
   reason: string;
   likely_set: string;
   key_moves: string[];
+  verified?: boolean;
+  verification_note?: string | null;
 }
 
 export interface BringRecommendation {
   pokemon: string;
   role: string;
   reason: string;
+  verified?: boolean;
+  verification_note?: string | null;
 }
 
 export interface DamageCalc {
@@ -18,6 +22,8 @@ export interface DamageCalc {
   defender: string;
   estimated_damage: string;
   note: string;
+  verified?: boolean;
+  verification_note?: string | null;
 }
 
 export interface DraftAnalysis {
@@ -27,6 +33,7 @@ export interface DraftAnalysis {
   threats: ThreatInfo[];
   damage_calcs: DamageCalc[];
   game_plan: string;
+  warnings?: string[];
 }
 
 export interface DraftResponse {

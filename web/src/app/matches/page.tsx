@@ -3,7 +3,39 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/team";
 import type { Pokemon } from "@/features/pokemon/types";
-import type { Matchup, MatchupStats } from "@/types/matchup";
+import type { Matchup, MatchupStats, MatchFormat, CloseType } from "@/types/matchup";
+
+const FORMAT_OPTIONS: { value: MatchFormat | ""; label: string }[] = [
+  { value: "", label: "Unspecified" },
+  { value: "ladder", label: "Ladder" },
+  { value: "bo1", label: "Best-of-1" },
+  { value: "bo3", label: "Best-of-3" },
+  { value: "tournament", label: "Tournament" },
+  { value: "friendly", label: "Friendly" },
+];
+
+const CLOSE_TYPE_OPTIONS: { value: CloseType | ""; label: string }[] = [
+  { value: "", label: "Not tagged" },
+  { value: "blowout", label: "Blowout" },
+  { value: "close", label: "Close" },
+  { value: "comeback", label: "Comeback" },
+  { value: "standard", label: "Standard" },
+];
+
+const FORMAT_BADGE_STYLES: Record<string, string> = {
+  ladder: "bg-primary/20 text-primary",
+  bo1: "bg-secondary/20 text-secondary",
+  bo3: "bg-tertiary/20 text-tertiary",
+  tournament: "bg-amber-500/20 text-amber-400",
+  friendly: "bg-surface-high text-on-surface-muted",
+};
+
+const CLOSE_TYPE_STYLES: Record<string, string> = {
+  blowout: "bg-tertiary/15 text-tertiary",
+  close: "bg-amber-500/15 text-amber-400",
+  comeback: "bg-secondary/15 text-secondary",
+  standard: "bg-surface-high text-on-surface-muted",
+};
 import {
   fetchTeams,
   fetchPokemon,
@@ -29,6 +61,7 @@ export default function MatchesPage() {
   // Filters
   const [outcomeFilter, setOutcomeFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
+  const [formatFilter, setFormatFilter] = useState<MatchFormat | "">("");
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +70,10 @@ export default function MatchesPage() {
   const [formLeads, setFormLeads] = useState<[string, string]>(["", ""]);
   const [formOutcome, setFormOutcome] = useState<"win" | "loss">("win");
   const [formNotes, setFormNotes] = useState("");
+  const [formFormat, setFormFormat] = useState<MatchFormat | "">("");
+  const [formTags, setFormTags] = useState("");
+  const [formCloseType, setFormCloseType] = useState<CloseType | "">("");
+  const [formMvp, setFormMvp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -47,6 +84,7 @@ export default function MatchesPage() {
           fetchMatchups({
             outcome: outcomeFilter || undefined,
             my_team_id: teamFilter || undefined,
+            format: formatFilter || undefined,
             limit: 100,
           }),
           fetchMatchupStats(),
@@ -69,7 +107,7 @@ export default function MatchesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [outcomeFilter, teamFilter]);
+  }, [outcomeFilter, teamFilter, formatFilter]);
 
   useEffect(() => {
     loadData();
@@ -89,6 +127,10 @@ export default function MatchesPage() {
     setFormLeads(["", ""]);
     setFormOutcome("win");
     setFormNotes("");
+    setFormFormat("");
+    setFormTags("");
+    setFormCloseType("");
+    setFormMvp("");
   };
 
   const handleSubmit = async () => {
@@ -99,12 +141,20 @@ export default function MatchesPage() {
     try {
       const leads =
         formLeads[0] && formLeads[1] ? formLeads : undefined;
+      const parsedTags = formTags
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
       await createMatchup({
         my_team_id: formTeamId,
         opponent_team_data: filledOpponents.map((name) => ({ name })),
         lead_pair: leads,
         outcome: formOutcome,
         notes: formNotes || undefined,
+        format: formFormat || undefined,
+        tags: parsedTags.length ? parsedTags : undefined,
+        close_type: formCloseType || undefined,
+        mvp_pokemon: formMvp || undefined,
       });
       setShowForm(false);
       resetForm();
@@ -201,6 +251,19 @@ export default function MatchesPage() {
               />
             </div>
           )}
+          <select
+            value={formatFilter}
+            onChange={(e) => setFormatFilter(e.target.value as MatchFormat | "")}
+            className="h-9 rounded-lg border border-outline-variant bg-surface-high px-3 font-display text-xs uppercase tracking-wider text-on-surface-muted hover:text-on-surface focus:outline-none"
+            aria-label="Filter by format"
+          >
+            <option value="">All Formats</option>
+            {FORMAT_OPTIONS.filter((o) => o.value !== "").map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex gap-1 rounded-lg bg-surface-low p-1">
           <button
@@ -252,7 +315,7 @@ export default function MatchesPage() {
             {matchups.map((m) => (
               <div
                 key={m.id}
-                className="group flex items-center gap-4 rounded-xl bg-surface-low p-4 transition-all hover:bg-surface-mid"
+                className="group flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface-low p-4 transition-all hover:bg-surface-mid sm:flex-row sm:items-start"
               >
                 {/* Outcome badge */}
                 <div
@@ -267,7 +330,8 @@ export default function MatchesPage() {
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  {/* Top row: team, vs, opponent */}
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-display text-sm font-bold text-on-surface">
                       {m.my_team_id
                         ? teamNameMap.get(m.my_team_id) ?? "Unknown Team"
@@ -281,29 +345,72 @@ export default function MatchesPage() {
                         ?.map((p) => p.name)
                         .join(", ") ?? "Unknown"}
                     </span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-3">
-                    {m.lead_pair && (
-                      <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                        Leads: {m.lead_pair.join(" + ")}
+                    {m.format && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
+                          FORMAT_BADGE_STYLES[m.format] ?? "bg-surface-high text-on-surface-muted"
+                        }`}
+                      >
+                        {m.format}
                       </span>
                     )}
-                    {m.notes && (
-                      <span className="truncate font-body text-xs text-on-surface-muted">
-                        {m.notes}
+                    {m.close_type && m.close_type !== "standard" && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
+                          CLOSE_TYPE_STYLES[m.close_type] ?? "bg-surface-high text-on-surface-muted"
+                        }`}
+                      >
+                        {m.close_type}
                       </span>
                     )}
                   </div>
+
+                  {/* Meta row: leads + MVP */}
+                  {(m.lead_pair || m.mvp_pokemon) && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {m.lead_pair && (
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          Leads: <span className="text-on-surface">{m.lead_pair.join(" + ")}</span>
+                        </span>
+                      )}
+                      {m.mvp_pokemon && (
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          MVP: <span className="text-secondary">{m.mvp_pokemon}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tag chips */}
+                  {m.tags && m.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {m.tags.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {m.notes && (
+                    <p className="mt-2 font-body text-xs leading-relaxed text-on-surface-muted">
+                      {m.notes}
+                    </p>
+                  )}
                 </div>
 
                 {/* Date + delete */}
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 sm:flex-col sm:items-end sm:gap-2">
                   <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
                     {new Date(m.played_at).toLocaleDateString()}
                   </span>
                   <button
                     onClick={() => handleDelete(m.id)}
-                    className="rounded-lg px-2 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted opacity-0 transition-all hover:bg-tertiary/10 hover:text-tertiary group-hover:opacity-100"
+                    className="rounded-lg px-2 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted opacity-0 transition-all hover:bg-tertiary/10 hover:text-tertiary group-hover:opacity-100 sm:opacity-60"
                   >
                     Delete
                   </button>
@@ -415,6 +522,69 @@ export default function MatchesPage() {
                     placeholder="Lead 2"
                     value={formLeads[1]}
                     onChange={(v) => setFormLeads([formLeads[0], v])}
+                    options={pokemonOptions}
+                  />
+                </div>
+              </div>
+
+              {/* Format + Close-type */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Format (optional)
+                  </label>
+                  <select
+                    value={formFormat}
+                    onChange={(e) => setFormFormat(e.target.value as MatchFormat | "")}
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface outline-none"
+                  >
+                    {FORMAT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Match feel (optional)
+                  </label>
+                  <select
+                    value={formCloseType}
+                    onChange={(e) => setFormCloseType(e.target.value as CloseType | "")}
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface outline-none"
+                  >
+                    {CLOSE_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Tags + MVP */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Tags (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={formTags}
+                    onChange={(e) => setFormTags(e.target.value)}
+                    placeholder="rain, trick-room, hyper-offense"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    MVP Pokemon (optional)
+                  </label>
+                  <SearchableDropdown
+                    placeholder="Who carried?"
+                    value={formMvp}
+                    onChange={setFormMvp}
                     options={pokemonOptions}
                   />
                 </div>
@@ -544,6 +714,46 @@ function StatsView({ stats }: { stats: MatchupStats | null }) {
           )}
         </div>
       </div>
+
+      {/* By format + By tag */}
+      {(stats.by_format?.length || stats.by_tag?.length) ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-xl bg-surface-low p-6">
+            <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              By Format
+            </h3>
+            {!stats.by_format?.length ? (
+              <p className="text-sm text-on-surface-muted">
+                Tag some matches with a format to see this breakdown.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {stats.by_format.map((s) => (
+                  <WinRateRow key={s.label} stat={s} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-surface-low p-6">
+            <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              By Archetype Tag
+            </h3>
+            {!stats.by_tag?.length ? (
+              <p className="text-sm text-on-surface-muted">
+                Add tags like &quot;rain&quot; or &quot;trick-room&quot; on matches
+                to segment by strategy.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {stats.by_tag.map((s) => (
+                  <WinRateRow key={s.label} stat={s} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

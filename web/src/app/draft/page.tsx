@@ -29,9 +29,13 @@ export default function DraftPage() {
   const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Form state
+  // Form state. Hydrate selectedTeamId from URL param first, then
+  // localStorage ("last team used") so mid-ladder users don't re-pick
+  // their team every match.
   const [selectedTeamId, setSelectedTeamId] = useState(preselectedTeamId);
   const [opponentSlots, setOpponentSlots] = useState<string[]>(["", "", "", "", "", ""]);
+  const [quickPaste, setQuickPaste] = useState("");
+  const [quickPasteError, setQuickPasteError] = useState<string | null>(null);
 
   // Analysis state
   const [result, setResult] = useState<DraftResponse | null>(null);
@@ -105,6 +109,64 @@ export default function DraftPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Hydrate selectedTeamId from localStorage once teams have loaded, but
+  // only if no URL param and no explicit user selection yet.
+  useEffect(() => {
+    if (teams.length === 0) return;
+    if (preselectedTeamId || selectedTeamId) return;
+    if (typeof window === "undefined") return;
+    const lastTeam = localStorage.getItem("pokecomp_draft_last_team") ?? "";
+    if (lastTeam && teams.some((t) => t.id === lastTeam)) {
+      setSelectedTeamId(lastTeam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams]);
+
+  // Persist last-used team so a returning user lands with it preselected.
+  useEffect(() => {
+    if (typeof window !== "undefined" && selectedTeamId) {
+      localStorage.setItem("pokecomp_draft_last_team", selectedTeamId);
+    }
+  }, [selectedTeamId]);
+
+  // Parse a blob of 6 Pokemon names (newline, comma, or semicolon separated)
+  // into the opponent slots. VGC team preview often lists opponent names in
+  // chat/screenshots, so pasting them saves six separate dropdown interactions.
+  const handleQuickPaste = () => {
+    if (!quickPaste.trim()) return;
+    const rawNames = quickPaste
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    if (rawNames.length === 0) {
+      setQuickPasteError("Paste 1-6 Pokemon names, separated by commas or lines.");
+      return;
+    }
+    // Resolve each raw name against the Pokemon options (case-insensitive).
+    const optionByLabel = new Map(
+      pokemonOptions.map((o) => [o.label.toLowerCase(), o.value]),
+    );
+    const resolved: string[] = [];
+    const unresolved: string[] = [];
+    for (const raw of rawNames) {
+      const match = optionByLabel.get(raw.toLowerCase());
+      if (match) {
+        resolved.push(match);
+      } else {
+        unresolved.push(raw);
+      }
+    }
+    const nextSlots = [...resolved, ...Array(6 - resolved.length).fill("")].slice(0, 6);
+    setOpponentSlots(nextSlots);
+    setQuickPaste("");
+    setQuickPasteError(
+      unresolved.length > 0
+        ? `Filled ${resolved.length}/${rawNames.length}. Couldn't match: ${unresolved.join(", ")}`
+        : null,
+    );
+  };
 
   const updateOpponentSlot = (index: number, value: string) => {
     setOpponentSlots((prev) => {
@@ -293,6 +355,31 @@ export default function DraftPage() {
           <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
             Opponent&apos;s Team (6 from preview)
           </h2>
+          {/* Quick-paste bar: saves 6 separate dropdown interactions when
+              you can screenshot/copy the opponent preview from chat. */}
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={quickPaste}
+              onChange={(e) => setQuickPaste(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleQuickPaste()}
+              placeholder="Paste 6 names (comma, newline, or semicolon separated)"
+              className="input-field h-10 flex-1 rounded-lg px-3 font-body text-xs text-on-surface placeholder:text-on-surface-muted outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleQuickPaste}
+              disabled={!quickPaste.trim()}
+              className="btn-ghost h-10 px-4 font-display text-[0.65rem] uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Quick fill
+            </button>
+          </div>
+          {quickPasteError && (
+            <p className="mb-3 font-body text-[0.7rem] text-amber-400">
+              {quickPasteError}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             {opponentSlots.map((slot, i) => (
               <SearchableDropdown
@@ -398,6 +485,26 @@ export default function DraftPage() {
       {/* Results */}
       {result && !isAnalyzing && (
         <div className="mt-8 flex flex-col gap-6">
+          {/* Verification warnings */}
+          {result.analysis.warnings && result.analysis.warnings.length > 0 && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+              <p className="mb-2 font-display text-xs font-bold uppercase tracking-wider text-amber-400">
+                ⚠ AI output could not be fully verified
+              </p>
+              <p className="mb-2 font-body text-xs text-on-surface-muted">
+                The AI referenced data that doesn&apos;t match our canonical DB.
+                Claims marked with ⚠ below should be treated as low-confidence.
+              </p>
+              <ul className="flex flex-col gap-1 font-body text-xs text-on-surface">
+                {result.analysis.warnings.map((w, i) => (
+                  <li key={i} className="pl-2 border-l-2 border-amber-500/40">
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Summary */}
           <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
@@ -422,12 +529,20 @@ export default function DraftPage() {
                       key={i}
                       className={`rounded-xl p-4 transition-all ${
                         isLead ? "bg-primary/10" : "bg-surface-mid"
-                      }`}
+                      } ${rec.verified === false ? "ring-1 ring-amber-500/40" : ""}`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-display text-sm font-bold text-on-surface">
                           {rec.pokemon}
                         </span>
+                        {rec.verified === false && (
+                          <span
+                            title={rec.verification_note ?? "Could not verify"}
+                            className="font-display text-sm text-amber-400 cursor-help"
+                          >
+                            ⚠
+                          </span>
+                        )}
                         {isLead && (
                           <span className="rounded-full bg-primary/20 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
                             Lead
@@ -464,11 +579,24 @@ export default function DraftPage() {
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {result.analysis.threats.map((threat, i) => (
-                <div key={i} className="rounded-xl bg-surface-mid p-4">
+                <div
+                  key={i}
+                  className={`rounded-xl bg-surface-mid p-4 ${
+                    threat.verified === false ? "ring-1 ring-amber-500/40" : ""
+                  }`}
+                >
                   <div className="flex items-center gap-2">
                     <span className="font-display text-sm font-bold text-on-surface">
                       {threat.pokemon}
                     </span>
+                    {threat.verified === false && (
+                      <span
+                        title={threat.verification_note ?? "Could not verify"}
+                        className="font-display text-sm text-amber-400 cursor-help"
+                      >
+                        ⚠
+                      </span>
+                    )}
                     <span
                       className={`ml-auto font-display text-[0.6rem] font-bold uppercase tracking-wider ${
                         THREAT_COLORS[threat.threat_level] ?? "text-on-surface-muted"
@@ -531,9 +659,24 @@ export default function DraftPage() {
                 </thead>
                 <tbody>
                   {result.analysis.damage_calcs.map((calc, i) => (
-                    <tr key={i} className="group">
+                    <tr
+                      key={i}
+                      className={
+                        calc.verified === false ? "bg-amber-500/5" : "group"
+                      }
+                    >
                       <td className="py-2 pr-4 font-body text-sm text-on-surface">
-                        {calc.attacker}
+                        <span className="inline-flex items-center gap-1">
+                          {calc.attacker}
+                          {calc.verified === false && (
+                            <span
+                              title={calc.verification_note ?? "Could not verify"}
+                              className="text-amber-400 cursor-help"
+                            >
+                              ⚠
+                            </span>
+                          )}
+                        </span>
                       </td>
                       <td className="py-2 pr-4 font-body text-sm text-primary">
                         {calc.move}

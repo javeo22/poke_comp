@@ -236,6 +236,28 @@ CHAMPIONS_ROSTER: list[int] = [
     1019,
 ]
 
+# Regional form PokeAPI IDs -- imported by `import_pokeapi.import_regional_forms`
+# from REGIONAL_FORM_SLUGS. These are separate rows (own id, own name, own
+# types/stats/movepool) so a user can hold both the base form and the regional
+# variant in their roster (e.g. Raichu + Raichu-Alola).
+CHAMPIONS_REGIONAL_FORMS: list[int] = [
+    10100,  # Raichu Alola
+    10104,  # Ninetales Alola
+    10165,  # Slowbro Galar
+    10172,  # Slowking Galar
+    10180,  # Stunfisk Galar
+    10230,  # Arcanine Hisui
+    10233,  # Typhlosion Hisui
+    10236,  # Samurott Hisui
+    10239,  # Zoroark Hisui
+    10242,  # Goodra Hisui
+    10243,  # Avalugg Hisui
+    10244,  # Decidueye Hisui
+    10250,  # Tauros Paldea Combat Breed
+    10251,  # Tauros Paldea Blaze Breed
+    10252,  # Tauros Paldea Aqua Breed
+]
+
 # =============================================================================
 # CLASSIC MEGA EVOLUTIONS - exist in PokeAPI as separate Pokemon entries
 # (base_pokemon_id, pokeapi_slug)
@@ -679,17 +701,27 @@ def resolve_item_id(slug: str) -> int | None:
 
 
 def seed_champions_roster(supabase: Client) -> None:
-    """Flag Champions-eligible Pokemon in bulk."""
-    print(f"Flagging {len(CHAMPIONS_ROSTER)} Pokemon as champions_eligible...")
+    """Flag Champions-eligible Pokemon in bulk.
+
+    Flags both base national dex IDs and regional form PokeAPI IDs
+    (Alola/Galar/Hisui/Paldea). Regional forms are separate DB rows with
+    distinct stats/types/movepools, so a user can hold e.g. Raichu and
+    Raichu-Alola together in their roster.
+    """
+    total = len(CHAMPIONS_ROSTER) + len(CHAMPIONS_REGIONAL_FORMS)
+    print(f"Flagging {total} Pokemon as champions_eligible...")
 
     # Reset all to False
     supabase.table("pokemon").update({"champions_eligible": False}).neq("id", -1).execute()
 
-    # Flag eligible Pokemon
-    for pid in CHAMPIONS_ROSTER:
+    # Flag eligible Pokemon (base forms + regional variants)
+    for pid in CHAMPIONS_ROSTER + CHAMPIONS_REGIONAL_FORMS:
         supabase.table("pokemon").update({"champions_eligible": True}).eq("id", pid).execute()
 
-    print(f"  Done. {len(CHAMPIONS_ROSTER)} Pokemon flagged.")
+    print(
+        f"  Done. {len(CHAMPIONS_ROSTER)} base + "
+        f"{len(CHAMPIONS_REGIONAL_FORMS)} regional forms flagged."
+    )
 
 
 def seed_classic_megas(supabase: Client) -> None:

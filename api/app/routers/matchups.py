@@ -24,6 +24,11 @@ def list_matchups(
     opponent_pokemon: str | None = Query(
         None, description="Filter by opponent Pokemon name (partial match)"
     ),
+    format: str | None = Query(
+        None,
+        description="Filter by format: ladder | bo1 | bo3 | tournament | friendly",
+    ),
+    tag: str | None = Query(None, description="Filter by a single archetype tag"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user_id: str = Depends(get_current_user),
@@ -36,6 +41,11 @@ def list_matchups(
         query = query.eq("outcome", outcome)
     if my_team_id:
         query = query.eq("my_team_id", my_team_id)
+    if format:
+        query = query.eq("format", format)
+    if tag:
+        # Postgres array-contains via PostgREST 'cs' (contains) operator.
+        query = query.contains("tags", [tag])
 
     result = query.order("played_at", desc=True).range(offset, offset + limit - 1).execute()
 
@@ -59,10 +69,10 @@ def list_matchups(
 
 @router.get("/stats", response_model=MatchupStats)
 def get_stats(user_id: str = Depends(get_current_user)):
-    """Win rate analytics: overall, by team, by opponent Pokemon."""
+    """Win rate analytics: overall, by team, by opponent Pokemon, by format, by tag."""
     result = (
         supabase.table("matchup_log")
-        .select("outcome, my_team_id, opponent_team_data")
+        .select("outcome, my_team_id, opponent_team_data, format, tags")
         .eq("user_id", user_id)
         .execute()
     )
@@ -70,7 +80,13 @@ def get_stats(user_id: str = Depends(get_current_user)):
 
     if not all_rows:
         empty = WinRateStat(label="Overall", wins=0, losses=0, total=0, win_rate=0.0)
-        return MatchupStats(overall=empty, by_team=[], by_opponent_pokemon=[])
+        return MatchupStats(
+            overall=empty,
+            by_team=[],
+            by_opponent_pokemon=[],
+            by_format=[],
+            by_tag=[],
+        )
 
     # Overall
     wins = sum(1 for r in all_rows if r["outcome"] == "win")
@@ -144,10 +160,65 @@ def get_stats(user_id: str = Depends(get_current_user)):
         )
     by_opp.sort(key=lambda s: s.total, reverse=True)
 
+    # By format (ladder/bo1/bo3/tournament/friendly)
+    fmt_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "losses": 0})
+    for r in all_rows:
+        fmt = r.get("format")
+        if not fmt:
+            continue
+        if r["outcome"] == "win":
+            fmt_stats[fmt]["wins"] += 1
+        else:
+            fmt_stats[fmt]["losses"] += 1
+
+    by_format = []
+    for fmt, counts in fmt_stats.items():
+        wins = counts["wins"]
+        losses = counts["losses"]
+        total = wins + losses
+        by_format.append(
+            WinRateStat(
+                label=fmt,
+                wins=wins,
+                losses=losses,
+                total=total,
+                win_rate=round(wins / total * 100, 1) if total else 0.0,
+            )
+        )
+    by_format.sort(key=lambda s: s.total, reverse=True)
+
+    # By tag (archetype labels users apply to matches)
+    tag_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "losses": 0})
+    for r in all_rows:
+        tags = r.get("tags") or []
+        for tag in tags:
+            if r["outcome"] == "win":
+                tag_stats[tag]["wins"] += 1
+            else:
+                tag_stats[tag]["losses"] += 1
+
+    by_tag = []
+    for tag, counts in tag_stats.items():
+        wins = counts["wins"]
+        losses = counts["losses"]
+        total = wins + losses
+        by_tag.append(
+            WinRateStat(
+                label=tag,
+                wins=wins,
+                losses=losses,
+                total=total,
+                win_rate=round(wins / total * 100, 1) if total else 0.0,
+            )
+        )
+    by_tag.sort(key=lambda s: s.total, reverse=True)
+
     return MatchupStats(
         overall=overall,
         by_team=by_team,
         by_opponent_pokemon=by_opp[:20],
+        by_format=by_format,
+        by_tag=by_tag[:20],
     )
 
 

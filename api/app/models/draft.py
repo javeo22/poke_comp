@@ -18,12 +18,18 @@ class ThreatInfo(BaseModel):
     reason: str
     likely_set: str
     key_moves: list[str]
+    # Set False by the verifier if pokemon/moves fail DB cross-check.
+    # Frontend renders a warning icon when false.
+    verified: bool = True
+    verification_note: str | None = None
 
 
 class BringRecommendation(BaseModel):
     pokemon: str
     role: str
     reason: str
+    verified: bool = True
+    verification_note: str | None = None
 
 
 class DamageCalc(BaseModel):
@@ -32,6 +38,8 @@ class DamageCalc(BaseModel):
     defender: str
     estimated_damage: str = Field(description="e.g. '65-78%' or 'OHKO'")
     note: str = ""
+    verified: bool = True
+    verification_note: str | None = None
 
 
 class DraftAnalysis(BaseModel):
@@ -53,6 +61,10 @@ class DraftAnalysis(BaseModel):
     game_plan: str = Field(
         description="Turn 1 plan and general strategy overview",
     )
+    # Populated by `verify_draft_analysis` with human-readable issues the
+    # AI's output could not fully substantiate against the DB. Empty list
+    # means the analysis passed all cross-checks.
+    warnings: list[str] = Field(default_factory=list)
 
 
 AI_DISCLAIMER = (

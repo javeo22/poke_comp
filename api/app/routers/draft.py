@@ -19,6 +19,7 @@ from app.database import supabase
 from app.limiter import limiter
 from app.models.draft import DraftAnalysis, DraftRequest, DraftResponse
 from app.prompt_guard import sanitize_user_text
+from app.services.ai_verifier import verify_draft_analysis
 from app.services.cache_utils import (
     CACHE_VERSION,
     cache_hash_v2,
@@ -390,7 +391,21 @@ def _build_prompt(
 
     header = (
         "You are a competitive Pokemon Champions VGC doubles analyst. "
-        "Analyze this team preview matchup."
+        "Analyze this team preview matchup.\n\n"
+        "CRITICAL ACCURACY RULES:\n"
+        "- Only reference Pokemon that appear in 'My Team' or 'Opponent's Team' below.\n"
+        "- Only reference moves that appear in the provided movepools OR in the "
+        "competitive usage data. Do not invent moves.\n"
+        "- For `lead_pair`, both leads MUST be chosen from your `bring_four`.\n"
+        "- For `damage_calcs`, attacker must be in my team and defender must "
+        "be in the opponent team.\n"
+        "- For damage estimates, if you don't have enough information, write "
+        "'uncertain' instead of guessing a specific percentage. Never fabricate "
+        "precise numbers you cannot derive from base stats and move power.\n"
+        "- For speed tiers, base them on the HP/Atk/.../Spe numbers provided. "
+        "Do not claim speed orders you can't verify from the stat lines.\n"
+        "- If usage data for an opponent Pokemon is missing, say so rather than "
+        "guessing their set.\n"
     )
     team_name = my_team["team_name"]
     my_pokemon_block = chr(10).join(my_lines)
@@ -537,6 +552,17 @@ def analyze_draft(
             status_code=500,
             detail=f"Failed to parse Claude response: {e}",
         )
+
+    # Cross-check AI claims against the DB. Annotates each threat/calc/bring
+    # with `verified` + `verification_note`, and populates `analysis.warnings`.
+    # Runs before caching so the stored analysis carries the same warnings on
+    # future cache hits (no need to re-verify).
+    my_team_names = [p["name"] for p in my_team["pokemon"]]
+    analysis = verify_draft_analysis(
+        analysis,
+        my_team_names=my_team_names,
+        opponent_team_names=body.opponent_team,
+    )
 
     # Cache the result (v2 key + cache_version=2)
     _save_cache(

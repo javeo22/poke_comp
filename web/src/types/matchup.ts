@@ -2,6 +2,9 @@ export interface OpponentPokemon {
   name: string;
 }
 
+export type MatchFormat = "ladder" | "bo1" | "bo3" | "tournament" | "friendly";
+export type CloseType = "blowout" | "close" | "comeback" | "standard";
+
 export interface Matchup {
   id: string;
   user_id: string;
@@ -11,6 +14,10 @@ export interface Matchup {
   outcome: "win" | "loss";
   notes: string | null;
   played_at: string;
+  format?: MatchFormat | null;
+  tags?: string[];
+  close_type?: CloseType | null;
+  mvp_pokemon?: string | null;
 }
 
 export interface MatchupCreate {
@@ -19,6 +26,10 @@ export interface MatchupCreate {
   lead_pair?: string[];
   outcome: "win" | "loss";
   notes?: string;
+  format?: MatchFormat;
+  tags?: string[];
+  close_type?: CloseType;
+  mvp_pokemon?: string;
 }
 
 export interface MatchupUpdate {
@@ -26,6 +37,10 @@ export interface MatchupUpdate {
   lead_pair?: string[];
   outcome?: "win" | "loss";
   notes?: string;
+  format?: MatchFormat;
+  tags?: string[];
+  close_type?: CloseType;
+  mvp_pokemon?: string;
 }
 
 export interface MatchupListResponse {
@@ -45,4 +60,6 @@ export interface MatchupStats {
   overall: WinRateStat;
   by_team: WinRateStat[];
   by_opponent_pokemon: WinRateStat[];
+  by_format?: WinRateStat[];
+  by_tag?: WinRateStat[];
 }

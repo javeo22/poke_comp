@@ -2,6 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+# Enum-like validators via regex (pydantic v2 style). Migration
+# 20260419100000 enforces the same set via CHECK constraints in Postgres.
+FORMAT_PATTERN = r"^(ladder|bo1|bo3|tournament|friendly)$"
+CLOSE_TYPE_PATTERN = r"^(blowout|close|comeback|standard)$"
+
 
 class OpponentPokemon(BaseModel):
     name: str
@@ -23,6 +28,23 @@ class MatchupCreate(BaseModel):
     )
     outcome: str = Field(pattern=r"^(win|loss)$")
     notes: str | None = None
+    format: str | None = Field(
+        None,
+        pattern=FORMAT_PATTERN,
+        description="Match context: ladder | bo1 | bo3 | tournament | friendly",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Archetype/strategy tags (e.g. 'rain', 'trick-room')",
+    )
+    close_type: str | None = Field(
+        None,
+        pattern=CLOSE_TYPE_PATTERN,
+        description="Post-match reflection: blowout | close | comeback | standard",
+    )
+    mvp_pokemon: str | None = Field(
+        None, description="The Pokemon that carried (or failed) the match"
+    )
 
 
 class MatchupUpdate(BaseModel):
@@ -30,6 +52,10 @@ class MatchupUpdate(BaseModel):
     lead_pair: list[str] | None = None
     outcome: str | None = Field(None, pattern=r"^(win|loss)$")
     notes: str | None = None
+    format: str | None = Field(None, pattern=FORMAT_PATTERN)
+    tags: list[str] | None = None
+    close_type: str | None = Field(None, pattern=CLOSE_TYPE_PATTERN)
+    mvp_pokemon: str | None = None
 
 
 class MatchupResponse(BaseModel):
@@ -41,6 +67,10 @@ class MatchupResponse(BaseModel):
     outcome: str
     notes: str | None
     played_at: datetime
+    format: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    close_type: str | None = None
+    mvp_pokemon: str | None = None
 
 
 class MatchupList(BaseModel):
@@ -60,3 +90,5 @@ class MatchupStats(BaseModel):
     overall: WinRateStat
     by_team: list[WinRateStat]
     by_opponent_pokemon: list[WinRateStat]
+    by_format: list[WinRateStat] = Field(default_factory=list)
+    by_tag: list[WinRateStat] = Field(default_factory=list)
