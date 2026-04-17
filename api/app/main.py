@@ -8,6 +8,7 @@ from app.limiter import limiter
 from app.routers import (
     abilities,
     admin,
+    admin_cron,
     ai_usage,
     cheatsheet,
     draft,
@@ -73,6 +74,7 @@ app.include_router(matchups.router)
 app.include_router(ai_usage.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
+app.include_router(admin_cron.router)
 app.include_router(public.router)
 app.include_router(strategy.router)
 

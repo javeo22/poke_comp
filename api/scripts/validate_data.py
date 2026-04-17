@@ -185,7 +185,11 @@ def check_item_legality(sb: Client, fix: bool = False) -> CheckResult:
 
 
 def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
-    """Verify all moves in pokemon_usage exist in the moves table."""
+    """Verify all moves in pokemon_usage exist in the moves table.
+
+    Catches non-English moves (Spanish/Korean/French/Italian/Chinese) that
+    slipped in from localized Pikalytics pages, plus any stale names.
+    """
     # Get all known moves
     moves_result = sb.table("moves").select("name").execute()
     moves_rows: list[dict] = moves_result.data  # type: ignore[assignment]
@@ -196,6 +200,8 @@ def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
     usage_rows: list[dict] = usage_result.data  # type: ignore[assignment]
 
     unknown_entries: list[str] = []
+    rows_to_fix: list[dict] = []
+
     for row in usage_rows:
         moves_list: list[dict] = row.get("moves") or []
         unknown = [
@@ -205,6 +211,24 @@ def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
         ]
         if unknown:
             unknown_entries.append(f"{row['pokemon_name']}: {', '.join(unknown)}")
+            if fix:
+                cleaned = [
+                    m
+                    for m in moves_list
+                    if m.get("name", "").lower() in known_moves
+                ]
+                rows_to_fix.append({"id": row["id"], "moves": cleaned})
+
+    fixed = 0
+    if fix and rows_to_fix:
+        for row_fix in rows_to_fix:
+            try:
+                sb.table("pokemon_usage").update({"moves": row_fix["moves"]}).eq(
+                    "id", row_fix["id"]
+                ).execute()
+                fixed += 1
+            except Exception:
+                pass
 
     if unknown_entries:
         return CheckResult(
@@ -212,6 +236,7 @@ def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
             status="warn",
             message=f"{len(unknown_entries)} Pokemon have unknown moves",
             details=unknown_entries[:20],
+            fixed=fixed,
         )
     return CheckResult(
         name="move_legality",

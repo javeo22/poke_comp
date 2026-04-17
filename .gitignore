@@ -28,3 +28,10 @@ Thumbs.db
 # Supabase
 supabase/.temp/
 .vercel
+
+# Claude Code local state (worktrees, launch/settings) -- machine-specific
+.claude/
+web/.claude/
+
+# Validation artifacts
+api/validation_report.json

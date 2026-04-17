@@ -26,6 +26,7 @@ Usage:
 """
 
 import sys
+import time
 from datetime import date
 from typing import Any
 
@@ -34,6 +35,7 @@ from pydantic import BaseModel, ValidationError
 from supabase import Client, create_client
 
 from app.config import settings
+from app.models.ingest import IngestResult
 
 # VGC 2026 Regulation I on Pokemon Showdown (NOT Champions-specific)
 SMOGON_STATS_URL = "https://pkmn.github.io/smogon/data/stats/gen9vgc2026.json"
@@ -179,7 +181,7 @@ def _get_existing_pikalytics_names(sb: Client, snapshot_date: str) -> set[str]:
     return {row["pokemon_name"] for row in rows}
 
 
-def ingest_smogon_data(sb: Client) -> None:
+def ingest_smogon_data(sb: Client, dry_run: bool = False) -> IngestResult:
     """Validate, clean, and upsert Smogon usage stats into pokemon_usage.
 
     Protects existing Pikalytics records: if a Pokemon already has
@@ -188,24 +190,31 @@ def ingest_smogon_data(sb: Client) -> None:
     Items and abilities are validated against Champions legality:
     - Items must exist in the Champions shop
     - Abilities must belong to a Champions-eligible Pokemon
+
+    When ``dry_run`` is true, fetches + parses data but performs no DB writes.
     """
+    started = time.monotonic()
+    result = IngestResult(source="smogon", dry_run=dry_run)
+
     raw_data = fetch_smogon_data()
     if not raw_data:
-        print("Failed to fetch data. Aborting ingest.")
-        return
+        result.warnings.append("Failed to fetch data from Smogon")
+        result.duration_ms = int((time.monotonic() - started) * 1000)
+        return result
 
     try:
         validated_data = SmogonStatsData(**raw_data)
     except ValidationError as e:
-        print(f"Data validation failed: {e}")
-        return
+        result.warnings.append(f"Data validation failed: {e}")
+        result.duration_ms = int((time.monotonic() - started) * 1000)
+        return result
 
     print(f"Data validated successfully ({validated_data.battles} battles). Preparing upserts...")
     print("NOTE: gen9vgc2026 is VGC 2026 Regulation I (Showdown), not Champions-specific data.")
 
     # Build a lookup of our Champions roster: normalized_name -> display_name
-    result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
-    rows: list[dict] = result.data  # type: ignore[assignment]
+    roster_result = sb.table("pokemon").select("name").eq("champions_eligible", True).execute()
+    rows: list[dict] = roster_result.data  # type: ignore[assignment]
     local_roster: dict[str, str] = {
         row["name"].lower().replace("-", "").replace(" ", ""): row["name"] for row in rows
     }
@@ -223,7 +232,7 @@ def ingest_smogon_data(sb: Client) -> None:
     stale_names = [
         r["pokemon_name"] for r in existing_rows if r["pokemon_name"] not in champions_names
     ]
-    if stale_names:
+    if stale_names and not dry_run:
         print(f"  Removing {len(stale_names)} non-Champions entries from pokemon_usage...")
         batch_size = 100
         for i in range(0, len(stale_names), batch_size):
@@ -280,11 +289,17 @@ def ingest_smogon_data(sb: Client) -> None:
         }
         upsert_batch.append(record)
 
+    result.rows_skipped = skipped_pikalytics
     print(
         f"Mapped {mapped_count} Champions-eligible Pokemon. "
         f"Skipped {skipped_pikalytics} (Pikalytics data exists). "
-        f"Upserting {len(upsert_batch)}..."
+        f"{'Would upsert' if dry_run else 'Upserting'} {len(upsert_batch)}..."
     )
+
+    if dry_run:
+        result.rows_inserted = len(upsert_batch)
+        result.duration_ms = int((time.monotonic() - started) * 1000)
+        return result
 
     # Clean old Smogon snapshots to avoid duplicate listings
     try:
@@ -292,9 +307,10 @@ def ingest_smogon_data(sb: Client) -> None:
             "source", "smogon"
         ).neq("snapshot_date", today_date).execute()
         print("  Cleaned old smogon snapshots")
-    except Exception:
-        pass
+    except Exception as e:
+        result.warnings.append(f"Failed to clean old snapshots: {e}")
 
+    upserted = 0
     batch_size = 100
     for i in range(0, len(upsert_batch), batch_size):
         chunk = upsert_batch[i : i + batch_size]
@@ -302,15 +318,25 @@ def ingest_smogon_data(sb: Client) -> None:
             sb.table("pokemon_usage").upsert(
                 chunk, on_conflict="pokemon_name,format,snapshot_date"
             ).execute()
+            upserted += len(chunk)
         except Exception as e:
-            print(f"  Warning: Database upsert chunk failed: {e}")
+            result.warnings.append(f"Upsert chunk failed: {e}")
 
+    result.rows_updated = upserted
+    result.duration_ms = int((time.monotonic() - started) * 1000)
     print("Smogon Meta Ingest complete.")
+    return result
+
+
+def run(dry_run: bool = False) -> IngestResult:
+    """Entrypoint for HTTP/cron invocation. Returns an IngestResult."""
+    db = create_client(settings.supabase_url, settings.supabase_service_key)
+    return ingest_smogon_data(db, dry_run=dry_run)
 
 
 def main() -> None:
-    db = create_client(settings.supabase_url, settings.supabase_service_key)
-    ingest_smogon_data(db)
+    dry_run = "--dry-run" in sys.argv
+    run(dry_run=dry_run)
 
 
 if __name__ == "__main__":

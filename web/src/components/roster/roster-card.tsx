@@ -68,7 +68,7 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
       </div>
 
       {/* Types */}
-      <div className="mb-3 flex gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         {pokemon.types.map((t) => (
           <TypeBadge key={t} type={t} />
         ))}

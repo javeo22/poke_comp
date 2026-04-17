@@ -33,7 +33,17 @@
 - [x] Item legality: fixed Smogon ingest to recalculate percentages after filtering, ran --fix to clean 131 entries
 - [x] Ability legality: cleaned 12 entries via --fix (including non-English ability names)
 - [x] Non-English data: deleted 6 Pikalytics rows with Spanish/Korean/French/Italian/Chinese moves/items
-- [ ] Meta snapshot names: 31 names from legacy Game8 data (Wash Rotom etc.) -- Game8 scraper removed, these are stale
+- [x] Non-English data round 2 (2026-04-16): 28 more entries purged (12 items, 8 moves, 8 abilities) after user reported non-English moves in UI. `check_move_legality` now has --fix support; `pikalytics_usage.py` sends `Accept-Language: en-US`. Validator passes 8/8 clean.
+- [x] Meta snapshot names: resolved by Game8 row cleanup migration (2026-04-16)
+
+### Session A: User-reported issues (2026-04-16) -- LANDED
+- [x] Type badge overflow: added `flex-wrap` to 4 type-badge containers (pokemon-card, roster-card, pokemon detail header, meta detail panel). Verified live via preview — all 50 pokedex cards render with new class, dual-type badges no longer break layout.
+- [x] Non-English moves/items/abilities: Pikalytics `Accept-Language: en-US,en;q=0.9` header + `check_move_legality` --fix support + one-off --fix run purged 28 stale entries.
+- [x] Draft latency: Haiku now default for draft (`HAIKU_MODEL` in `Query()` default), Sonnet available via `?model=claude-sonnet-4-6`. Haiku stays unquota'd (bypass remains in `analyze_draft`). Cheatsheet unchanged (Sonnet default, not time-sensitive).
+- [x] Draft UX: elapsed-time counter on button, "Deep analysis (Sonnet)" checkbox toggle, "Fast · ~3-5s" / "Deep · ~10-15s" timing hints, mode badge in loading state with descriptive "AI is reviewing usage data..." copy.
+
+### Session A: Deferred
+- [ ] True SSE streaming for draft — scoped for a follow-up session. Haiku + progress UX covers ~90% of the "takes too long" complaint for team-preview use.
 
 ### Data
 - [x] Pikalytics ingest: 25 Pokemon with full usage data (2026-04-16)
@@ -63,10 +73,15 @@
 - [x] 1.5 Privacy Policy updates: Ko-fi added to Third-Party Services, new Section 4 Third-Party Data Sources (PokeAPI/Pikalytics/Smogon/Limitless/Serebii), new Section 5 Advertising (EthicalAds disclosure). Terms: Section 4 AI rate limit language updated for tiered quotas, new Section 5 Supporter Benefits
 - [x] 2.1 Game8 cleanup: migration 20260418000000_clear_game8_snapshots.sql applied to Supabase prod, removed 3 stale rows (source='Game8') plus all embedded stale Pokemon name references
 
-### Week 3 (Apr 30 - May 6) -- ready to start
-- [ ] 2.2 Refactor ingest scripts (smogon_meta, pikalytics_usage, limitless_teams) to expose `async run(dry_run=False) -> IngestResult`. Create `api/app/models/ingest.py`
-- [ ] 2.3 Vercel Cron endpoints: new `api/app/routers/admin_cron.py` with `require_cron_secret` dependency. Add `crons` array to vercel.json (Smogon Mon 06:00 UTC, Pikalytics Mon 07:00, Limitless daily 08:00, validate-data Mon 09:30, cache-warmup Tue 10:00)
-- [ ] 2.4 Workstream G ToS audit: confirm Game8 removal, re-audit Serebii 24hr delay, add EthicalAds as third-party recipient in LEGAL_AND_DEV_GUIDELINES.md
+### Week 3 (Apr 30 - May 6) -- LANDED (2026-04-16)
+- [x] 2.2 Ingest refactor: `api/app/models/ingest.py` with `IngestResult` pydantic model. `smogon_meta`, `pikalytics_usage`, `limitless_teams` each expose `run(dry_run=False) -> IngestResult` with counts/warnings/timing. CLIs preserved
+- [x] 2.3 Vercel Cron: `api/app/routers/admin_cron.py` with `require_cron_secret` (constant-time HMAC compare, 401 on bad/missing, 503 when unset). 5 GET endpoints (Smogon, Pikalytics, Limitless, validate-data, cache-warmup stub) registered. `vercel.json` crons array added. Integration test confirms 401/503/200 branches
+- [x] 2.4 Workstream G audit: `LEGAL_AND_DEV_GUIDELINES.md` section 1.C refreshed with last-verified dates, Serebii 0.5s delay reconfirmed, Game8 removal reconfirmed across live code, new Third-Party Data Recipients table in section 3 (Anthropic/Supabase/Vercel/Ko-fi/EthicalAds with PII assertions). `refresh_meta.py` SOURCES emptied, marked deprecated. CLAUDE.md data pipeline docs updated
+
+### Outstanding user actions (Week 3 handoff)
+- [ ] Vercel cron limits: Hobby plan allows limited cron jobs. This config ships 5 schedules; if you hit the plan cap, prune to the 3 weekly ingests and the daily Limitless (validate-data + cache-warmup are nice-to-have). Confirm in Vercel dashboard after next deploy
+- [ ] Manually hit one cron endpoint on a preview deploy with `curl -H "Authorization: Bearer $CRON_SECRET" https://<preview>.vercel.app/api/admin/cron/cache-warmup` to confirm routing before Monday's 06:00 UTC first fire
+- [ ] Once cache-warmup Phase 5.2 lands, swap the stub for the real `cache_warmup.run()` call
 
 ---
 

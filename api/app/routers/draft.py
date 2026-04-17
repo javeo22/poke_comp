@@ -7,7 +7,6 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.ai_quota import (
-    DEFAULT_MODEL,
     HAIKU_MODEL,
     check_ai_quota,
     estimate_cost,
@@ -464,7 +463,7 @@ Return ONLY the JSON object, no markdown fences or explanation."""
 def analyze_draft(
     request: Request,
     body: DraftRequest,
-    model: str = Query(DEFAULT_MODEL, pattern=r"^claude-"),
+    model: str = Query(HAIKU_MODEL, pattern=r"^claude-"),
     user_id: str = Depends(get_current_user),
 ):
     """Analyze a team preview matchup and recommend bring-4 + leads."""

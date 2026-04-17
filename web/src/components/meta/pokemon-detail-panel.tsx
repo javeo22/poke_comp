@@ -162,7 +162,7 @@ export function PokemonDetailPanel({
                 <h2 className="font-display text-2xl font-bold text-on-surface">
                   {pokemon.name}
                 </h2>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {pokemon.types.map((t) => (
                     <TypeBadge key={t} type={t} />
                   ))}

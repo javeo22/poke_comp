@@ -36,6 +36,8 @@ export default function DraftPage() {
   // Analysis state
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [deepMode, setDeepMode] = useState(false); // Haiku (fast) by default
   const [error, setError] = useState<string | null>(null);
   const [saveOutcome, setSaveOutcome] = useState<"win" | "loss" | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -123,6 +125,18 @@ export default function DraftPage() {
     return pokemonOptions.filter((o) => !selectedInOtherSlots.includes(o.value));
   };
 
+  // Elapsed-time ticker while analyzing. Shows the user that work is happening
+  // during team preview (90s window) so they know whether to wait or bail.
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setElapsedMs(0);
+      return;
+    }
+    const started = Date.now();
+    const id = setInterval(() => setElapsedMs(Date.now() - started), 100);
+    return () => clearInterval(id);
+  }, [isAnalyzing]);
+
   const handleAnalyze = async () => {
     if (!canAnalyze) return;
     setIsAnalyzing(true);
@@ -131,10 +145,13 @@ export default function DraftPage() {
     setSaveOutcome(null);
     setResult(null);
     try {
-      const response = await analyzeDraft({
-        opponent_team: filledOpponents,
-        my_team_id: selectedTeamId,
-      });
+      const response = await analyzeDraft(
+        {
+          opponent_team: filledOpponents,
+          my_team_id: selectedTeamId,
+        },
+        deepMode ? "claude-sonnet-4-6" : undefined, // default (undefined) -> Haiku
+      );
       setResult(response);
       // Refresh quota after analysis
       fetchAiUsage()
@@ -293,16 +310,39 @@ export default function DraftPage() {
         </div>
       </div>
 
-      {/* Analyze button */}
-      <div className="mt-6 flex items-center gap-4">
+      {/* Analyze button + mode toggle */}
+      <div className="mt-6 flex flex-wrap items-center gap-4">
         <button
           onClick={handleAnalyze}
-          disabled={!canAnalyze || isAnalyzing || (quota !== null && quota.remaining <= 0)}
+          disabled={
+            !canAnalyze ||
+            isAnalyzing ||
+            (deepMode && quota !== null && quota.remaining <= 0)
+          }
           className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isAnalyzing ? "Analyzing..." : "Analyze Matchup"}
+          {isAnalyzing
+            ? `Analyzing… ${(elapsedMs / 1000).toFixed(1)}s`
+            : "Analyze Matchup"}
         </button>
-        {quota !== null && (
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={deepMode}
+            disabled={isAnalyzing}
+            onChange={(e) => setDeepMode(e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+          <span className="font-display text-[0.7rem] uppercase tracking-wider text-on-surface-muted">
+            Deep analysis (Sonnet, slower)
+          </span>
+        </label>
+        {!isAnalyzing && !result && (
+          <span className="font-display text-[0.65rem] uppercase tracking-wider text-secondary">
+            {deepMode ? "Deep · ~10-15s" : "Fast · ~3-5s"}
+          </span>
+        )}
+        {deepMode && quota !== null && (
           <QuotaIndicator
             today={quota}
             month={quotaMonth}
@@ -332,6 +372,23 @@ export default function DraftPage() {
       {/* Loading state */}
       {isAnalyzing && (
         <div className="mt-8 flex flex-col gap-4">
+          <div className="rounded-xl border border-outline-variant bg-surface-low p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-display text-xs uppercase tracking-wider text-secondary">
+                {deepMode ? "Deep analysis (Sonnet)" : "Fast analysis (Haiku)"}
+              </p>
+              <p className="font-mono text-xs text-on-surface-muted tabular-nums">
+                {(elapsedMs / 1000).toFixed(1)}s
+                {" · "}
+                <span className="text-on-surface-muted">
+                  typical {deepMode ? "10-15s" : "3-5s"}
+                </span>
+              </p>
+            </div>
+            <p className="mt-2 font-body text-xs text-on-surface-muted">
+              AI is reviewing usage data, your roster, matchup history, and building a game plan.
+            </p>
+          </div>
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-low" />
           ))}

@@ -89,16 +89,15 @@ Scripts are organized into three layers:
 - `scripts/seed_champions.py` -- Champions roster flags, items, mega links
 - `scripts/ingest/serebii_static.py` -- Champions-verified movepools, abilities, items, moves, mega data
 
-**Automated refresh** (scheduled weekly/daily):
-- `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon (gen9vgc2026) -> `pokemon_usage` table
-- `scripts/ingest/limitless_teams.py` -- Tournament teams from Limitless VGC API -> `tournament_teams` table
-- `scripts/ingest/pikalytics_usage.py` -- Tournament-weighted usage stats from Pikalytics -> `pokemon_usage` table
-- `scripts/refresh_meta.py` -- AI-extracted tier lists -> `meta_snapshots` table (daily cron)
+**Automated refresh** (Vercel Cron, wired in `vercel.json`):
+- `scripts/ingest/smogon_meta.py` -- Usage stats from Smogon (gen9vgc2026) -> `pokemon_usage` table (Mon 06:00 UTC)
+- `scripts/ingest/pikalytics_usage.py` -- Tournament-weighted usage stats from Pikalytics -> `pokemon_usage` table (Mon 07:00 UTC)
+- `scripts/ingest/limitless_teams.py` -- Tournament teams from Limitless VGC API -> `tournament_teams` table (daily 08:00 UTC)
+- `scripts/refresh_meta.py` -- DEPRECATED 2026-04-16: Game8 source removed per ToS audit; SOURCES empty (see LEGAL_AND_DEV_GUIDELINES.md section 1.C)
+
+Each ingest script exposes `run(dry_run=False) -> IngestResult` (see `api/app/models/ingest.py`), invoked via CLI or the cron HTTP endpoints under `/admin/cron/*` (see `api/app/routers/admin_cron.py`). Cron endpoints require `Authorization: Bearer $CRON_SECRET`.
 
 **Validation** (run after ingest or on-demand):
-- `scripts/validate_data.py` -- 7-check data integrity validator (--fix mode to auto-repair)
+- `scripts/validate_data.py` -- 8-check data integrity validator (--fix mode to auto-repair); Vercel Cron runs `--fix` weekly Mon 09:30 UTC
 - `scripts/smoke_test.py` -- Quick pass/fail data health check
 - `GET /admin/data-health` -- API endpoint for data health monitoring
-
-**On-demand** (via API):
-- `POST /meta/scrape` -- Trigger Game8 tier list scrape from the API

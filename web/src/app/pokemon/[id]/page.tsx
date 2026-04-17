@@ -99,7 +99,7 @@ export default function PokemonDetailPage() {
               <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
                 {pokemon.name}
               </h1>
-              <div className="mt-2 flex gap-2 sm:justify-center">
+              <div className="mt-2 flex flex-wrap gap-2 sm:justify-center">
                 {pokemon.types.map((t) => (
                   <TypeBadge key={t} type={t} />
                 ))}

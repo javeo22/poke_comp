@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup, Comment, Tag
 from supabase import Client, create_client
 
 from app.config import settings
+from app.models.ingest import IngestResult
 
 # Champions tournament format -- NOT the generic VGC page
 PIKALYTICS_BASE = "https://pikalytics.com/pokedex/championstournaments"
@@ -31,6 +32,10 @@ PIKALYTICS_LIST_URL = "https://pikalytics.com/pokedex/championstournaments"
 REQUEST_HEADERS = {
     "User-Agent": "PokemonChampionsCompanion/1.0 (+github.com/javeo22/poke_comp)",
     "Accept": "text/html",
+    # Force English -- Pikalytics content-negotiates on Accept-Language and
+    # will serve Spanish/Korean/French/Italian/Chinese move + item names if
+    # the scraper runs from a non-US region. Discovered 2026-04-16.
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 # Respectful delay between page fetches
@@ -305,25 +310,47 @@ def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
     print(f"  Auto-marked {marked} items.")
 
 
-def ingest_pikalytics(sb: Client) -> None:
+def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
     """Scrape Pikalytics Champions Tournaments usage data and upsert into pokemon_usage.
 
     Only ingests Champions-eligible Pokemon. Items and abilities are NOT
     filtered because Pikalytics Champions tournament data already reflects
     only items/abilities that are legal in Champions play.
+
+    When ``dry_run`` is true, fetches list only and performs no detail
+    scraping or DB writes (fast, respectful preview).
     """
+    started = time.monotonic()
+    result = IngestResult(source="pikalytics", dry_run=dry_run)
+
     roster = _build_roster(sb)
     print(f"Roster: {len(roster)} name variants for Champions-eligible Pokemon")
 
     # Step 1: Get top Pokemon list
     pokemon_list = fetch_pokemon_list()
     if not pokemon_list:
-        print("Failed to fetch Pokemon list. Aborting.")
-        return
+        result.warnings.append("Failed to fetch Pokemon list from Pikalytics")
+        result.duration_ms = int((time.monotonic() - started) * 1000)
+        return result
+
+    if dry_run:
+        # Count how many are Champions-eligible without scraping detail pages
+        eligible = 0
+        for entry in pokemon_list:
+            raw_name = str(entry["name"])
+            clean = raw_name.lower().replace("-", "").replace(" ", "")
+            if roster.get(clean) or roster.get(raw_name.lower()):
+                eligible += 1
+        result.rows_inserted = eligible
+        result.rows_skipped = len(pokemon_list) - eligible
+        result.duration_ms = int((time.monotonic() - started) * 1000)
+        print(f"[dry-run] {eligible}/{len(pokemon_list)} Champions-eligible on list page")
+        return result
 
     today_date = date.today().isoformat()
     upsert_batch: list[dict] = []
     scraped = 0
+    skipped = 0
     # Track all item names seen in Pikalytics (before legality filter)
     all_seen_items: set[str] = set()
 
@@ -337,6 +364,7 @@ def ingest_pikalytics(sb: Client) -> None:
         display_name = roster.get(clean) or roster.get(raw_name.lower())
         if not display_name:
             print(f"  Skipping {raw_name}: not Champions-eligible")
+            skipped += 1
             continue
 
         # Step 2: Fetch detail page using the slug from the list
@@ -354,7 +382,9 @@ def ingest_pikalytics(sb: Client) -> None:
             teammates = detail["teammates"]
             spreads = detail["spreads"]
         else:
-            print(f"  Warning: no detail for {display_name}, using list data only")
+            warning = f"No detail for {display_name}, using list data only"
+            result.warnings.append(warning)
+            print(f"  Warning: {warning}")
             moves = []
             items = []
             abilities = []
@@ -389,9 +419,10 @@ def ingest_pikalytics(sb: Client) -> None:
             "source", "pikalytics"
         ).eq("format", "doubles").neq("snapshot_date", today_date).execute()
         print("  Cleaned old pikalytics snapshots")
-    except Exception:
-        pass
+    except Exception as e:
+        result.warnings.append(f"Failed to clean old snapshots: {e}")
 
+    upserted = 0
     print(f"\nUpserting {len(upsert_batch)} records...")
     batch_size = 50
     for i in range(0, len(upsert_batch), batch_size):
@@ -400,18 +431,29 @@ def ingest_pikalytics(sb: Client) -> None:
             sb.table("pokemon_usage").upsert(
                 chunk, on_conflict="pokemon_name,format,snapshot_date"
             ).execute()
+            upserted += len(chunk)
         except Exception as e:
-            print(f"  Warning: upsert chunk failed: {e}")
+            result.warnings.append(f"Upsert chunk failed: {e}")
 
     # Step 4: Auto-mark items seen in tournament data as available
     _auto_mark_used_items(sb, all_seen_items)
 
+    result.rows_updated = upserted
+    result.rows_skipped = skipped
+    result.duration_ms = int((time.monotonic() - started) * 1000)
     print(f"Pikalytics ingest complete: {scraped} Pokemon.")
+    return result
+
+
+def run(dry_run: bool = False) -> IngestResult:
+    """Entrypoint for HTTP/cron invocation. Returns an IngestResult."""
+    db = create_client(settings.supabase_url, settings.supabase_service_key)
+    return ingest_pikalytics(db, dry_run=dry_run)
 
 
 def main() -> None:
-    db = create_client(settings.supabase_url, settings.supabase_service_key)
-    ingest_pikalytics(db)
+    dry_run = "--dry-run" in sys.argv
+    run(dry_run=dry_run)
 
 
 if __name__ == "__main__":

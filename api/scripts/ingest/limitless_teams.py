@@ -22,6 +22,7 @@ import httpx
 from supabase import Client, create_client
 
 from app.config import settings
+from app.models.ingest import IngestResult
 
 LIMITLESS_API_BASE = "https://play.limitlesstcg.com/api"
 REQUEST_HEADERS = {
@@ -200,12 +201,17 @@ def ingest_limitless_tournaments(
     sb: Client,
     tournament_ids: list[str] | None = None,
     top_cut: int = 8,
-) -> None:
+    dry_run: bool = False,
+) -> IngestResult:
     """Fetch, validate, and store Limitless tournament standings.
 
     If tournament_ids is None, fetches the 5 most recent completed
-    VGC tournaments automatically.
+    VGC tournaments automatically. When ``dry_run`` is true, queries
+    the API and resolves team names but performs no DB writes.
     """
+    started = time.monotonic()
+    result = IngestResult(source="limitless", dry_run=dry_run)
+
     name_lookup = _build_name_lookup(sb)
     print(f"Champions roster lookup: {len(name_lookup)} entries")
 
@@ -214,8 +220,9 @@ def ingest_limitless_tournaments(
         print("Discovering recent VGC tournaments...")
         tournaments = fetch_recent_tournament_ids("VGC", limit=5)
         if not tournaments:
-            print("No tournaments found. Aborting.")
-            return
+            result.warnings.append("No recent VGC tournaments found on Limitless API")
+            result.duration_ms = int((time.monotonic() - started) * 1000)
+            return result
         print(f"Found {len(tournaments)} tournaments:")
         for t in tournaments:
             print(f"  - {t['name']} (ID: {t['id']})")
@@ -223,6 +230,7 @@ def ingest_limitless_tournaments(
         tournaments = [{"id": tid, "name": f"Tournament {tid}"} for tid in tournament_ids]
 
     total_teams = 0
+    skipped = 0
 
     for tournament in tournaments:
         tid = tournament["id"]
@@ -231,7 +239,7 @@ def ingest_limitless_tournaments(
 
         standings = fetch_tournament_standings(tid)
         if not standings:
-            print(f"  No standings data for {tname}")
+            result.warnings.append(f"No standings data for {tname}")
             time.sleep(REQUEST_DELAY)
             continue
 
@@ -242,12 +250,14 @@ def ingest_limitless_tournaments(
 
             team_names = _extract_team_names(standing)
             if len(team_names) < 4:
+                skipped += 1
                 continue
 
             team_ids = _resolve_pokemon_ids(team_names, name_lookup)
             if len(team_ids) < 4:
                 resolved = f"{len(team_ids)}/{len(team_names)}"
                 print(f"    Placing {placing}: only resolved {resolved} Pokemon, skipping")
+                skipped += 1
                 continue
 
             archetype = determine_archetype(team_names)
@@ -260,6 +270,13 @@ def ingest_limitless_tournaments(
                 "source": "Limitless",
             }
 
+            if dry_run:
+                total_teams += 1
+                print(
+                    f"    [dry-run] Placing {placing}: {', '.join(team_names[:6])} [{archetype}]"
+                )
+                continue
+
             try:
                 # Use tournament_name + placement as dedup key
                 # Delete any existing record for this tournament/placement, then insert
@@ -271,24 +288,37 @@ def ingest_limitless_tournaments(
                 total_teams += 1
                 print(f"    Placing {placing}: {', '.join(team_names[:6])} [{archetype}]")
             except Exception as e:
-                print(f"    Warning: DB insert failed for placing {placing}: {e}")
+                result.warnings.append(f"DB insert failed for {tname} placing {placing}: {e}")
 
         time.sleep(REQUEST_DELAY)
 
+    result.rows_inserted = total_teams
+    result.rows_skipped = skipped
+    result.duration_ms = int((time.monotonic() - started) * 1000)
     print(f"\nLimitless ingest complete: {total_teams} teams stored.")
+    return result
+
+
+def run(
+    dry_run: bool = False,
+    tournament_ids: list[str] | None = None,
+) -> IngestResult:
+    """Entrypoint for HTTP/cron invocation. Returns an IngestResult."""
+    db = create_client(settings.supabase_url, settings.supabase_service_key)
+    return ingest_limitless_tournaments(
+        db, tournament_ids=tournament_ids, dry_run=dry_run
+    )
 
 
 def main() -> None:
-    db = create_client(settings.supabase_url, settings.supabase_service_key)
-
     # Check for --tournament-id flag
     tournament_ids = None
     if "--tournament-id" in sys.argv:
         idx = sys.argv.index("--tournament-id")
         if idx + 1 < len(sys.argv):
             tournament_ids = [sys.argv[idx + 1]]
-
-    ingest_limitless_tournaments(db, tournament_ids=tournament_ids)
+    dry_run = "--dry-run" in sys.argv
+    run(dry_run=dry_run, tournament_ids=tournament_ids)
 
 
 if __name__ == "__main__":

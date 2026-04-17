@@ -1,13 +1,15 @@
-"""Refresh Champions meta data (tier lists, usage stats) using AI extraction.
+"""Refresh Champions meta data (tier lists) using AI extraction.
+
+DEPRECATED as of 2026-04-16: the only SOURCE was Game8, which was
+removed after a ToS audit flagged AI-bot blocks and anti-reverse-
+engineering clauses. The AI extraction scaffolding is preserved for
+a future compliant source but SOURCES is intentionally empty --
+running this script is a no-op until a new source is added.
 
 Usage:
     uv run python -m scripts.refresh_meta
 
-Fetches current tier list pages, sends content to Claude API for structured
-extraction, and updates meta_snapshots in Supabase. Designed to run daily
-via cron, scheduled task, or Claude Code /schedule.
-
-Requires ANTHROPIC_API_KEY in .env.
+Requires ANTHROPIC_API_KEY in .env when SOURCES is non-empty.
 """
 
 import json
@@ -20,23 +22,17 @@ from supabase import Client, create_client
 
 from app.config import settings
 
-SOURCES = [
-    {
-        "name": "Game8",
-        "urls": {
-            "singles": "https://game8.co/games/Pokemon-Champions/archives/592465",
-            "doubles": "https://game8.co/games/Pokemon-Champions/archives/593883",
-            "megas": "https://game8.co/games/Pokemon-Champions/archives/593897",
-        },
-    },
-    # Pikalytics provides usage rates, not editorial tier lists (S/A+/A/B/C).
-    # Use pikalytics_usage.py for usage data instead.
+SOURCES: list[dict] = [
+    # Game8 removed 2026-04-16: robots.txt blocks AI bots; ToS prohibits
+    # reverse engineering + unauthorized commercial use. See
+    # LEGAL_AND_DEV_GUIDELINES.md section 1.C for the full audit.
+    # Pikalytics provides usage rates via pikalytics_usage.py, not editorial tiers.
 ]
 
 EXTRACTION_PROMPT = """\
 You are a Pokemon Champions competitive data extractor.
 
-Given the HTML content of a Game8 tier list page, extract the structured
+Given the HTML content of a tier list page, extract the structured
 tier data. Return ONLY valid JSON mapping tier names to arrays of Pokemon names.
 
 Example output:
@@ -121,6 +117,13 @@ def update_meta_snapshots(
 
 
 def main() -> None:
+    if not SOURCES:
+        print(
+            "refresh_meta: no active tier-list sources (Game8 removed 2026-04-16)."
+            " Nothing to do."
+        )
+        return
+
     if not settings.anthropic_api_key:
         print("Error: ANTHROPIC_API_KEY not set in .env")
         sys.exit(1)
