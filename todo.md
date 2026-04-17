@@ -49,6 +49,17 @@
 - [x] Regional forms as separate roster entries: migration `20260419000000_flag_regional_forms.sql` flags 15 regional variants (Raichu-Alola through Tauros-Paldea) as `champions_eligible=true`. `seed_champions.py` updated with new `CHAMPIONS_REGIONAL_FORMS` list so future re-seeds preserve the flag. Applied to prod (verified 15/15).
 - [x] AI hallucination guardrails: `api/app/services/ai_verifier.py` cross-checks every draft claim against the DB (bring-4 in my team, leads in bring-4, threats in opponent preview, cited moves exist in `moves` table, calc attacker/defender/move all valid). Annotates each item with `verified` + `verification_note`; populates `DraftAnalysis.warnings`. Prompt strengthened with "CRITICAL ACCURACY RULES" block instructing AI to say 'uncertain' instead of fabricating. Frontend: amber warnings banner + per-item ⚠ badges with tooltip notes. Unit test with 4 injected hallucinations caught all 4.
 
+### Multi-Source Champions Validation (2026-04-17) -- LANDED
+- [x] New `api/scripts/validate_champions_sources.py` validator cross-checks Serebii + PokeAPI + live DB. Reusable via `cd api && uv run python -m scripts.validate_champions_sources` (needs Supabase DNS).
+- [x] Found + fixed 4 categories of discrepancies (migration `20260421000000_champions_data_audit_fixes.sql`):
+  - 28 berries miscategorized as `mega_stone`. Root cause: `serebii_static.py` `current_category` state leaked across page sections. Data fixed via UPDATE; code fixed by making `item_category` a local variable.
+  - 21 held-item VGC staples missing entirely from items table (Assault Vest, Choice Band, Choice Specs, Life Orb, Clear Amulet, Covert Cloak, Safety Goggles, Rocky Helmet, Weakness Policy, Wide Lens, Loaded Dice, Eject Button/Pack, Throat Spray, Room Service, Grassy Seed, Iron Ball, Light Clay, Terrain Extender, Protective Pads, Expert Belt). Inserted with IDs 30001-30021.
+  - 2 held items (King's Rock, Quick Claw) incorrectly archived during Session D prune. Restored.
+  - 9 mega stones for live Champions megas incorrectly archived (Aggronite, Beedrillite, Chesnaughtite, Delphoxite, Greninjite, Gyaradosite, Heracronite, Manectite, Steelixite). Restored.
+- [x] Post-fix: 137 shop items (was 105), all 12 VGC staples present, 0 miscategorized, 0 dangling refs.
+- [x] Full report at `api/champions_validation_report.json` (9/9 checks pass).
+- [x] Deferred to future networked run: per-Pokemon movepool vs Serebii (200 pages), per-move power/accuracy vs Serebii (494 moves). Basic sanity (0 null fields, 0 suspicious power values) passed.
+
 ### Session D (2026-04-17) -- LANDED
 - [x] Archive + prune non-Champions Pokemon/moves/items. Migration `20260420000000_archive_non_champions.sql` creates three `*_archive` tables (same columns + `archived_at` + `archive_reason`), copies non-Champions rows over, then DELETEs from live.
 - [x] Prune results (verified in prod): pokemon 1099 → 260 live (839 archived, 76% reduction), moves 932 → 494 (438 archived, 47% reduction), items 138 → 106 (32 archived, 23% reduction).

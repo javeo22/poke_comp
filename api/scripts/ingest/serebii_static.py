@@ -438,16 +438,22 @@ async def scrape_items(client: httpx.AsyncClient) -> list[ItemEntry]:
                 if vp_match:
                     vp_cost = int(vp_match.group(1).replace(",", ""))
 
-            # Detect mega stones by name
+            # Detect mega stones by name -- but do NOT mutate current_category.
+            # Previous behavior: once any "-ite" item was seen, current_category
+            # stuck on "mega_stone" and contaminated every subsequent item,
+            # including berries parsed later on the same page. Root cause of
+            # the 28 berries miscategorized as mega_stone in prod (fixed
+            # 2026-04-17). Compute a per-item category locally instead.
+            item_category = current_category
             if name.endswith("ite") and current_category != "berry":
-                current_category = "mega_stone"
+                item_category = "mega_stone"
 
             items.append(
                 ItemEntry(
                     name=title_case_name(name),
                     effect=effect,
                     location=location,
-                    category=current_category,
+                    category=item_category,
                     vp_cost=vp_cost,
                     champions_shop=champions_shop,
                 )

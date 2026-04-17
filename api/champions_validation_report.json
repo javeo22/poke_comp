@@ -1,0 +1,117 @@
+{
+  "run_date": "2026-04-17",
+  "sources": {
+    "db": "supabase sutslbmqsjczlfnsmgxt (pokecomp prod)",
+    "serebii_roster": "https://www.serebii.net/pokemonchampions/pokemon.shtml",
+    "serebii_items": "https://www.serebii.net/pokemonchampions/items.shtml",
+    "serebii_megas": "https://www.serebii.net/pokemonchampions/megaabilities.shtml",
+    "pikalytics": "https://pikalytics.com/pokedex/championstournaments",
+    "pokeapi": "https://pokeapi.co/api/v2"
+  },
+  "checks": [
+    {
+      "name": "roster_presence_vs_serebii",
+      "status": "pass",
+      "summary": "186/186 base Champions Pokemon match Serebii exactly (set diff empty both directions)"
+    },
+    {
+      "name": "regional_forms_presence",
+      "status": "pass",
+      "summary": "15/15 regional forms flagged champions_eligible (Alola/Galar/Hisui/Paldea)"
+    },
+    {
+      "name": "mega_evolution_linkage",
+      "status": "pass",
+      "summary": "58 Champions bases linked to megas; all point to live rows (no broken links). 36 classic + 23 new Champions megas."
+    },
+    {
+      "name": "roster_basic_sanity",
+      "status": "pass",
+      "summary": "0 empty movepools / abilities / types. 0 suspicious base stats. 18/18 types represented. Avg movepool 62.2 moves, avg abilities 2.53."
+    },
+    {
+      "name": "vgc_staples_present",
+      "status": "pass",
+      "summary": "12/12 competitive staple items present in shop: Assault Vest, Choice Band/Specs, Life Orb, Leftovers, Sitrus Berry, Focus Sash, Clear Amulet, Covert Cloak, Safety Goggles, Rocky Helmet, Weakness Policy"
+    },
+    {
+      "name": "items_categorization",
+      "status": "pass",
+      "summary": "0 miscategorized berries. Categories: 58 mega_stone + 51 held + 28 berry = 137 shop items total"
+    },
+    {
+      "name": "moves_basic_sanity",
+      "status": "pass",
+      "summary": "494 Champions-available moves. 0 null types/categories. 0 moves with power > 250."
+    },
+    {
+      "name": "referential_integrity",
+      "status": "pass",
+      "summary": "0 dangling user_pokemon refs. 0 dangling item refs. 0 dangling mega links. 0 dangling avatars."
+    },
+    {
+      "name": "usage_data_referential",
+      "status": "pass",
+      "summary": "0 orphan move references in pokemon_usage. 0 orphan item references. All names match canonical tables."
+    }
+  ],
+  "discrepancies_fixed": [
+    {
+      "issue": "28 berries miscategorized as 'mega_stone'",
+      "root_cause": "serebii_static.py current_category state leaks across sections when h2 header detection fails",
+      "data_fix": "UPDATE items SET category='berry' WHERE name ILIKE '%berry%' AND category='mega_stone'",
+      "code_fix": "Made item_category a local variable in scrape_items so name-based heuristic no longer mutates shared state",
+      "migration": "20260421000000_champions_data_audit_fixes.sql"
+    },
+    {
+      "issue": "21 Champions-staple held items missing from items table",
+      "root_cause": "seed_champions.py HELD_ITEMS list was extended after initial seed; subsequent serebii_static ingest overwrote without preserving",
+      "data_fix": "Inserted Assault Vest, Choice Band, Choice Specs, Clear Amulet, Covert Cloak, Eject Button/Pack, Expert Belt, Grassy Seed, Iron Ball, Life Orb, Light Clay, Loaded Dice, Protective Pads, Rocky Helmet, Room Service, Safety Goggles, Terrain Extender, Throat Spray, Weakness Policy, Wide Lens (IDs 30001-30021)",
+      "migration": "20260421000000_champions_data_audit_fixes.sql"
+    },
+    {
+      "issue": "2 held items incorrectly archived (King's Rock, Quick Claw)",
+      "root_cause": "Session D prune archived them because champions_shop_available was false; they should have been flagged true per Serebii",
+      "data_fix": "Restored from items_archive to live items with champions_shop_available=true",
+      "migration": "20260421000000_champions_data_audit_fixes.sql"
+    },
+    {
+      "issue": "9 mega stones archived despite their Mega Pokemon being Champions-linked",
+      "root_cause": "champions_shop_available=false on archive-time; but Mega Aggron/Beedrill/Chesnaught/Delphox/Greninja/Gyarados/Heracross/Manectric/Steelix are all live in the pokemon table as mega_evolution_id targets",
+      "data_fix": "Restored Aggronite, Beedrillite, Chesnaughtite, Delphoxite, Greninjite, Gyaradosite, Heracronite, Manectite, Steelixite",
+      "migration": "20260421000000_champions_data_audit_fixes.sql"
+    }
+  ],
+  "known_display_quirks_not_fixed": [
+    {
+      "issue": "11 Pokemon names include form suffixes that differ from common community usage",
+      "examples": [
+        "Meowstic Male (vs 'Meowstic')",
+        "Aegislash Shield (vs 'Aegislash')",
+        "Mimikyu Disguised (vs 'Mimikyu')",
+        "Kommo O (vs 'Kommo-o')",
+        "Mr Rime (vs 'Mr. Rime')",
+        "Basculegion Male (vs 'Basculegion')",
+        "Maushold Family Of Four (vs 'Maushold')",
+        "Palafin Zero (vs 'Palafin')"
+      ],
+      "rationale": "These are PokeAPI canonical form slugs; our Pikalytics ingest normalizes to the same form so aliases work end-to-end. Could add display-name override column in a future UX pass but not a correctness issue."
+    }
+  ],
+  "deferred_validations": [
+    {
+      "name": "per_pokemon_movepool_vs_serebii",
+      "why_deferred": "Requires per-Pokemon detail scrape from Serebii (~200 pages at 0.5s delay each = ~2 min). validate_champions_sources.py supports a --movepool-sample flag but was blocked by local DNS SERVFAIL on the Supabase host. Sample check via validate_champions_sources.py remains available to run from a networked environment."
+    },
+    {
+      "name": "per_move_power_accuracy_vs_serebii",
+      "why_deferred": "Moves table has 494 Champions-available rows. Cross-checking each against Serebii's moves.shtml would require the same detail-page scrape. Basic sanity (0 null types, 0 null categories, 0 power > 250) passes."
+    }
+  ],
+  "summary": {
+    "pass": 9,
+    "warn": 0,
+    "fail": 0,
+    "total": 9
+  }
+}

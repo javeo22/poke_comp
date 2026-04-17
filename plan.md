@@ -396,6 +396,29 @@ Context: user surfaced 7 real-world issues from dogfooding. Grouped into 3 sessi
 - True SSE streaming for draft (carried over from Session A deferral).
 - Regional forms in `name_resolver.py` match "Raichu-Alola"-style hyphenated names but the DB stores them space-separated. Works through normalization but worth a pass if the matching ever surfaces misses.
 
+### Multi-source Champions validation (Apr 17, 2026) -- LANDED
+
+- [x] **Extensive validation across multiple sources** -- user requested "do an extensive validation across multiple sources to make sure we have the correct data for champions." Built new `api/scripts/validate_champions_sources.py` that cross-checks the live DB against Serebii's Champions dex/items/megas pages and PokeAPI for canonical stats. Local Supabase DNS was temporarily unresolvable from the dev machine so the checks were executed via the Supabase MCP and `WebFetch` rather than the script's in-process httpx client; the script is committed and documented so it can be run end-to-end from any networked environment.
+
+  **Roster (vs Serebii `pokemon.shtml`)**: 186/186 Champions base-form Pokemon match — empty set diff both directions. 15/15 regional variants present and `champions_eligible=true`. 58 Champions base forms correctly linked to megas via `pokemon.mega_evolution_id` (36 classic + 22 new Champions megas, plus Charizard with X/Y both covered). All 18 types represented. 0 Pokemon with empty movepool, empty abilities, empty types, or suspicious base stats. Avg movepool 62.2 moves, avg abilities 2.53 per Pokemon.
+
+  **Items (vs Serebii `items.shtml`)**: found 4 categories of discrepancies, all fixed in migration `20260421000000_champions_data_audit_fixes.sql`:
+  1. **28 berries miscategorized as `mega_stone`** -- root cause was `serebii_static.py` scrape_items using `current_category` as mutable state. When a mega stone was detected by the `name.endswith("ite")` heuristic, it mutated the shared `current_category` and contaminated subsequent items including berries parsed later on the same page. Data fixed via UPDATE; code fixed by making `item_category` a local variable so the heuristic no longer leaks.
+  2. **21 VGC-staple held items missing entirely from the items table** — Assault Vest, Choice Band, Choice Specs, Life Orb, Clear Amulet, Covert Cloak, Safety Goggles, Rocky Helmet, Weakness Policy, Wide Lens, Loaded Dice, Eject Button, Eject Pack, Throat Spray, Room Service, Grassy Seed, Iron Ball, Light Clay, Terrain Extender, Protective Pads, Expert Belt. These were all declared in `seed_champions.py HELD_ITEMS` but never made it into live DB (likely: serebii_static ingest overwrote the table after seed). Inserted with IDs 30001–30021 to avoid PokeAPI collision.
+  3. **2 held items (King's Rock, Quick Claw) incorrectly archived** during Session D prune. Serebii lists them as available. Restored with `champions_shop_available=true`.
+  4. **9 mega stones incorrectly archived despite their Mega Pokemon being live and linked** — Aggronite, Beedrillite, Chesnaughtite, Delphoxite, Greninjite, Gyaradosite, Heracronite, Manectite, Steelixite. Restored.
+
+  **Moves**: 494 Champions-available moves, 0 null types/categories, 0 with power > 250. Basic sanity clean. Per-move Serebii cross-check deferred (requires ~494 detail pages).
+
+  **Referential integrity**: 0 dangling user_pokemon refs, 0 dangling item refs, 0 dangling mega links, 0 dangling user_profiles.avatar refs. 0 orphan move/item references in pokemon_usage.
+
+  **Post-fix counts**: 137 shop items (was 105) → 58 mega_stone + 51 held + 28 berry. All 12 VGC-staple items (Assault Vest, Choice Band/Specs, Life Orb, Leftovers, Sitrus Berry, Focus Sash, Clear Amulet, Covert Cloak, Safety Goggles, Rocky Helmet, Weakness Policy) present. Full 9/9 validation report written to `api/champions_validation_report.json`.
+
+  **Deferred** (require networked runs of the validator script):
+  - Per-Pokemon movepool vs Serebii detail pages (~200 pages, 2 min at 0.5s delay).
+  - Per-move power/accuracy vs Serebii moves table.
+  - Display-name quirks (11 Pokemon stored with PokeAPI form suffixes like "Meowstic Male", "Mimikyu Disguised", "Kommo O", "Mr Rime") — not correctness issues, Pikalytics ingest normalizes to the same names so aliases work end-to-end, but a display-name override column would improve UX.
+
 ### User-reported issues: Session D (Apr 17, 2026) -- LANDED
 
 - [x] **Prune non-Champions Pokemon/moves/items via archive tables** -- user requested "no need to have all 1k pokemon, we just need champions available, same for items and same for movesets." Approached archive-first for reversibility: migration `20260420000000_archive_non_champions.sql` creates `pokemon_archive`, `moves_archive`, `items_archive` as clones of the live schemas (`LIKE ... INCLUDING DEFAULTS`) plus `archived_at` + `archive_reason`, copies non-Champions rows over, then DELETEs from live. FK audit beforehand confirmed the safe-prune rules: all megas (id >= 10000) are kept because `pokemon.mega_evolution_id` FK's to them from Champions base forms; one non-Champions item is kept because a user has it on a build (FK from `user_pokemon.item_id` with ON DELETE NO ACTION). tournament_teams.pokemon_ids (int[]) had zero references to non-Champions rows.
