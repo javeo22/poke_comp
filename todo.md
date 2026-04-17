@@ -49,6 +49,12 @@
 - [x] Regional forms as separate roster entries: migration `20260419000000_flag_regional_forms.sql` flags 15 regional variants (Raichu-Alola through Tauros-Paldea) as `champions_eligible=true`. `seed_champions.py` updated with new `CHAMPIONS_REGIONAL_FORMS` list so future re-seeds preserve the flag. Applied to prod (verified 15/15).
 - [x] AI hallucination guardrails: `api/app/services/ai_verifier.py` cross-checks every draft claim against the DB (bring-4 in my team, leads in bring-4, threats in opponent preview, cited moves exist in `moves` table, calc attacker/defender/move all valid). Annotates each item with `verified` + `verification_note`; populates `DraftAnalysis.warnings`. Prompt strengthened with "CRITICAL ACCURACY RULES" block instructing AI to say 'uncertain' instead of fabricating. Frontend: amber warnings banner + per-item ⚠ badges with tooltip notes. Unit test with 4 injected hallucinations caught all 4.
 
+### Session D (2026-04-17) -- LANDED
+- [x] Archive + prune non-Champions Pokemon/moves/items. Migration `20260420000000_archive_non_champions.sql` creates three `*_archive` tables (same columns + `archived_at` + `archive_reason`), copies non-Champions rows over, then DELETEs from live.
+- [x] Prune results (verified in prod): pokemon 1099 → 260 live (839 archived, 76% reduction), moves 932 → 494 (438 archived, 47% reduction), items 138 → 106 (32 archived, 23% reduction).
+- [x] Safe-to-prune rules honored: all megas (id >= 10000) kept (FK'd from `pokemon.mega_evolution_id`); 1 non-Champions item kept because a user had it on a build (FK from `user_pokemon.item_id`). Integrity audit: 0 dangling mega links, 0 dangling user_pokemon refs, 0 dangling item refs, 0 dangling avatars. Validator spot-checks confirm 201 Champions Pokemon, 0 orphan item/move refs in `pokemon_usage`.
+- [x] Reversibility: archives are standalone tables — `INSERT INTO pokemon SELECT ... FROM pokemon_archive WHERE id = X` restores any pruned row.
+
 ### Session C (2026-04-16) -- LANDED
 - [x] Matchup log schema: migration `20260419100000_matchup_log_fields.sql` adds `format` (ladder|bo1|bo3|tournament|friendly), `tags` (TEXT[]), `close_type` (blowout|close|comeback|standard), `mvp_pokemon`. GIN index on tags + partial index on format. Applied to prod.
 - [x] Matchup log backend: `MatchupCreate`/`MatchupUpdate`/`MatchupResponse` extended; `list_matchups` accepts `?format=` and `?tag=` filters; `get_stats` returns new `by_format` + `by_tag` breakdowns.

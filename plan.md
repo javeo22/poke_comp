@@ -393,6 +393,13 @@ Context: user surfaced 7 real-world issues from dogfooding. Grouped into 3 sessi
 **Verification**: `ruff` clean on `api/`; `pyright` clean on all touched files (pre-existing public.py/ai_quota.py/cheatsheet.py Supabase narrowing errors unchanged); `pnpm lint` 0 errors / 10 pre-existing warnings; `pnpm build` success. Supabase MCP confirmed both migrations applied and all 15 regional forms are `champions_eligible=true` in prod. Unit-level verifier test caught 4/4 injected hallucinations.
 
 **Deferred**:
-- **Session D**: prune non-Champions Pokemon/moves/items with archive tables (user request). 2-3 hr, scoped but out-of-budget this session. Reversible via archive tables.
 - True SSE streaming for draft (carried over from Session A deferral).
 - Regional forms in `name_resolver.py` match "Raichu-Alola"-style hyphenated names but the DB stores them space-separated. Works through normalization but worth a pass if the matching ever surfaces misses.
+
+### User-reported issues: Session D (Apr 17, 2026) -- LANDED
+
+- [x] **Prune non-Champions Pokemon/moves/items via archive tables** -- user requested "no need to have all 1k pokemon, we just need champions available, same for items and same for movesets." Approached archive-first for reversibility: migration `20260420000000_archive_non_champions.sql` creates `pokemon_archive`, `moves_archive`, `items_archive` as clones of the live schemas (`LIKE ... INCLUDING DEFAULTS`) plus `archived_at` + `archive_reason`, copies non-Champions rows over, then DELETEs from live. FK audit beforehand confirmed the safe-prune rules: all megas (id >= 10000) are kept because `pokemon.mega_evolution_id` FK's to them from Champions base forms; one non-Champions item is kept because a user has it on a build (FK from `user_pokemon.item_id` with ON DELETE NO ACTION). tournament_teams.pokemon_ids (int[]) had zero references to non-Champions rows.
+
+  **Prune results (verified in prod via Supabase MCP)**: pokemon 1099 → 260 live (839 archived, 76% reduction), moves 932 → 494 (438 archived, 47% reduction), items 138 → 106 (32 archived, 23% reduction). Integrity verification post-delete: 0 dangling mega links, 0 dangling user_pokemon refs, 0 dangling item refs, 0 dangling user_profiles.avatar refs. Spot-check of `validate_data` checks 1-3: 201 Champions-eligible Pokemon (in range), 0 orphan items in `pokemon_usage`, 0 orphan moves in `pokemon_usage`. (Local `uv run python -m scripts.validate_data` run hit a transient DNS SERVFAIL on the Supabase host but MCP-routed SQL paths cleanly.)
+
+  **Reversibility**: archive tables are standalone. `INSERT INTO pokemon SELECT ... FROM pokemon_archive WHERE id = X` restores any row. No PokeAPI re-fetch required on future game patches -- can flag a new Pokemon by promoting from archive + setting `champions_eligible=true`.
