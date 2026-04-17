@@ -43,6 +43,7 @@ export default function CheatsheetPage() {
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
   const [quotaMonth, setQuotaMonth] = useState<AiUsageMonth | null>(null);
   const [isSupporter, setIsSupporter] = useState(false);
+  const [isUnlimited, setIsUnlimited] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -58,6 +59,7 @@ export default function CheatsheetPage() {
           setQuota(usage.today);
           setQuotaMonth(usage.month);
           setIsSupporter(usage.supporter);
+          setIsUnlimited(usage.unlimited);
         })
         .catch(() => {});
     } finally {
@@ -112,6 +114,7 @@ export default function CheatsheetPage() {
           setQuota(usage.today);
           setQuotaMonth(usage.month);
           setIsSupporter(usage.supporter);
+          setIsUnlimited(usage.unlimited);
         })
         .catch(() => {});
     } catch (err) {
@@ -181,7 +184,12 @@ export default function CheatsheetPage() {
             {isGenerating ? "Generating..." : "Generate"}
           </button>
           {quota !== null && (
-            <QuotaIndicator today={quota} month={quotaMonth} supporter={isSupporter} />
+            <QuotaIndicator
+              today={quota}
+              month={quotaMonth}
+              supporter={isSupporter}
+              unlimited={isUnlimited}
+            />
           )}
         </div>
         {error && (

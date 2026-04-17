@@ -4,6 +4,7 @@ interface QuotaIndicatorProps {
   today: AiUsageToday;
   month?: AiUsageMonth | null;
   supporter?: boolean;
+  unlimited?: boolean;
   className?: string;
 }
 
@@ -11,8 +12,19 @@ export function QuotaIndicator({
   today,
   month,
   supporter = false,
+  unlimited = false,
   className = "",
 }: QuotaIndicatorProps) {
+  if (unlimited) {
+    return (
+      <div
+        className={`flex flex-col gap-0.5 font-display text-xs ${className}`}
+      >
+        <span className="text-tertiary">Unlimited (admin)</span>
+      </div>
+    );
+  }
+
   const dailyExhausted = today.remaining <= 0;
   const monthlyExhausted = month ? month.remaining <= 0 : false;
 

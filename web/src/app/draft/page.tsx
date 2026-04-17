@@ -46,6 +46,7 @@ export default function DraftPage() {
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
   const [quotaMonth, setQuotaMonth] = useState<AiUsageMonth | null>(null);
   const [isSupporter, setIsSupporter] = useState(false);
+  const [isUnlimited, setIsUnlimited] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -91,6 +92,7 @@ export default function DraftPage() {
           setQuota(usage.today);
           setQuotaMonth(usage.month);
           setIsSupporter(usage.supporter);
+          setIsUnlimited(usage.unlimited);
         })
         .catch(() => {});
     } finally {
@@ -140,6 +142,7 @@ export default function DraftPage() {
           setQuota(usage.today);
           setQuotaMonth(usage.month);
           setIsSupporter(usage.supporter);
+          setIsUnlimited(usage.unlimited);
         })
         .catch(() => {});
     } catch (err) {
@@ -300,7 +303,12 @@ export default function DraftPage() {
           {isAnalyzing ? "Analyzing..." : "Analyze Matchup"}
         </button>
         {quota !== null && (
-          <QuotaIndicator today={quota} month={quotaMonth} supporter={isSupporter} />
+          <QuotaIndicator
+            today={quota}
+            month={quotaMonth}
+            supporter={isSupporter}
+            unlimited={isUnlimited}
+          />
         )}
         {result?.cached && (
           <span className="font-display text-xs text-on-surface-muted">

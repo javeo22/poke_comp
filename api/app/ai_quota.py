@@ -5,12 +5,26 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from postgrest.types import CountMethod
 
+from app.config import settings
 from app.database import supabase
 
 # ── Tier limits ──
 FREE_DAILY_LIMIT = 3
 SUPPORTER_DAILY_LIMIT = 30
 SUPPORTER_MONTHLY_SOFT_CAP = 600
+
+
+def _admin_user_ids() -> set[str]:
+    """Parse the ADMIN_USER_IDS comma-list from settings."""
+    raw = settings.admin_user_ids
+    if not raw:
+        return set()
+    return {uid.strip() for uid in raw.split(",") if uid.strip()}
+
+
+def _is_admin(user_id: str) -> bool:
+    """Admins bypass the daily + monthly quota and always use Sonnet."""
+    return user_id in _admin_user_ids()
 
 # ── Model pricing (per token) ──
 MODEL_PRICING: dict[str, dict[str, float]] = {
@@ -100,8 +114,18 @@ def check_ai_quota(user_id: str) -> dict:
     """Check if user is within their daily AI quota and (for supporters)
     under the monthly fair-use soft cap.
 
-    Returns usage info dict. Raises HTTPException 429 if quota exceeded.
+    Admins bypass all quotas. Returns usage info dict. Raises
+    HTTPException 429 if a non-admin non-unlimited user exceeds their cap.
     """
+    if _is_admin(user_id):
+        return {
+            "used": 0,
+            "remaining": -1,
+            "limit": -1,
+            "resets_at": _tomorrow_start_utc(),
+            "unlimited": True,
+        }
+
     today = _today_start_utc()
     supporter = _is_supporter(user_id)
     limit = SUPPORTER_DAILY_LIMIT if supporter else FREE_DAILY_LIMIT
@@ -164,6 +188,9 @@ def check_ai_quota(user_id: str) -> dict:
 
 def get_available_models(user_id: str) -> list[str]:
     """Return which models the user can use based on remaining quota."""
+    if _is_admin(user_id):
+        return [DEFAULT_MODEL, HAIKU_MODEL]
+
     today = _today_start_utc()
     limit = _get_user_limit(user_id)
 
@@ -224,9 +251,11 @@ def get_usage_summary(user_id: str) -> dict:
 
     Supporter users also receive a `month` block reporting monthly usage
     against the fair-use soft cap. Non-supporters get `month: None`.
+    Admins get `unlimited: true` and no cap rendering is implied.
     """
     today = _today_start_utc()
     resets_at = _tomorrow_start_utc()
+    admin = _is_admin(user_id)
     supporter = _is_supporter(user_id)
     limit = SUPPORTER_DAILY_LIMIT if supporter else FREE_DAILY_LIMIT
 
@@ -275,5 +304,6 @@ def get_usage_summary(user_id: str) -> dict:
         },
         "month": month_block,
         "supporter": supporter,
+        "unlimited": admin,
         "recent": recent_result.data or [],
     }

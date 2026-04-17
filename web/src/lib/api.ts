@@ -555,6 +555,7 @@ export interface AiUsageResponse {
   today: AiUsageToday;
   month: AiUsageMonth | null;
   supporter: boolean;
+  unlimited: boolean;
   recent: AiUsageEntry[];
 }
 
