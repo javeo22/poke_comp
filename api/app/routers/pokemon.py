@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from postgrest.types import CountMethod
 
 from app.database import supabase
@@ -8,12 +8,19 @@ from app.models.pokemon import (
     AbilityDetail,
     MoveDetail,
     PokemonBase,
+    PokemonBasic,
+    PokemonBasicList,
     PokemonDetail,
     PokemonList,
     PokemonUsageSummary,
 )
 
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
+
+# Pokemon static data changes rarely (game balance patches). Cache aggressively
+# at the edge with a long stale-while-revalidate window so a slow refresh never
+# blocks the user.
+_STATIC_CACHE_HEADER = "public, max-age=3600, stale-while-revalidate=86400"
 
 
 def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
@@ -32,8 +39,39 @@ def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
     return list(data.keys())[:limit]
 
 
+@router.get("/basic", response_model=PokemonBasicList)
+def list_pokemon_basic(
+    response: Response,
+    type: str | None = Query(None, description="Filter by type"),
+    champions_only: bool = Query(False, description="Only Champions-eligible Pokemon"),
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """Slim Pokemon list for pickers and grid views. Drops movepool, abilities,
+    base_stats, mega data -- ~80% smaller payload than `/pokemon`. Use this
+    everywhere you only need name + types + sprite for display."""
+    query = supabase.table("pokemon").select(
+        "id, name, types, champions_eligible, sprite_url",
+        count=CountMethod.exact,
+    )
+    if type:
+        query = query.contains("types", [type])
+    if champions_only:
+        query = query.eq("champions_eligible", True)
+
+    result = query.order("id").range(offset, offset + limit - 1).execute()
+    rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    response.headers["Cache-Control"] = _STATIC_CACHE_HEADER
+    return PokemonBasicList(
+        data=[PokemonBasic.model_validate(r) for r in rows],
+        count=result.count or len(rows),
+    )
+
+
 @router.get("", response_model=PokemonList)
 def list_pokemon(
+    response: Response,
     name: str | None = Query(None, description="Filter by name (case-insensitive contains)"),
     type: str | None = Query(None, description="Filter by type"),
     champions_only: bool = Query(False, description="Only Champions-eligible Pokemon"),
@@ -53,6 +91,7 @@ def list_pokemon(
         query = query.eq("generation", generation)
 
     result = query.order("id").range(offset, offset + limit - 1).execute()
+    response.headers["Cache-Control"] = _STATIC_CACHE_HEADER
     rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
 
     # Batch-resolve mega form names for all rows in one query

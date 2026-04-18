@@ -21,6 +21,23 @@ class PokemonList(BaseModel):
     count: int
 
 
+class PokemonBasic(BaseModel):
+    """Slim record for list views and pickers -- omits movepool, abilities,
+    base_stats, mega data. Cuts payload by ~80% for the match-log opponent
+    picker and roster grid."""
+
+    id: int
+    name: str
+    types: list[str]
+    champions_eligible: bool
+    sprite_url: str | None = None
+
+
+class PokemonBasicList(BaseModel):
+    data: list[PokemonBasic]
+    count: int
+
+
 class MoveDetail(BaseModel):
     """Subset of MoveBase for the detail view -- only fields useful inline."""
 

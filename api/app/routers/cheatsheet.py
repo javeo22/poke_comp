@@ -613,14 +613,59 @@ def get_saved_cheatsheet(
     team_id: str,
     user_id: str = Depends(get_current_user),
 ):
-    """Fetch a previously saved cheatsheet for a team."""
+    """Fetch a previously saved cheatsheet for a team.
+
+    Sets `is_stale=true` when the team has been modified after the cheatsheet
+    was generated -- the UI uses this to surface a "regenerate" banner.
+    """
     saved = _fetch_saved_cheatsheet(team_id, user_id)
     if not saved:
         raise HTTPException(status_code=404, detail="No saved cheatsheet for this team")
     data: dict = saved["cheatsheet_json"]
     data["cached"] = True
     data["estimated_cost_usd"] = 0.0
+
+    # Stale detection: compare team.updated_at to cheatsheet.updated_at.
+    # If the team was edited after the cheatsheet was generated, the AI's
+    # game plan / lead matchups may reference a stale lineup.
+    cheatsheet_updated = saved.get("updated_at")
+    team_row = (
+        supabase.table("teams")
+        .select("updated_at")
+        .eq("id", team_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    is_stale = False
+    if cheatsheet_updated and team_row and team_row.data:
+        team_data: dict = team_row.data  # type: ignore[assignment]
+        team_updated = team_data.get("updated_at")
+        if team_updated and team_updated > cheatsheet_updated:
+            is_stale = True
+    data["is_stale"] = is_stale
+    data["generated_at"] = cheatsheet_updated
     return data
+
+
+@router.delete("/{team_id}", status_code=204)
+def delete_cheatsheet(
+    team_id: str,
+    user_id: str = Depends(get_current_user),
+):
+    """Delete the saved cheatsheet for a team. The roster-hash cache entry
+    in `ai_analyses` is left to expire naturally -- regenerate just re-runs
+    the AI when the cache miss happens (or when force=true is passed)."""
+    result = (
+        supabase.table("team_cheatsheets")
+        .delete()
+        .eq("team_id", team_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    rows: list[dict] = result.data or []  # type: ignore[assignment]
+    if not rows:
+        raise HTTPException(status_code=404, detail="No saved cheatsheet for this team")
 
 
 @router.post("/{team_id}", response_model=CheatsheetResponse)
@@ -629,9 +674,15 @@ def generate_cheatsheet(
     request: Request,
     team_id: str,
     model: str = Query(DEFAULT_MODEL, pattern=r"^claude-"),
+    force: bool = Query(False, description="Skip cache lookup and re-run the AI"),
     user_id: str = Depends(get_current_user),
 ):
-    """Generate an AI-powered pre-match cheat sheet for a team."""
+    """Generate an AI-powered pre-match cheat sheet for a team.
+
+    Pass `force=true` to bypass both the roster-hash cache AND any saved
+    cheatsheet -- useful when the user knows the team changed but the
+    cache still has a valid roster hash (e.g. they reverted, then changed
+    it again to a previously-cached config)."""
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
@@ -683,8 +734,9 @@ def generate_cheatsheet(
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 
-    # 6. Check cache (tries v2 first, falls back to v1 during grace window)
-    cached = _check_cache(roster)
+    # 6. Check cache (tries v2 first, falls back to v1 during grace window).
+    # `force=true` skips the lookup so the user can force a fresh AI run.
+    cached = None if force else _check_cache(roster)
     if cached:
         # Re-inject live roster/speed data (may have changed)
         cached["roster"] = [r.model_dump(mode="json") for r in roster]

@@ -45,6 +45,14 @@ class MatchupCreate(BaseModel):
     mvp_pokemon: str | None = Field(
         None, description="The Pokemon that carried (or failed) the match"
     )
+    my_team_actual: list[str] | None = Field(
+        None,
+        max_length=6,
+        description=(
+            "Optional override of the actual lineup run in this match. "
+            "NULL = same as the saved team's roster."
+        ),
+    )
 
 
 class MatchupUpdate(BaseModel):
@@ -56,6 +64,7 @@ class MatchupUpdate(BaseModel):
     tags: list[str] | None = None
     close_type: str | None = Field(None, pattern=CLOSE_TYPE_PATTERN)
     mvp_pokemon: str | None = None
+    my_team_actual: list[str] | None = Field(None, max_length=6)
 
 
 class MatchupResponse(BaseModel):
@@ -71,6 +80,7 @@ class MatchupResponse(BaseModel):
     tags: list[str] = Field(default_factory=list)
     close_type: str | None = None
     mvp_pokemon: str | None = None
+    my_team_actual: list[str] | None = None
 
 
 class MatchupList(BaseModel):

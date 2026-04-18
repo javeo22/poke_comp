@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/team";
-import type { Pokemon } from "@/features/pokemon/types";
+import type { PokemonBasic } from "@/features/pokemon/types";
 import type { Matchup, MatchupStats, MatchFormat, CloseType } from "@/types/matchup";
 
 const FORMAT_OPTIONS: { value: MatchFormat | ""; label: string }[] = [
@@ -38,12 +38,15 @@ const CLOSE_TYPE_STYLES: Record<string, string> = {
 };
 import {
   fetchTeams,
-  fetchPokemon,
+  fetchPokemonBasic,
+  fetchUsage,
+  fetchUserPokemon,
   fetchMatchups,
   fetchMatchupStats,
   createMatchup,
   deleteMatchup,
 } from "@/lib/api";
+import type { UserPokemon } from "@/types/user-pokemon";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 
@@ -54,6 +57,10 @@ export default function MatchesPage() {
   const [stats, setStats] = useState<MatchupStats | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
+  // UUID (user_pokemon.id) -> { pokemon_id, ... } for resolving team rosters.
+  const [userPokemonByUuid, setUserPokemonByUuid] = useState<Map<string, UserPokemon>>(new Map());
+  // pokemon_id -> name for resolving user_pokemon.pokemon_id to display name.
+  const [pokemonNameById, setPokemonNameById] = useState<Map<number, string>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("log");
@@ -66,6 +73,11 @@ export default function MatchesPage() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formTeamId, setFormTeamId] = useState("");
+  // The actual lineup run this match. Defaults to the saved team's roster
+  // (resolved via userPokemonByUuid + pokemonNameById) when the team is
+  // selected; user can override any slot. Empty strings represent unfilled
+  // slots (only relevant for partial teams).
+  const [formMyTeamActual, setFormMyTeamActual] = useState<string[]>([]);
   const [formOpponents, setFormOpponents] = useState<string[]>(["", "", "", "", "", ""]);
   const [formLeads, setFormLeads] = useState<[string, string]>(["", ""]);
   const [formOutcome, setFormOutcome] = useState<"win" | "loss">("win");
@@ -79,7 +91,7 @@ export default function MatchesPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [matchResult, statsResult, teamsResult, pokemonResult] =
+      const [matchResult, statsResult, teamsResult, pokemonResult, usageResult, userPokeResult] =
         await Promise.all([
           fetchMatchups({
             outcome: outcomeFilter || undefined,
@@ -89,19 +101,48 @@ export default function MatchesPage() {
           }),
           fetchMatchupStats(),
           fetchTeams({ limit: 200 }),
-          fetchPokemon({ limit: 500, champions_only: true }),
+          fetchPokemonBasic({ limit: 500, champions_only: true }),
+          fetchUsage("doubles", 50).catch(() => null),
+          fetchUserPokemon({ limit: 500 }).catch(() => null),
         ]);
       setMatchups(matchResult.data);
       setCount(matchResult.count);
       setStats(statsResult);
       setTeams(teamsResult.data);
-      setPokemonOptions(
-        pokemonResult.data.map((p: Pokemon) => ({
+
+      const allPokemon = pokemonResult.data;
+      setPokemonNameById(new Map(allPokemon.map((p: PokemonBasic) => [p.id, p.name])));
+      setUserPokemonByUuid(
+        new Map((userPokeResult?.data ?? []).map((up: UserPokemon) => [up.id, up]))
+      );
+      const byName = new Map(
+        allPokemon.map((p: PokemonBasic) => [p.name.toLowerCase(), p])
+      );
+      const topUsageNames = (usageResult?.data ?? [])
+        .map((u) => u.pokemon_name)
+        .filter((n) => byName.has(n.toLowerCase()));
+      const topSet = new Set(topUsageNames.map((n) => n.toLowerCase()));
+
+      const topOptions: DropdownOption[] = topUsageNames
+        .map((n) => byName.get(n.toLowerCase())!)
+        .map((p) => ({
           value: p.name,
           label: p.name,
           sublabel: p.types.join("/"),
-        }))
-      );
+          section: "Most Used",
+        }));
+
+      const restOptions: DropdownOption[] = allPokemon
+        .filter((p: PokemonBasic) => !topSet.has(p.name.toLowerCase()))
+        .sort((a: PokemonBasic, b: PokemonBasic) => a.name.localeCompare(b.name))
+        .map((p: PokemonBasic) => ({
+          value: p.name,
+          label: p.name,
+          sublabel: p.types.join("/"),
+          section: "All Pokemon",
+        }));
+
+      setPokemonOptions([...topOptions, ...restOptions]);
     } catch (err) {
       console.error("Failed to load matches:", err);
     } finally {
@@ -121,8 +162,34 @@ export default function MatchesPage() {
 
   const teamNameMap = new Map(teams.map((t) => [t.id, t.name]));
 
+  // Resolve a team's pokemon_ids (user_pokemon UUIDs) to display names via
+  // the two lookup maps. Unresolvable entries become "" (empty slot).
+  const resolveTeamLineup = useCallback(
+    (teamId: string): string[] => {
+      const team = teams.find((t) => t.id === teamId);
+      if (!team) return [];
+      return team.pokemon_ids.map((uuid) => {
+        const up = userPokemonByUuid.get(uuid);
+        if (!up) return "";
+        return pokemonNameById.get(up.pokemon_id) ?? "";
+      });
+    },
+    [teams, userPokemonByUuid, pokemonNameById]
+  );
+
+  // When the selected team changes, reset the "actual lineup" to the
+  // resolved team roster. User can then override individual slots.
+  useEffect(() => {
+    if (!formTeamId) {
+      setFormMyTeamActual([]);
+      return;
+    }
+    setFormMyTeamActual(resolveTeamLineup(formTeamId));
+  }, [formTeamId, resolveTeamLineup]);
+
   const resetForm = () => {
     setFormTeamId("");
+    setFormMyTeamActual([]);
     setFormOpponents(["", "", "", "", "", ""]);
     setFormLeads(["", ""]);
     setFormOutcome("win");
@@ -145,6 +212,16 @@ export default function MatchesPage() {
         .split(",")
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean);
+      // Only send my_team_actual when it differs from the saved team's
+      // resolved roster -- otherwise NULL preserves the "matches saved
+      // team" semantic and old rows behave identically.
+      const teamDefault = resolveTeamLineup(formTeamId);
+      const actualFilled = formMyTeamActual.filter((s) => s.trim() !== "");
+      const differs =
+        actualFilled.length !== teamDefault.filter((s) => s).length ||
+        formMyTeamActual.some((name, i) => (name || "") !== (teamDefault[i] || ""));
+      const myTeamActual =
+        differs && actualFilled.length > 0 ? actualFilled : undefined;
       await createMatchup({
         my_team_id: formTeamId,
         opponent_team_data: filledOpponents.map((name) => ({ name })),
@@ -155,6 +232,7 @@ export default function MatchesPage() {
         tags: parsedTags.length ? parsedTags : undefined,
         close_type: formCloseType || undefined,
         mvp_pokemon: formMvp || undefined,
+        my_team_actual: myTeamActual,
       });
       setShowForm(false);
       resetForm();
@@ -455,6 +533,30 @@ export default function MatchesPage() {
                   onChange={setFormTeamId}
                   options={teamOptions}
                 />
+                {formTeamId && formMyTeamActual.length > 0 && (
+                  <div className="mt-2">
+                    <p className="mb-1 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                      Actual lineup (override any slot if you swapped a Pokemon)
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {formMyTeamActual.map((name, i) => (
+                        <SearchableDropdown
+                          key={i}
+                          placeholder={`Slot ${i + 1}`}
+                          value={name}
+                          onChange={(v) =>
+                            setFormMyTeamActual((prev) => {
+                              const next = [...prev];
+                              next[i] = v;
+                              return next;
+                            })
+                          }
+                          options={pokemonOptions}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Outcome */}

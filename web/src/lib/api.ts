@@ -11,7 +11,11 @@ import type {
 } from "@/types/matchup";
 import type { MetaSnapshot } from "@/types/meta";
 import type { MoveListResponse } from "@/types/move";
-import type { PokemonDetail, PokemonListResponse } from "@/features/pokemon/types";
+import type {
+  PokemonBasicListResponse,
+  PokemonDetail,
+  PokemonListResponse,
+} from "@/features/pokemon/types";
 import type { PokemonUsage, PokemonUsageList } from "@/types/usage";
 import type {
   Team,
@@ -92,6 +96,30 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   return res.json();
 }
 
+// Tiny in-memory TTL cache for slow-changing GETs (Pokemon list, usage stats).
+// Keyed on path + serialized params. Skipped on the server (per-process cache
+// would leak across users in a serverless function).
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const _memCache = new Map<string, { data: unknown; ts: number }>();
+
+async function cachedFetch<T>(
+  path: string,
+  params: Record<string, string | number | boolean | undefined> = {}
+): Promise<T> {
+  const key = path + JSON.stringify(params);
+  if (typeof window !== "undefined") {
+    const hit = _memCache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
+      return hit.data as T;
+    }
+  }
+  const data = await apiFetch<T>(path, { params });
+  if (typeof window !== "undefined") {
+    _memCache.set(key, { data, ts: Date.now() });
+  }
+  return data;
+}
+
 async function apiFetchText(path: string): Promise<string> {
   const url = `${API_URL}${path}`;
   const headers = new Headers();
@@ -137,6 +165,23 @@ export async function fetchPokemon(filters: PokemonFilters = {}) {
   return apiFetch<PokemonListResponse>("/pokemon", {
     params: filters as Record<string, string | number | boolean | undefined>,
   });
+}
+
+export interface PokemonBasicFilters {
+  type?: string;
+  champions_only?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+// Slim Pokemon list for pickers + grid views. ~80% smaller payload than
+// fetchPokemon -- omits movepool, abilities, base_stats, mega data. Cached
+// in-memory for 5 minutes since static data changes rarely.
+export async function fetchPokemonBasic(filters: PokemonBasicFilters = {}) {
+  return cachedFetch<PokemonBasicListResponse>(
+    "/pokemon/basic",
+    filters as Record<string, string | number | boolean | undefined>
+  );
 }
 
 export async function fetchPokemonDetail(pokemonId: number) {
@@ -291,9 +336,7 @@ export async function fetchMetaSnapshots(filters: MetaFilters = {}) {
 // ── Usage Stats ──
 
 export async function fetchUsage(format: string = "doubles", limit: number = 50) {
-  return apiFetch<PokemonUsageList>("/usage", {
-    params: { format, limit },
-  });
+  return cachedFetch<PokemonUsageList>("/usage", { format, limit });
 }
 
 export async function fetchPokemonUsage(pokemonName: string) {
@@ -369,16 +412,35 @@ export async function analyzeDraft(
 
 export async function generateCheatsheet(
   teamId: string,
-  model?: string
+  opts: { model?: string; force?: boolean } = {}
 ): Promise<CheatsheetResponse> {
-  const params = model ? `?model=${encodeURIComponent(model)}` : "";
-  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}${params}`, {
+  const params = new URLSearchParams();
+  if (opts.model) params.set("model", opts.model);
+  if (opts.force) params.set("force", "true");
+  const qs = params.toString();
+  return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}${qs ? `?${qs}` : ""}`, {
     method: "POST",
   });
 }
 
 export async function fetchSavedCheatsheet(teamId: string): Promise<CheatsheetResponse> {
   return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`);
+}
+
+export async function deleteCheatsheet(teamId: string): Promise<void> {
+  const url = `${API_URL}/cheatsheet/${teamId}`;
+  const headers = new Headers();
+  if (typeof window !== "undefined") {
+    const supabase = createClient();
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
+  }
+  const res = await fetch(url, { method: "DELETE", headers });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
 }
 
 export interface SavedCheatsheet {

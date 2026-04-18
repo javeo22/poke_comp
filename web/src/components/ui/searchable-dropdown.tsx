@@ -6,6 +6,7 @@ export interface DropdownOption {
   value: string;
   label: string;
   sublabel?: string;
+  section?: string;
 }
 
 interface SearchableDropdownProps {
@@ -148,28 +149,40 @@ export function SearchableDropdown({
           ref={listRef}
           className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-lg card shadow-lg"
         >
-          {filtered.map((opt, i) => (
-            <button
-              key={opt.value + i}
-              type="button"
-              data-option
-              onClick={() => handleSelect(opt)}
-              className={`flex w-full items-center justify-between px-4 py-2 text-left transition-colors ${
-                i === highlightIndex
-                  ? "bg-surface-mid"
-                  : "hover:bg-surface-mid"
-              }`}
-            >
-              <span className="font-body text-sm text-on-surface">
-                {opt.label}
-              </span>
-              {opt.sublabel && (
-                <span className="ml-2 font-display text-[0.6rem] uppercase text-on-surface-muted">
-                  {opt.sublabel}
-                </span>
-              )}
-            </button>
-          ))}
+          {filtered.map((opt, i) => {
+            const showSection =
+              !query &&
+              opt.section !== undefined &&
+              opt.section !== filtered[i - 1]?.section;
+            return (
+              <div key={opt.value + i}>
+                {showSection && (
+                  <div className="sticky top-0 z-10 bg-surface-low px-4 py-1 font-display text-[0.55rem] font-medium uppercase tracking-wider text-on-surface-muted">
+                    {opt.section}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  data-option
+                  onClick={() => handleSelect(opt)}
+                  className={`flex w-full items-center justify-between px-4 py-2 text-left transition-colors ${
+                    i === highlightIndex
+                      ? "bg-surface-mid"
+                      : "hover:bg-surface-mid"
+                  }`}
+                >
+                  <span className="font-body text-sm text-on-surface">
+                    {opt.label}
+                  </span>
+                  {opt.sublabel && (
+                    <span className="ml-2 font-display text-[0.6rem] uppercase text-on-surface-muted">
+                      {opt.sublabel}
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

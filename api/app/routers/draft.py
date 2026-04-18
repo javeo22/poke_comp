@@ -25,6 +25,12 @@ from app.services.cache_utils import (
     cache_hash_v2,
     normalize_opponent_names,
 )
+from app.services.damage_calc import (
+    CalcMove,
+    calculate_damage,
+    format_damage_string,
+    from_base_stats,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/draft", tags=["draft"])
@@ -288,6 +294,90 @@ def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
     return ""
 
 
+def _compute_damage_calcs(
+    analysis: DraftAnalysis,
+    my_pokemon: list[dict],
+    opp_pokemon: list[dict],
+) -> None:
+    """Replace AI-generated `estimated_damage` strings with deterministic
+    engine output. The AI proposes scenarios (attacker, move, defender, note);
+    we compute the actual damage range from the formula. Mutates `analysis`.
+
+    If a calc references a Pokemon or move we can't resolve, we leave
+    `estimated_damage=""` and let the verifier flag it as a hallucination.
+    """
+    if not analysis.damage_calcs:
+        return
+
+    # Index Pokemon by normalized name. Handles both teams.
+    def _key(s: str) -> str:
+        return s.strip().lower().replace("-", " ").replace("_", " ")
+
+    poke_index: dict[str, dict] = {}
+    for p in my_pokemon:
+        poke_index[_key(p["name"])] = p
+    for p in opp_pokemon:
+        poke_index[_key(p["name"])] = p
+
+    # Batch-fetch every move name referenced by the calcs in one query.
+    move_names = list({calc.move for calc in analysis.damage_calcs})
+    moves_result = (
+        supabase.table("moves")
+        .select("name, type, category, power, target")
+        .in_("name", move_names)
+        .execute()
+    )
+    move_rows: list[dict] = moves_result.data or []  # type: ignore[assignment]
+    move_index: dict[str, dict] = {_key(m["name"]): m for m in move_rows}
+
+    for calc in analysis.damage_calcs:
+        attacker_row = poke_index.get(_key(calc.attacker))
+        defender_row = poke_index.get(_key(calc.defender))
+        move_row = move_index.get(_key(calc.move))
+
+        if not attacker_row or not defender_row or not move_row:
+            # Verifier will surface the missing reference as a warning.
+            continue
+
+        atk = from_base_stats(
+            attacker_row["name"],
+            attacker_row.get("types", []),
+            attacker_row.get("base_stats", {}),
+        )
+        defn = from_base_stats(
+            defender_row["name"],
+            defender_row.get("types", []),
+            defender_row.get("base_stats", {}),
+        )
+        move = CalcMove(
+            name=move_row["name"],
+            type=(move_row.get("type") or "").lower(),
+            category=(move_row.get("category") or "").lower(),
+            power=move_row.get("power") or 0,
+            target=move_row.get("target") or "selected-pokemon",
+        )
+        result = calculate_damage(atk, move, defn, is_doubles=True)
+        calc.estimated_damage = format_damage_string(result)
+
+        # Append a short annotation so the user understands modifiers
+        # without reading the formula. Skip for already-skipped calcs.
+        if not result["skipped_reason"]:
+            tags: list[str] = []
+            te = result["type_effectiveness"]
+            if te >= 4:
+                tags.append("4x SE")
+            elif te == 2:
+                tags.append("2x SE")
+            elif te == 0.5:
+                tags.append("0.5x resisted")
+            elif te == 0.25:
+                tags.append("0.25x resisted")
+            if result["stab"]:
+                tags.append("STAB")
+            if tags:
+                calc.note = (calc.note + f" [{', '.join(tags)}]").strip()
+
+
 def _fetch_opponent_pokemon(names: list[str]) -> list[dict]:
     """Fetch base data for opponent Pokemon by name."""
     pokemon_list = []
@@ -399,9 +489,10 @@ def _build_prompt(
         "- For `lead_pair`, both leads MUST be chosen from your `bring_four`.\n"
         "- For `damage_calcs`, attacker must be in my team and defender must "
         "be in the opponent team.\n"
-        "- For damage estimates, if you don't have enough information, write "
-        "'uncertain' instead of guessing a specific percentage. Never fabricate "
-        "precise numbers you cannot derive from base stats and move power.\n"
+        "- DO NOT estimate damage numbers yourself -- the backend computes them "
+        "deterministically from the formula. For each calc, only propose the "
+        "scenario (attacker, move, defender) and use `note` for set "
+        "assumptions like 'assumes Choice Specs, no defensive investment'.\n"
         "- For speed tiers, base them on the HP/Atk/.../Spe numbers provided. "
         "Do not claim speed orders you can't verify from the stat lines.\n"
         "- If usage data for an opponent Pokemon is missing, say so rather than "
@@ -445,8 +536,7 @@ Provide your analysis as a JSON object with exactly this structure:
       "attacker": "Name",
       "move": "MoveName",
       "defender": "Name",
-      "estimated_damage": "e.g. 65-78% or OHKO",
-      "note": "optional context"
+      "note": "scenario assumptions, e.g. 'Choice Specs, 0 SpD investment'"
     }
   ],
   "game_plan": "Turn 1 plan and general strategy."
@@ -552,6 +642,11 @@ def analyze_draft(
             status_code=500,
             detail=f"Failed to parse Claude response: {e}",
         )
+
+    # Replace AI-guessed `estimated_damage` strings with deterministic engine
+    # output. Runs before the verifier so any unresolvable scenario is flagged
+    # consistently as a warning.
+    _compute_damage_calcs(analysis, my_team["pokemon"], opponent_pokemon)
 
     # Cross-check AI claims against the DB. Annotates each threat/calc/bring
     # with `verified` + `verification_note`, and populates `analysis.warnings`.

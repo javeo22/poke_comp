@@ -13,10 +13,12 @@ Usage:
     uv run python -m scripts.ingest.pikalytics_usage
 """
 
+import json
 import re
 import sys
 import time
 from datetime import date
+from pathlib import Path
 
 import httpx
 from bs4 import BeautifulSoup, Comment, Tag
@@ -24,6 +26,12 @@ from supabase import Client, create_client
 
 from app.config import settings
 from app.models.ingest import IngestResult
+
+# Translation cache built by scripts/build_pikalytics_translations.py -- maps
+# foreign-language names (German/French/Japanese/etc.) back to canonical
+# English. Needed because Pikalytics serves localized content for a subset
+# of Pokemon URLs regardless of Accept-Language.
+_TRANSLATIONS_PATH = Path(__file__).resolve().parent.parent.parent / "pikalytics_translations.json"
 
 # Champions tournament format -- NOT the generic VGC page
 PIKALYTICS_BASE = "https://pikalytics.com/pokedex/championstournaments"
@@ -243,6 +251,66 @@ PIKALYTICS_NAME_ALIASES: dict[str, str] = {
 }
 
 
+def _build_canonical_lookups(sb: Client) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Build normalized-name -> canonical-name maps for moves, items, abilities.
+
+    Combines two sources:
+    1. Our canonical DB tables (English names).
+    2. The PokeAPI translation cache (foreign names -> English), so that
+       Pikalytics's German/French/Japanese leaks resolve to the right row.
+
+    Anything that doesn't match after both lookups is a true hallucination
+    or a name we don't know -- safe to drop.
+    """
+
+    def norm(s: str) -> str:
+        return s.strip().lower().replace("-", " ").replace("'", "")
+
+    move_rows: list[dict] = sb.table("moves").select("name").execute().data  # type: ignore[assignment]
+    item_rows: list[dict] = sb.table("items").select("name").execute().data  # type: ignore[assignment]
+    ability_rows: list[dict] = sb.table("abilities").select("name").execute().data  # type: ignore[assignment]
+
+    moves_map = {norm(r["name"]): r["name"] for r in move_rows}
+    items_map = {norm(r["name"]): r["name"] for r in item_rows}
+    abilities_map = {norm(r["name"]): r["name"] for r in ability_rows}
+
+    # Layer the PokeAPI translation cache on top. Keys are already normalized
+    # via the same norm() logic in scripts/build_pikalytics_translations.py.
+    if _TRANSLATIONS_PATH.exists():
+        try:
+            cache = json.loads(_TRANSLATIONS_PATH.read_text())
+            moves_map.update(cache.get("moves", {}))
+            items_map.update(cache.get("items", {}))
+            abilities_map.update(cache.get("abilities", {}))
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  Warning: failed to load translation cache: {e}")
+
+    return moves_map, items_map, abilities_map
+
+
+def _filter_english(
+    entries: list[dict],
+    canonical_map: dict[str, str],
+) -> tuple[list[dict], int]:
+    """Keep only entries whose name matches our canonical English table.
+    Returns (kept_entries, dropped_count)."""
+
+    def norm(s: str) -> str:
+        return s.strip().lower().replace("-", " ").replace("'", "")
+
+    kept: list[dict] = []
+    dropped = 0
+    for entry in entries:
+        name = str(entry.get("name", ""))
+        canonical = canonical_map.get(norm(name))
+        if canonical:
+            # Snap to canonical casing so downstream name lookups work.
+            kept.append({**entry, "name": canonical})
+        else:
+            dropped += 1
+    return kept, dropped
+
+
 def _build_roster(sb: Client) -> dict[str, str]:
     """Build a normalized_name -> display_name lookup for Champions-eligible Pokemon.
 
@@ -324,7 +392,12 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
     result = IngestResult(source="pikalytics", dry_run=dry_run)
 
     roster = _build_roster(sb)
-    print(f"Roster: {len(roster)} name variants for Champions-eligible Pokemon")
+    moves_map, items_map, abilities_map = _build_canonical_lookups(sb)
+    print(
+        f"Roster: {len(roster)} name variants, "
+        f"canonical: {len(moves_map)} moves, {len(items_map)} items, "
+        f"{len(abilities_map)} abilities"
+    )
 
     # Step 1: Get top Pokemon list
     pokemon_list = fetch_pokemon_list()
@@ -371,14 +444,26 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
         detail = fetch_pokemon_detail(slug)
 
         if detail:
-            moves = detail["moves"]
-            items = detail["items"]
-            # Collect all item names for auto-marking availability
+            # Pikalytics serves random localizations -- filter to English only.
+            moves, moves_dropped = _filter_english(detail["moves"], moves_map)
+            items, items_dropped = _filter_english(detail["items"], items_map)
+            abilities, abilities_dropped = _filter_english(
+                detail["abilities"], abilities_map
+            )
+            if moves_dropped or items_dropped or abilities_dropped:
+                msg = (
+                    f"{display_name}: dropped non-English "
+                    f"{moves_dropped}m/{items_dropped}i/{abilities_dropped}a "
+                    f"(Pikalytics i18n leak)"
+                )
+                result.warnings.append(msg)
+                print(f"  {msg}")
+
+            # Collect item names for auto-marking availability
             for item_entry in items:
                 item_name = str(item_entry.get("name", ""))
                 if item_name:
                     all_seen_items.add(item_name)
-            abilities = detail["abilities"]
             teammates = detail["teammates"]
             spreads = detail["spreads"]
         else:
@@ -390,6 +475,23 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
             abilities = []
             teammates = []
             spreads = []
+
+        # Robustness: if the detail fetch succeeded but moves+items+abilities
+        # are ALL empty, something went wrong in parsing (partial HTML, rate
+        # limit, Pikalytics layout change for this Pokemon). Skip the upsert
+        # instead of overwriting any existing good data with empty arrays.
+        # Discovered 2026-04-18: 5 Pokemon in the 2026-04-16 snapshot had
+        # this pattern (Incineroar, Charizard, Gengar, Aerodactyl, Venusaur).
+        if not moves and not items and not abilities:
+            warning = (
+                f"Skipping {display_name}: all detail sections empty "
+                "(transient scrape failure -- preserving existing row)"
+            )
+            result.warnings.append(warning)
+            print(f"  {warning}")
+            skipped += 1
+            time.sleep(REQUEST_DELAY)
+            continue
 
         record = {
             "pokemon_name": display_name,
@@ -412,15 +514,22 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
 
         time.sleep(REQUEST_DELAY)
 
-    # Step 3: Delete old Pikalytics rows for this format, then upsert new ones
-    #   Keeps only the current snapshot to avoid duplicate listings on the meta page
-    try:
-        sb.table("pokemon_usage").delete().eq(
-            "source", "pikalytics"
-        ).eq("format", "doubles").neq("snapshot_date", today_date).execute()
-        print("  Cleaned old pikalytics snapshots")
-    except Exception as e:
-        result.warnings.append(f"Failed to clean old snapshots: {e}")
+    # Step 3: Delete OLD Pikalytics snapshots -- but ONLY for Pokemon we
+    # successfully re-scraped this run. Pokemon we skipped due to empty
+    # scrape keep their previous row intact (better than having no data at
+    # all). Without this guard, a bad scrape run would wipe the meta tab.
+    fresh_names = [rec["pokemon_name"] for rec in upsert_batch]
+    if fresh_names:
+        try:
+            sb.table("pokemon_usage").delete().eq("source", "pikalytics").eq(
+                "format", "doubles"
+            ).neq("snapshot_date", today_date).in_("pokemon_name", fresh_names).execute()
+            print(
+                f"  Cleaned old pikalytics snapshots for "
+                f"{len(fresh_names)} freshly-scraped Pokemon"
+            )
+        except Exception as e:
+            result.warnings.append(f"Failed to clean old snapshots: {e}")
 
     upserted = 0
     print(f"\nUpserting {len(upsert_batch)} records...")

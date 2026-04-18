@@ -56,6 +56,21 @@
 - [x] CLAUDE.md Data Pipeline section rewritten with the source-of-truth rationale.
 - [x] **Mega + base Pokemon stats spot-check vs Serebii** (13 samples across base forms, classic megas, new Champions megas): 13/13 stat lines match Serebii exactly. Types, abilities, all 6 base stats verified for Incineroar, Sinistcha, Garchomp, Greninja, Sableye + Mega Dragonite/Gardevoir/Meganium/Charizard X/Charizard Y/Greninja/Sableye/Garchomp.
 
+### Session E (2026-04-17) -- Match-log UX, perf, AI damage engine -- LANDED
+Plan: `.claude/plans/oponen-team-selection-is-rosy-tower.md`. Five user-reported pain points after a real match-logging session.
+- [x] **W1 Opponent picker sort by usage**: matches/page.tsx now fetches `/usage?format=doubles&limit=50` and orders the 6 SearchableDropdown options as `[Most Used 50] -> [All Pokemon alphabetical]` with section headers. `DropdownOption` extended with optional `section` field; sticky header rendered when query is empty. Confirmed against live API: top 10 are Incineroar/Sneasler/Garchomp/Sinistcha/Kingambit/etc.
+- [x] **W2 Match-log Pokemon-level override**: migration `20260601100000_matchup_actual_lineup.sql` adds `my_team_actual TEXT[]`. `MatchupCreate/Update/Response` extended; TS types mirrored. Form renders 6 chips below My Team selector (defaulting to the saved team's resolved roster) — user can override any slot to capture a mid-match swap. Submit only sends `my_team_actual` when it differs from the saved team's defaults. AI verifier (`ai_verifier.py`) softened: hallucinations (Pokemon/move not in DB) still hard-fail with `verified=false`; team-membership mismatches now warn-only.
+- [x] **W3 Layer A Movepool override**: migration `20260601200000_movepool_overrides.sql` patches Alolan Ninetales (`Ninetales Alola`) with `Freeze-dry` (was missing from PokeAPI baseline + Serebii overlay). Idempotent `ARRAY(SELECT DISTINCT unnest(...))` pattern reusable for future Pokemon.
+- [x] **W4 Quick-win perf**: new `/pokemon/basic` endpoint returns slim records (id, name, types, sprite, champions_eligible) — **236KB → 35KB for 500 Pokemon (85% reduction)**. `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` headers added on `/pokemon`, `/pokemon/basic`, `/usage`. `web/src/lib/api.ts` gained an in-memory TTL cache (5-min) wrapping `fetchPokemonBasic` and `fetchUsage`. Match-log uses the slim endpoint.
+- [x] **W5a Real damage calc engine**: new `api/app/services/damage_calc.py` with TYPE_CHART (Python mirror of TS), level-50 stat conversion, full Gen 9+ damage formula (STAB, type effectiveness, doubles spread, weather). 9 unit tests in `scripts/test_damage_calc.py` (super-effective combos, immunities, status moves, OHKO detection, format strings) — all passing. `draft.py` post-processes the AI response: each calc's `attacker/move/defender` is looked up, `calculate_damage()` runs the formula, real `estimated_damage` string replaces the AI's guess. Calc note auto-tagged with `[2x SE, STAB]` etc. Prompt updated to tell the AI not to fabricate numbers — backend computes them. **Eliminates the entire class of "AI-hallucinated damage range" bugs.**
+
+### Session E -- Deferred (revisit when needed)
+- [ ] W3 Layer B: extend `validate_champions_sources.py` with `check_movepool_vs_sources()` for drift detection (DB vs PokeAPI vs Serebii)
+- [ ] W3 Layer C: fix `serebii_static.py` regional-form scrape (URL/parse pattern issue causing Alolan Ninetales et al. to miss Serebii overlay)
+- [ ] W5b: SSE streaming for draft + cheatsheet (Anthropic SDK `messages.stream()` + Vercel AI SDK on the web side); ~1 day
+- [ ] W5c: counter_index from pokemon_usage + tournament_teams co-occurrence; speed-tier table injected into draft prompt; "what changed" delta callout from meta_snapshots
+- [ ] Apply migrations `20260601100000_matchup_actual_lineup.sql` + `20260601200000_movepool_overrides.sql` to Supabase prod (manual user action)
+
 ### Dual-Mega Support (2026-04-17) -- LANDED
 - [x] Migration `20260422000000_dual_mega_support.sql`: added `pokemon.mega_evolution_ids INT[]` (backfilled from `mega_evolution_id`; Charizard set to `[10034, 10035]`), added `teams.mega_form_pokemon_id INT` FK to record specific mega form selection.
 - [x] API: `PokemonBase` gains `mega_evolution_ids` + `mega_evolution_names` (batch-resolved in list endpoint). Team models gain `mega_form_pokemon_id`. Lints + TS types clean.
@@ -127,7 +142,7 @@
 ## Backlog
 - [x] Dedup pokemon_usage: ingest scripts now clean old snapshots; 19 stale rows deleted
 - [x] ISR migration: 9 static pages (pokemon, moves, items, type-chart, meta, login, terms, privacy, support), 10 dynamic (auth-gated)
-- [ ] F7: Damage calculator
+- [x] F7: Damage calculator (landed 2026-04-17 as Session E W5a -- engine in api/app/services/damage_calc.py, integrated into draft AI; standalone calc UI deferred)
 - [ ] F8: Sprite display improvements
 - [ ] Speed tier reference page (/speed-tiers)
 

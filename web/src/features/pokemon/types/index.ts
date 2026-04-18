@@ -25,6 +25,19 @@ export interface PokemonListResponse {
   count: number;
 }
 
+export interface PokemonBasic {
+  id: number;
+  name: string;
+  types: string[];
+  champions_eligible: boolean;
+  sprite_url: string | null;
+}
+
+export interface PokemonBasicListResponse {
+  data: PokemonBasic[];
+  count: number;
+}
+
 export interface MoveDetail {
   name: string;
   type: string;

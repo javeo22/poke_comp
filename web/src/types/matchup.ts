@@ -18,6 +18,7 @@ export interface Matchup {
   tags?: string[];
   close_type?: CloseType | null;
   mvp_pokemon?: string | null;
+  my_team_actual?: string[] | null;
 }
 
 export interface MatchupCreate {
@@ -30,6 +31,7 @@ export interface MatchupCreate {
   tags?: string[];
   close_type?: CloseType;
   mvp_pokemon?: string;
+  my_team_actual?: string[];
 }
 
 export interface MatchupUpdate {
@@ -41,6 +43,7 @@ export interface MatchupUpdate {
   tags?: string[];
   close_type?: CloseType;
   mvp_pokemon?: string;
+  my_team_actual?: string[];
 }
 
 export interface MatchupListResponse {

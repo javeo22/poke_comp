@@ -79,3 +79,8 @@ class CheatsheetResponse(BaseModel):
     cached: bool = False
     estimated_cost_usd: float = 0.0
     ai_disclaimer: str = AI_DISCLAIMER
+    # True when team.updated_at > team_cheatsheets.updated_at -- the saved
+    # AI analysis may reference moves/items that no longer match the team.
+    # Only set on GET (saved fetch); fresh POST responses leave it False.
+    is_stale: bool = False
+    generated_at: str | None = None

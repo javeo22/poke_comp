@@ -36,7 +36,13 @@ class DamageCalc(BaseModel):
     attacker: str
     move: str
     defender: str
-    estimated_damage: str = Field(description="e.g. '65-78%' or 'OHKO'")
+    # Computed by the deterministic damage engine (services/damage_calc.py)
+    # after the AI response is parsed. Empty when the calc was skipped (move
+    # not found, immune, status move). Never AI-generated -- the AI proposes
+    # the scenario, the engine computes the number.
+    estimated_damage: str = Field(default="", description="e.g. '65-78%' or 'OHKO' (engine-computed)")
+    # Free-form scenario context from the AI (e.g. "assumes Choice Specs,
+    # 0 SpD investment"). Engine appends "[2x SE, STAB]" annotations.
     note: str = ""
     verified: bool = True
     verification_note: str | None = None

@@ -15,6 +15,15 @@ Design decisions:
 - We pass a prefetched `known_moves` set into the verifier so repeated
   calls don't hit the DB for every draft response.
 - Lead-pair rule is VGC-specific: both leads must be in `bring_four`.
+
+Verification strictness (changed 2026-04-17):
+- `verified=False` is reserved for hallucinations: a name or move that
+  doesn't exist in our DB at all. These are AI failures.
+- Membership mismatches (real Pokemon, but not in the user's saved team
+  or opponent preview) become *warnings only* with `verified` left True.
+  Reason: users sometimes swap a Pokemon between draft analysis and the
+  actual match -- flagging that as "broken" was misleading. The warning
+  stays so the UI can still surface the inconsistency.
 """
 
 from typing import Iterable
@@ -35,6 +44,14 @@ def _load_known_moves() -> set[str]:
     return {_normalize(r["name"]) for r in rows}
 
 
+def _load_known_pokemon() -> set[str]:
+    """Fetch all Pokemon names (normalized) for hallucination checks."""
+    rows: list[dict] = (
+        supabase.table("pokemon").select("name").execute().data  # type: ignore[assignment]
+    )
+    return {_normalize(r["name"]) for r in rows}
+
+
 def _name_set(names: Iterable[str]) -> set[str]:
     return {_normalize(n) for n in names}
 
@@ -44,24 +61,33 @@ def verify_draft_analysis(
     my_team_names: list[str],
     opponent_team_names: list[str],
     known_moves: set[str] | None = None,
+    known_pokemon: set[str] | None = None,
 ) -> DraftAnalysis:
     """Annotate the analysis with per-claim `verified` flags and a
     top-level `warnings` list. Returns the same object (mutated)."""
 
     if known_moves is None:
         known_moves = _load_known_moves()
+    if known_pokemon is None:
+        known_pokemon = _load_known_pokemon()
 
     my_set = _name_set(my_team_names)
     opp_set = _name_set(opponent_team_names)
     warnings: list[str] = []
 
-    # bring_four: each pokemon must be in my team
+    # bring_four: each pokemon must exist in DB; soft-warn on team mismatch
     for pick in analysis.bring_four:
-        if _normalize(pick.pokemon) not in my_set:
+        norm = _normalize(pick.pokemon)
+        if norm not in known_pokemon:
             pick.verified = False
-            pick.verification_note = "Not in your selected team"
+            pick.verification_note = "Unknown Pokemon (not in database)"
             warnings.append(
-                f"Recommended bring '{pick.pokemon}' is not in your team"
+                f"Recommended bring '{pick.pokemon}' is not a known Pokemon"
+            )
+        elif norm not in my_set:
+            warnings.append(
+                f"Recommended bring '{pick.pokemon}' is not in your saved team "
+                "(maybe you swapped it for this match?)"
             )
 
     # lead_pair: both leads must be in bring_four
@@ -72,11 +98,16 @@ def verify_draft_analysis(
                 f"Lead '{lead}' is not in the recommended bring-4"
             )
 
-    # threats: pokemon must be in opponent team; key_moves must exist in DB
+    # threats: hard-fail unknown move; soft-warn on team-membership mismatch
     for threat in analysis.threats:
         threat_issues: list[str] = []
-        if _normalize(threat.pokemon) not in opp_set:
-            threat_issues.append("not in opponent preview")
+        norm_threat = _normalize(threat.pokemon)
+        if norm_threat not in known_pokemon:
+            threat_issues.append("unknown Pokemon")
+            warnings.append(
+                f"Threat '{threat.pokemon}' is not a known Pokemon"
+            )
+        elif norm_threat not in opp_set:
             warnings.append(
                 f"Threat '{threat.pokemon}' is not in the opponent's team"
             )
@@ -95,20 +126,33 @@ def verify_draft_analysis(
             threat.verified = False
             threat.verification_note = "; ".join(threat_issues)
 
-    # damage_calcs: attacker in my team, defender in opponent, move known
+    # damage_calcs: hard-fail unknown move; soft-warn on team-membership mismatch
     for calc in analysis.damage_calcs:
         calc_issues: list[str] = []
-        if _normalize(calc.attacker) not in my_set:
-            calc_issues.append("attacker not in your team")
+        norm_attacker = _normalize(calc.attacker)
+        norm_defender = _normalize(calc.defender)
+
+        if norm_attacker not in known_pokemon:
+            calc_issues.append("unknown attacker Pokemon")
             warnings.append(
-                f"Damage calc attacker '{calc.attacker}' is not on your team"
+                f"Damage calc attacker '{calc.attacker}' is not a known Pokemon"
             )
-        if _normalize(calc.defender) not in opp_set:
-            calc_issues.append("defender not in opponent preview")
+        elif norm_attacker not in my_set:
             warnings.append(
-                f"Damage calc defender '{calc.defender}' is not on the "
-                "opponent team"
+                f"Damage calc attacker '{calc.attacker}' is not on your saved team "
+                "(maybe a mid-match swap?)"
             )
+
+        if norm_defender not in known_pokemon:
+            calc_issues.append("unknown defender Pokemon")
+            warnings.append(
+                f"Damage calc defender '{calc.defender}' is not a known Pokemon"
+            )
+        elif norm_defender not in opp_set:
+            warnings.append(
+                f"Damage calc defender '{calc.defender}' is not on the opponent team"
+            )
+
         if _normalize(calc.move) not in known_moves:
             calc_issues.append(f"unknown move: {calc.move}")
             warnings.append(

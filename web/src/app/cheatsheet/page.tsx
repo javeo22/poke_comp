@@ -9,6 +9,7 @@ import {
   fetchAllCheatsheets,
   fetchAiUsage,
   toggleCheatsheetVisibility,
+  deleteCheatsheet,
 } from "@/lib/api";
 import type { AiUsageMonth, AiUsageToday, SavedCheatsheet } from "@/lib/api";
 import { QuotaIndicator } from "@/components/quota-indicator";
@@ -38,6 +39,8 @@ export default function CheatsheetPage() {
   const [expandedId, setExpandedId] = useState<string | null>(preselectedTeamId || null);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
@@ -126,6 +129,58 @@ export default function CheatsheetPage() {
 
   const toggleExpand = (teamId: string) => {
     setExpandedId((prev) => (prev === teamId ? null : teamId));
+  };
+
+  const refreshUsage = () => {
+    fetchAiUsage()
+      .then((usage) => {
+        setQuota(usage.today);
+        setQuotaMonth(usage.month);
+        setIsSupporter(usage.supporter);
+        setIsUnlimited(usage.unlimited);
+      })
+      .catch(() => {});
+  };
+
+  const handleRegenerate = async (teamId: string) => {
+    if (regeneratingId) return;
+    setRegeneratingId(teamId);
+    setError(null);
+    try {
+      await generateCheatsheet(teamId, { force: true });
+      const updated = await fetchAllCheatsheets();
+      setSavedCheatsheets(updated);
+      refreshUsage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to regenerate cheatsheet");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+  const handleDelete = async (teamId: string) => {
+    if (deletingId) return;
+    if (!window.confirm("Delete this cheatsheet? You can regenerate it later.")) return;
+    setDeletingId(teamId);
+    setError(null);
+    try {
+      await deleteCheatsheet(teamId);
+      setSavedCheatsheets((prev) => prev.filter((s) => s.team_id !== teamId));
+      if (expandedId === teamId) setExpandedId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete cheatsheet");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // A cheatsheet is stale when the underlying team has been edited after the
+  // cheatsheet was generated -- the AI's game plan + lead matchups may
+  // reference moves/items the team no longer has.
+  const isCheatsheetStale = (saved: SavedCheatsheet): boolean => {
+    const team = teams.find((t) => t.id === saved.team_id);
+    if (!team) return false;
+    return new Date(team.updated_at).getTime() > new Date(saved.updated_at).getTime();
   };
 
   // Find team name for a saved cheatsheet
@@ -256,8 +311,42 @@ export default function CheatsheetPage() {
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="border-t border-outline-variant px-5 pb-6 pt-4">
+                    {/* Stale banner -- team edited after this cheatsheet was generated */}
+                    {isCheatsheetStale(saved) && (
+                      <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="h-4 w-4 shrink-0 text-amber-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.34 16a2 2 0 001.73 3z"
+                            />
+                          </svg>
+                          <p className="font-body text-xs text-amber-200">
+                            Team was edited after this cheatsheet was generated. Game plan may be out of date.
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRegenerate(saved.team_id);
+                          }}
+                          disabled={regeneratingId === saved.team_id}
+                          className="btn-primary h-8 px-4 font-display text-[0.6rem] uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {regeneratingId === saved.team_id ? "Regenerating..." : "Regenerate"}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Action bar */}
-                    <div className="mb-4 flex items-center gap-3">
+                    <div className="mb-4 flex items-center gap-3 flex-wrap">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -266,6 +355,17 @@ export default function CheatsheetPage() {
                         className="btn-ghost h-9 px-5 font-display text-xs font-medium uppercase tracking-wider"
                       >
                         Export PDF
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRegenerate(saved.team_id);
+                        }}
+                        disabled={regeneratingId === saved.team_id || (quota !== null && quota.remaining <= 0)}
+                        className="btn-ghost h-9 px-5 font-display text-xs font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Force a fresh AI run (bypasses cache)"
+                      >
+                        {regeneratingId === saved.team_id ? "Regenerating..." : "Regenerate"}
                       </button>
                       <button
                         onClick={async (e) => {
@@ -303,6 +403,16 @@ export default function CheatsheetPage() {
                           Copy Link
                         </button>
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(saved.team_id);
+                        }}
+                        disabled={deletingId === saved.team_id}
+                        className="btn-ghost h-9 px-5 font-display text-xs font-medium uppercase tracking-wider text-tertiary border-tertiary/30 hover:bg-tertiary/10 disabled:opacity-40 disabled:cursor-not-allowed ml-auto"
+                      >
+                        {deletingId === saved.team_id ? "Deleting..." : "Delete"}
+                      </button>
                       <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted/50">
                         {data.roster.length} Pokemon
                       </span>

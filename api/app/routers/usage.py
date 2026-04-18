@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from postgrest.types import CountMethod
 
 from app.database import supabase
@@ -6,9 +6,14 @@ from app.models.usage import PokemonUsageList, PokemonUsageResponse
 
 router = APIRouter(prefix="/usage", tags=["usage"])
 
+# Usage data refreshes weekly via cron (Mon 06:00 + 07:00 UTC). 1-hour cache
+# with 24-hour stale-while-revalidate is plenty fresh.
+_USAGE_CACHE_HEADER = "public, max-age=3600, stale-while-revalidate=86400"
+
 
 @router.get("", response_model=PokemonUsageList)
 def list_usage(
+    response: Response,
     format: str = Query("doubles", description="Filter by format (doubles, singles)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -34,6 +39,7 @@ def list_usage(
     for row in usage_rows:
         row["sprite_url"] = sprite_map.get(row["pokemon_name"])
 
+    response.headers["Cache-Control"] = _USAGE_CACHE_HEADER
     return PokemonUsageList(
         data=[PokemonUsageResponse.model_validate(row) for row in usage_rows],
         count=result.count or len(usage_rows),
@@ -41,7 +47,7 @@ def list_usage(
 
 
 @router.get("/pokemon/{pokemon_name}", response_model=list[PokemonUsageResponse])
-def get_pokemon_usage(pokemon_name: str):
+def get_pokemon_usage(pokemon_name: str, response: Response):
     """Get usage data for a specific Pokemon across all formats."""
     result = (
         supabase.table("pokemon_usage")
@@ -51,4 +57,5 @@ def get_pokemon_usage(pokemon_name: str):
         .limit(5)
         .execute()
     )
+    response.headers["Cache-Control"] = _USAGE_CACHE_HEADER
     return [PokemonUsageResponse.model_validate(row) for row in result.data]

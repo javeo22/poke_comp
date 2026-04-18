@@ -60,4 +60,6 @@ export interface CheatsheetResponse {
   cached: boolean;
   estimated_cost_usd: number;
   ai_disclaimer: string;
+  is_stale?: boolean;
+  generated_at?: string | null;
 }
