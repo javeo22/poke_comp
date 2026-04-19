@@ -160,8 +160,7 @@ def _top_entries_filtered(
         return []
 
     items = [
-        {"name": k, "percent": round((v / legal_total) * 100, 1)}
-        for k, v in legal_entries.items()
+        {"name": k, "percent": round((v / legal_total) * 100, 1)} for k, v in legal_entries.items()
     ]
     items.sort(key=lambda x: x["percent"], reverse=True)  # type: ignore[arg-type]
     return items[:top_n]
@@ -303,9 +302,9 @@ def ingest_smogon_data(sb: Client, dry_run: bool = False) -> IngestResult:
 
     # Clean old Smogon snapshots to avoid duplicate listings
     try:
-        sb.table("pokemon_usage").delete().eq(
-            "source", "smogon"
-        ).neq("snapshot_date", today_date).execute()
+        sb.table("pokemon_usage").delete().eq("source", "smogon").neq(
+            "snapshot_date", today_date
+        ).execute()
         print("  Cleaned old smogon snapshots")
     except Exception as e:
         result.warnings.append(f"Failed to clean old snapshots: {e}")

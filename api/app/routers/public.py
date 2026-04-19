@@ -13,15 +13,14 @@ router = APIRouter(prefix="/public", tags=["public"])
 def get_public_stats():
     """Public stats for the landing page. No auth required."""
     try:
-        pokemon = supabase.table("pokemon").select(
-            "id", count=CountMethod.exact
-        ).eq("champions_eligible", True).execute()
-        teams = supabase.table("teams").select(
-            "id", count=CountMethod.exact
-        ).execute()
-        matches = supabase.table("matchup_log").select(
-            "id", count=CountMethod.exact
-        ).execute()
+        pokemon = (
+            supabase.table("pokemon")
+            .select("id", count=CountMethod.exact)
+            .eq("champions_eligible", True)
+            .execute()
+        )
+        teams = supabase.table("teams").select("id", count=CountMethod.exact).execute()
+        matches = supabase.table("matchup_log").select("id", count=CountMethod.exact).execute()
         return {
             "pokemon_count": pokemon.count or 0,
             "teams_count": teams.count or 0,
@@ -117,10 +116,7 @@ def list_public_cheatsheets(username: str):
     """List a user's public cheatsheets."""
     # Look up user_id from username
     user_result = (
-        supabase.table("user_profiles")
-        .select("user_id")
-        .eq("username", username)
-        .execute()
+        supabase.table("user_profiles").select("user_id").eq("username", username).execute()
     )
     user_rows: list[dict] = user_result.data  # type: ignore[assignment]
     if not user_rows:
@@ -144,12 +140,7 @@ def list_public_cheatsheets(username: str):
 
     # Resolve team names
     team_ids = [c["team_id"] for c in cheatsheets]
-    teams_result = (
-        supabase.table("teams")
-        .select("id, name, format")
-        .in_("id", team_ids)
-        .execute()
-    )
+    teams_result = supabase.table("teams").select("id, name, format").in_("id", team_ids).execute()
     team_map = {t["id"]: t for t in (teams_result.data or [])}
 
     return [
@@ -182,12 +173,7 @@ def get_public_cheatsheet(cheatsheet_id: str):
     # Resolve team info
     team_name = None
     team_format = None
-    team_result = (
-        supabase.table("teams")
-        .select("name, format")
-        .eq("id", cs["team_id"])
-        .execute()
-    )
+    team_result = supabase.table("teams").select("name, format").eq("id", cs["team_id"]).execute()
     if team_result.data:
         team_name = team_result.data[0].get("name")
         team_format = team_result.data[0].get("format")

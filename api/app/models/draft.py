@@ -40,7 +40,9 @@ class DamageCalc(BaseModel):
     # after the AI response is parsed. Empty when the calc was skipped (move
     # not found, immune, status move). Never AI-generated -- the AI proposes
     # the scenario, the engine computes the number.
-    estimated_damage: str = Field(default="", description="e.g. '65-78%' or 'OHKO' (engine-computed)")
+    estimated_damage: str = Field(
+        default="", description="e.g. '65-78%' or 'OHKO' (engine-computed)"
+    )
     # Free-form scenario context from the AI (e.g. "assumes Choice Specs,
     # 0 SpD investment"). Engine appends "[2x SE, STAB]" annotations.
     note: str = ""

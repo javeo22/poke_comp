@@ -76,8 +76,7 @@ async def fetch_all(
 ) -> dict[str, str]:
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
     tasks = [
-        fetch_translations(client, endpoint, row[ident_col], row["name"], semaphore)
-        for row in rows
+        fetch_translations(client, endpoint, row[ident_col], row["name"], semaphore) for row in rows
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     merged: dict[str, str] = {}
@@ -110,8 +109,7 @@ async def main():
         # PokeAPI abilities don't have numeric IDs everywhere; use name slug.
         # Our abilities are stored as Title Case -> convert to kebab-lowercase.
         abilities_lookup = [
-            {"name": r["name"], "slug": r["name"].lower().replace(" ", "-")}
-            for r in abilities_rows
+            {"name": r["name"], "slug": r["name"].lower().replace(" ", "-")} for r in abilities_rows
         ]
         moves_map, items_map, abilities_map = await asyncio.gather(
             fetch_all(client, "move", moves_rows, "id"),

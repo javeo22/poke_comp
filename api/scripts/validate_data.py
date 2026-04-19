@@ -212,11 +212,7 @@ def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
         if unknown:
             unknown_entries.append(f"{row['pokemon_name']}: {', '.join(unknown)}")
             if fix:
-                cleaned = [
-                    m
-                    for m in moves_list
-                    if m.get("name", "").lower() in known_moves
-                ]
+                cleaned = [m for m in moves_list if m.get("name", "").lower() in known_moves]
                 rows_to_fix.append({"id": row["id"], "moves": cleaned})
 
     fixed = 0

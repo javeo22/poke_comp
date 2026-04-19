@@ -29,10 +29,7 @@ def list_usage(
     if usage_rows:
         names = [row["pokemon_name"] for row in usage_rows]
         sprite_result = (
-            supabase.table("pokemon")
-            .select("name, sprite_url")
-            .in_("name", names)
-            .execute()
+            supabase.table("pokemon").select("name, sprite_url").in_("name", names).execute()
         )
         sprite_map = {row["name"]: row.get("sprite_url") for row in sprite_result.data}
 

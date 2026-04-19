@@ -119,8 +119,7 @@ def update_meta_snapshots(
 def main() -> None:
     if not SOURCES:
         print(
-            "refresh_meta: no active tier-list sources (Game8 removed 2026-04-16)."
-            " Nothing to do."
+            "refresh_meta: no active tier-list sources (Game8 removed 2026-04-16). Nothing to do."
         )
         return
 

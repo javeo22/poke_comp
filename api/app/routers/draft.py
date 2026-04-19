@@ -61,9 +61,7 @@ def _make_hash_v1(opponent: list[str], my_pokemon_ids: list[str]) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
-def _check_cache(
-    opponent: list[str], my_pokemon_ids: list[str]
-) -> DraftAnalysis | None:
+def _check_cache(opponent: list[str], my_pokemon_ids: list[str]) -> DraftAnalysis | None:
     """Try v2 key first, fall back to legacy v1 during grace window."""
     for request_hash, is_legacy in (
         (_make_hash_v2(opponent, my_pokemon_ids), False),
@@ -82,9 +80,7 @@ def _check_cache(
         row: dict = result.data  # type: ignore[assignment]
         expires = row.get("expires_at")
         if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-            supabase.table("ai_analyses").delete().eq(
-                "request_hash", request_hash
-            ).execute()
+            supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
             continue
 
         if is_legacy:
@@ -557,10 +553,7 @@ Return ONLY the JSON object, no markdown fences or explanation."""
     strategy_ctx = fetch_strategy_context(format=my_team.get("format", "vgc2026"))
     strategy_section = f"\n\n{strategy_ctx}" if strategy_ctx else ""
 
-    return (
-        f"{header}\n\n{my_team_section}\n\n{opp_section}"
-        f"{strategy_section}\n\n{task_section}"
-    )
+    return f"{header}\n\n{my_team_section}\n\n{opp_section}{strategy_section}\n\n{task_section}"
 
 
 @router.post("/analyze", response_model=DraftResponse)

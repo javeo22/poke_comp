@@ -87,6 +87,7 @@ def _fetch_saved_cheatsheet(team_id: str, user_id: str) -> dict | None:
     except Exception:
         return None
 
+
 # ═══════════════════════════════════════════════════════════════════
 # Constants
 # ═══════════════════════════════════════════════════════════════════
@@ -369,15 +370,11 @@ def _check_cache(roster: list[RosterEntry]) -> dict | None:
         row: dict = result.data  # type: ignore[assignment]
         expires = row.get("expires_at")
         if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-            supabase.table("ai_analyses").delete().eq(
-                "request_hash", request_hash
-            ).execute()
+            supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
             continue
 
         if is_legacy:
-            logger.info(
-                "cheatsheet cache v1 hit (grace window): %s", request_hash[:12]
-            )
+            logger.info("cheatsheet cache v1 hit (grace window): %s", request_hash[:12])
         response: dict = row["response_json"]
         return response
     return None
@@ -576,9 +573,9 @@ def toggle_visibility(team_id: str, user_id: str = Depends(get_current_user)):
 
     row: dict = result.data  # type: ignore[assignment]
     new_value = not row.get("is_public", False)
-    supabase.table("team_cheatsheets").update(
-        {"is_public": new_value}
-    ).eq("id", row["id"]).execute()
+    supabase.table("team_cheatsheets").update({"is_public": new_value}).eq(
+        "id", row["id"]
+    ).execute()
 
     return {"team_id": team_id, "is_public": new_value}
 

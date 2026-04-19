@@ -101,9 +101,7 @@ def _compute_expanded_stats(user_id: str) -> ExpandedStats:
     if team_usage:
         top_team_id = max(team_usage, key=lambda k: team_usage[k])
         most_used_team_id = top_team_id
-        team_name_result = (
-            supabase.table("teams").select("name").eq("id", top_team_id).execute()
-        )
+        team_name_result = supabase.table("teams").select("name").eq("id", top_team_id).execute()
         team_rows: list[dict] = team_name_result.data  # type: ignore[assignment]
         most_used_team = team_rows[0]["name"] if team_rows else top_team_id
 
@@ -116,8 +114,7 @@ def _compute_expanded_stats(user_id: str) -> ExpandedStats:
 
     # Recent form (last 10)
     recent_form = [
-        RecentFormEntry(outcome=m["outcome"], played_at=m["played_at"])
-        for m in all_matchups[:10]
+        RecentFormEntry(outcome=m["outcome"], played_at=m["played_at"]) for m in all_matchups[:10]
     ]
 
     return ExpandedStats(
@@ -140,17 +137,11 @@ def _compute_expanded_stats(user_id: str) -> ExpandedStats:
 def get_profile(user_id: str = Depends(get_current_user)):
     """Get current user's profile with expanded stats. Auto-creates profile on first access."""
     # Upsert profile (auto-create if missing)
-    supabase.table("user_profiles").upsert(
-        {"user_id": user_id}, on_conflict="user_id"
-    ).execute()
+    supabase.table("user_profiles").upsert({"user_id": user_id}, on_conflict="user_id").execute()
 
     # Fetch profile row
     profile_result = (
-        supabase.table("user_profiles")
-        .select("*")
-        .eq("user_id", user_id)
-        .single()
-        .execute()
+        supabase.table("user_profiles").select("*").eq("user_id", user_id).single().execute()
     )
     profile_data: dict = profile_result.data  # type: ignore[assignment]
 
@@ -203,12 +194,7 @@ def check_username(username: str):
             "available": False,
             "reason": "3-20 chars: lowercase letters, numbers, hyphens, underscores",
         }
-    result = (
-        supabase.table("user_profiles")
-        .select("user_id")
-        .eq("username", username)
-        .execute()
-    )
+    result = supabase.table("user_profiles").select("user_id").eq("username", username).execute()
     taken = bool(result.data)
     return {"available": not taken, "username": username}
 
@@ -262,11 +248,7 @@ def update_profile(body: ProfileUpdate, user_id: str = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="No fields to update")
 
     update_data["user_id"] = user_id
-    result = (
-        supabase.table("user_profiles")
-        .upsert(update_data, on_conflict="user_id")
-        .execute()
-    )
+    result = supabase.table("user_profiles").upsert(update_data, on_conflict="user_id").execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     if not rows:
         raise HTTPException(status_code=400, detail="Failed to update profile")

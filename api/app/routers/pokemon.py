@@ -102,10 +102,7 @@ def list_pokemon(
     mega_name_map: dict[int, str] = {}
     if all_mega_ids:
         mega_rows = (
-            supabase.table("pokemon")
-            .select("id, name")
-            .in_("id", list(all_mega_ids))
-            .execute()
+            supabase.table("pokemon").select("id, name").in_("id", list(all_mega_ids)).execute()
         )
         for m in mega_rows.data:  # type: ignore[union-attr]
             mega_name_map[m["id"]] = m["name"]
@@ -201,12 +198,7 @@ def get_pokemon_detail(pokemon_id: int):
 
     mega_names: list[str] = []
     if detail_mega_ids:
-        mega_res = (
-            supabase.table("pokemon")
-            .select("id, name")
-            .in_("id", detail_mega_ids)
-            .execute()
-        )
+        mega_res = supabase.table("pokemon").select("id, name").in_("id", detail_mega_ids).execute()
         id_to_name = {r["id"]: r["name"] for r in mega_res.data}  # type: ignore[union-attr]
         mega_names = [id_to_name[mid] for mid in detail_mega_ids if mid in id_to_name]
 

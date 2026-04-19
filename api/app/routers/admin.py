@@ -204,19 +204,18 @@ def update_pokemon(
 ):
     """Update Pokemon fields (champions_eligible, movepool, etc.)."""
     allowed = {
-        "champions_eligible", "movepool", "abilities",
-        "types", "base_stats", "mega_evolution_id",
+        "champions_eligible",
+        "movepool",
+        "abilities",
+        "types",
+        "base_stats",
+        "mega_evolution_id",
     }
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
         raise HTTPException(status_code=400, detail=f"No valid fields. Allowed: {allowed}")
 
-    result = (
-        supabase.table("pokemon")
-        .update(filtered)
-        .eq("id", pokemon_id)
-        .execute()
-    )
+    result = supabase.table("pokemon").update(filtered).eq("id", pokemon_id).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
     if not rows:
         raise HTTPException(status_code=404, detail="Pokemon not found")
@@ -258,8 +257,13 @@ def update_move(
 ):
     """Update move fields (champions_available, power, etc.)."""
     allowed = {
-        "champions_available", "power", "accuracy",
-        "effect_text", "type", "category", "target",
+        "champions_available",
+        "power",
+        "accuracy",
+        "effect_text",
+        "type",
+        "category",
+        "target",
     }
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:

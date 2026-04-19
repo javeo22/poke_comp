@@ -122,9 +122,7 @@ def load_db_moves(sb: Client) -> list[dict]:
 
 def _n(text: str) -> str:
     """Normalize a name for case/punctuation-insensitive comparison."""
-    return (
-        text.strip().lower().replace("-", " ").replace("_", " ").replace("'", "")
-    )
+    return text.strip().lower().replace("-", " ").replace("_", " ").replace("'", "")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -507,11 +505,7 @@ async def async_main(sample_size: int, skip_detail: bool, movepool_sample: int) 
                 except Exception as e:
                     print(f"  Failed to scrape {p['name']}: {e}")
 
-            report.add(
-                await check_movepool_samples(
-                    db_pokemon, serebii_by_name, movepool_sample
-                )
-            )
+            report.add(await check_movepool_samples(db_pokemon, serebii_by_name, movepool_sample))
 
     # Write + print
     REPORT_PATH.write_text(json.dumps(report.to_dict(), indent=2))
@@ -529,21 +523,26 @@ async def async_main(sample_size: int, skip_detail: bool, movepool_sample: int) 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sample-size", type=int, default=15,
-                        help="Number of Pokemon to deep-check vs PokeAPI (default 15)")
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=15,
+        help="Number of Pokemon to deep-check vs PokeAPI (default 15)",
+    )
     parser.add_argument(
         "--movepool-sample",
         type=int,
         default=8,
         help="Number of Pokemon to deep-check movepool vs Serebii (default 8)",
     )
-    parser.add_argument("--skip-detail", action="store_true",
-                        help="Skip per-Pokemon detail fetches (fast roster/items/moves only)")
+    parser.add_argument(
+        "--skip-detail",
+        action="store_true",
+        help="Skip per-Pokemon detail fetches (fast roster/items/moves only)",
+    )
     args = parser.parse_args()
 
-    exit_code = asyncio.run(
-        async_main(args.sample_size, args.skip_detail, args.movepool_sample)
-    )
+    exit_code = asyncio.run(async_main(args.sample_size, args.skip_detail, args.movepool_sample))
     sys.exit(exit_code)
 
 

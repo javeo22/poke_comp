@@ -26,6 +26,7 @@ def _is_admin(user_id: str) -> bool:
     """Admins bypass the daily + monthly quota and always use Sonnet."""
     return user_id in _admin_user_ids()
 
+
 # ── Model pricing (per token) ──
 MODEL_PRICING: dict[str, dict[str, float]] = {
     "claude-sonnet-4-6": {
@@ -58,9 +59,7 @@ def _tomorrow_start_utc() -> str:
 def _monthly_start_utc() -> str:
     """Return first day of current month at 00:00 UTC as ISO string."""
     now = datetime.now(timezone.utc)
-    return now.replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    ).isoformat()
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
 
 def _next_month_start_utc() -> str:
@@ -148,8 +147,7 @@ def check_ai_quota(user_id: str) -> dict:
             status_code=429,
             detail={
                 "message": (
-                    f"Daily AI quota reached ({limit} analyses per day). "
-                    f"Resets at midnight UTC."
+                    f"Daily AI quota reached ({limit} analyses per day). Resets at midnight UTC."
                 ),
                 "used": used,
                 "limit": limit,

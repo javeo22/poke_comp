@@ -32,9 +32,7 @@ def test_opponent_normalization() -> list[str]:
     failures: list[str] = []
 
     # Dedupe, lowercase, sort.
-    result = normalize_opponent_names(
-        ["Gholdengo", "Urshifu", "gholdengo", "  Flutter Mane  "]
-    )
+    result = normalize_opponent_names(["Gholdengo", "Urshifu", "gholdengo", "  Flutter Mane  "])
     failures += _check(
         "dedupes case-insensitively, strips, sorts",
         result == ["flutter mane", "gholdengo", "urshifu"],

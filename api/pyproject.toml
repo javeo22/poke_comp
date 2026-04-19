@@ -30,6 +30,7 @@ select = ["E", "F", "I", "N", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/seed_champions.py" = ["E501"]
+"scripts/test_damage_calc.py" = ["E501"]
 
 [tool.pyright]
 pythonVersion = "3.12"

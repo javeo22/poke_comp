@@ -68,9 +68,7 @@ async def cron_validate_data(
     return IngestResult(
         source="validate_data",
         rows_updated=report.total_fixed,
-        warnings=[
-            f"{c.name}: {c.message}" for c in report.checks if c.status != "pass"
-        ],
+        warnings=[f"{c.name}: {c.message}" for c in report.checks if c.status != "pass"],
         dry_run=False,
     )
 

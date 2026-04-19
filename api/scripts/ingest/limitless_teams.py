@@ -272,9 +272,7 @@ def ingest_limitless_tournaments(
 
             if dry_run:
                 total_teams += 1
-                print(
-                    f"    [dry-run] Placing {placing}: {', '.join(team_names[:6])} [{archetype}]"
-                )
+                print(f"    [dry-run] Placing {placing}: {', '.join(team_names[:6])} [{archetype}]")
                 continue
 
             try:
@@ -305,9 +303,7 @@ def run(
 ) -> IngestResult:
     """Entrypoint for HTTP/cron invocation. Returns an IngestResult."""
     db = create_client(settings.supabase_url, settings.supabase_service_key)
-    return ingest_limitless_tournaments(
-        db, tournament_ids=tournament_ids, dry_run=dry_run
-    )
+    return ingest_limitless_tournaments(db, tournament_ids=tournament_ids, dry_run=dry_run)
 
 
 def main() -> None:

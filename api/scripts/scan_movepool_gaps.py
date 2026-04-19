@@ -90,9 +90,7 @@ async def scan(top_n: int | None, pokemon_filter: str | None) -> dict:
     start = time.time()
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        tasks = [
-            fetch_pokeapi_movepool(client, p["id"], semaphore) for p in poke_rows
-        ]
+        tasks = [fetch_pokeapi_movepool(client, p["id"], semaphore) for p in poke_rows]
         pokeapi_movepools = await asyncio.gather(*tasks, return_exceptions=True)
 
     for poke, pokeapi_pool in zip(poke_rows, pokeapi_movepools):
@@ -170,9 +168,7 @@ async def scan(top_n: int | None, pokemon_filter: str | None) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Scan for movepool gaps vs PokeAPI")
-    parser.add_argument(
-        "--top", type=int, default=None, help="Limit results to top N gaps"
-    )
+    parser.add_argument("--top", type=int, default=None, help="Limit results to top N gaps")
     parser.add_argument(
         "--pokemon",
         type=str,

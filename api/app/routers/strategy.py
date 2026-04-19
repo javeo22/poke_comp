@@ -97,12 +97,7 @@ def update_note(
                 detail="Category must be: archetype, matchup, general, tip",
             )
 
-    result = (
-        supabase.table("strategy_notes")
-        .update(update_data)
-        .eq("id", note_id)
-        .execute()
-    )
+    result = supabase.table("strategy_notes").update(update_data).eq("id", note_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Note not found")
     return StrategyNoteResponse.model_validate(result.data[0])
@@ -115,10 +110,7 @@ def deactivate_note(
 ):
     """Soft-delete a strategy note (set is_active=false)."""
     result = (
-        supabase.table("strategy_notes")
-        .update({"is_active": False})
-        .eq("id", note_id)
-        .execute()
+        supabase.table("strategy_notes").update({"is_active": False}).eq("id", note_id).execute()
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Note not found")

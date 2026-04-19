@@ -447,9 +447,7 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
             # Pikalytics serves random localizations -- filter to English only.
             moves, moves_dropped = _filter_english(detail["moves"], moves_map)
             items, items_dropped = _filter_english(detail["items"], items_map)
-            abilities, abilities_dropped = _filter_english(
-                detail["abilities"], abilities_map
-            )
+            abilities, abilities_dropped = _filter_english(detail["abilities"], abilities_map)
             if moves_dropped or items_dropped or abilities_dropped:
                 msg = (
                     f"{display_name}: dropped non-English "
@@ -525,8 +523,7 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
                 "format", "doubles"
             ).neq("snapshot_date", today_date).in_("pokemon_name", fresh_names).execute()
             print(
-                f"  Cleaned old pikalytics snapshots for "
-                f"{len(fresh_names)} freshly-scraped Pokemon"
+                f"  Cleaned old pikalytics snapshots for {len(fresh_names)} freshly-scraped Pokemon"
             )
         except Exception as e:
             result.warnings.append(f"Failed to clean old snapshots: {e}")

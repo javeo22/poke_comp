@@ -81,9 +81,7 @@ def verify_draft_analysis(
         if norm not in known_pokemon:
             pick.verified = False
             pick.verification_note = "Unknown Pokemon (not in database)"
-            warnings.append(
-                f"Recommended bring '{pick.pokemon}' is not a known Pokemon"
-            )
+            warnings.append(f"Recommended bring '{pick.pokemon}' is not a known Pokemon")
         elif norm not in my_set:
             warnings.append(
                 f"Recommended bring '{pick.pokemon}' is not in your saved team "
@@ -94,9 +92,7 @@ def verify_draft_analysis(
     bring_set = _name_set(p.pokemon for p in analysis.bring_four)
     for lead in analysis.lead_pair:
         if _normalize(lead) not in bring_set:
-            warnings.append(
-                f"Lead '{lead}' is not in the recommended bring-4"
-            )
+            warnings.append(f"Lead '{lead}' is not in the recommended bring-4")
 
     # threats: hard-fail unknown move; soft-warn on team-membership mismatch
     for threat in analysis.threats:
@@ -104,20 +100,12 @@ def verify_draft_analysis(
         norm_threat = _normalize(threat.pokemon)
         if norm_threat not in known_pokemon:
             threat_issues.append("unknown Pokemon")
-            warnings.append(
-                f"Threat '{threat.pokemon}' is not a known Pokemon"
-            )
+            warnings.append(f"Threat '{threat.pokemon}' is not a known Pokemon")
         elif norm_threat not in opp_set:
-            warnings.append(
-                f"Threat '{threat.pokemon}' is not in the opponent's team"
-            )
-        unknown_moves = [
-            m for m in threat.key_moves if _normalize(m) not in known_moves
-        ]
+            warnings.append(f"Threat '{threat.pokemon}' is not in the opponent's team")
+        unknown_moves = [m for m in threat.key_moves if _normalize(m) not in known_moves]
         if unknown_moves:
-            threat_issues.append(
-                f"unknown move(s): {', '.join(unknown_moves)}"
-            )
+            threat_issues.append(f"unknown move(s): {', '.join(unknown_moves)}")
             warnings.append(
                 f"{threat.pokemon} lists move(s) not in the moves database: "
                 f"{', '.join(unknown_moves)}"
@@ -134,9 +122,7 @@ def verify_draft_analysis(
 
         if norm_attacker not in known_pokemon:
             calc_issues.append("unknown attacker Pokemon")
-            warnings.append(
-                f"Damage calc attacker '{calc.attacker}' is not a known Pokemon"
-            )
+            warnings.append(f"Damage calc attacker '{calc.attacker}' is not a known Pokemon")
         elif norm_attacker not in my_set:
             warnings.append(
                 f"Damage calc attacker '{calc.attacker}' is not on your saved team "
@@ -145,19 +131,13 @@ def verify_draft_analysis(
 
         if norm_defender not in known_pokemon:
             calc_issues.append("unknown defender Pokemon")
-            warnings.append(
-                f"Damage calc defender '{calc.defender}' is not a known Pokemon"
-            )
+            warnings.append(f"Damage calc defender '{calc.defender}' is not a known Pokemon")
         elif norm_defender not in opp_set:
-            warnings.append(
-                f"Damage calc defender '{calc.defender}' is not on the opponent team"
-            )
+            warnings.append(f"Damage calc defender '{calc.defender}' is not on the opponent team")
 
         if _normalize(calc.move) not in known_moves:
             calc_issues.append(f"unknown move: {calc.move}")
-            warnings.append(
-                f"Damage calc move '{calc.move}' is not in the moves database"
-            )
+            warnings.append(f"Damage calc move '{calc.move}' is not in the moves database")
         if calc_issues:
             calc.verified = False
             calc.verification_note = "; ".join(calc_issues)
