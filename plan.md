@@ -84,7 +84,7 @@
 
 ### Polish
 - [x] Refined AI prompts based on real usage data and tournament context
-- [ ] UI polish pass across all features
+- [x] UI polish pass across all features (PokeComp Redesign V2 -- 2026-04-27, magenta/gold/purple esports broadcast theme; Home + Pokedex + Draft + Roster + Cheatsheet custom restyle, all other pages harmonized via token swap)
 - [ ] Error handling and loading states
 - [ ] Performance optimization
 

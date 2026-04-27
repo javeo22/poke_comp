@@ -2,33 +2,44 @@
 
 
 @theme inline {
-  /* ── Surface Hierarchy (Warm Matte Black) ── */
-  --color-surface: #111110;
-  --color-surface-lowest: #0C0B0A;
-  --color-surface-low: #181614;
-  --color-surface-mid: #201D1A;
-  --color-surface-high: #282421;
-  --color-surface-highest: #312C27;
+  /* ── Surface Hierarchy (Magenta-tinted near-black) ── */
+  --color-surface: #0a0510;
+  --color-surface-lowest: #07030d;
+  --color-surface-low: #0F0916;
+  --color-surface-mid: #1A1424;
+  --color-surface-high: #251D33;
+  --color-surface-highest: #2D2440;
 
-  /* ── Primary: Crimson ── */
-  --color-primary: #CC2929;
-  --color-primary-container: #4A0A0A;
+  /* ── Primary: Signal Magenta (brand accent / focus / live state) ── */
+  --color-primary: #FF2D7A;
+  --color-primary-container: #380A20;
 
-  /* ── Secondary: Silver ── */
-  --color-secondary: #B0B8C4;
-  --color-secondary-container: #2A2E35;
+  /* ── Secondary: Muted Lilac (supporting text / chrome) ── */
+  --color-secondary: #a294b5;
+  --color-secondary-container: #2a1f33;
 
-  /* ── Tertiary: Amber (avoids red-on-red with Crimson primary) ── */
+  /* ── Tertiary: Amber (legacy warnings / amber accents) ── */
   --color-tertiary: #F59E0B;
   --color-tertiary-container: #3D2800;
 
-  /* ── Accent: Gold ── */
-  --color-accent: #FBBF24;
+  /* ── Accent: Gold (primary CTA color) ── */
+  --color-accent: #FFD23F;
+  --color-accent-container: #3D2F00;
+
+  /* ── Purple: AI / contextual notes ── */
+  --color-purple: #7E22CE;
+  --color-purple-container: #1F1230;
+  --color-purple-soft: #c084fc;
+
+  /* ── Status (success/danger) ── */
+  --color-success: #22c55e;
+  --color-danger: #FF2D7A;
 
   /* ── Text & Outline ── */
-  --color-on-surface: #E4E7ED;
-  --color-on-surface-muted: #8891A0;
-  --color-outline-variant: #3A3F4B;
+  --color-on-surface: #EDE9F4;
+  --color-on-surface-muted: #a294b5;
+  --color-on-surface-dim: #5a4a6a;
+  --color-outline-variant: #2a1f33;
 
   /* ── Pokemon Type Colors ── */
   --color-type-normal: #A8A77A;
@@ -51,81 +62,137 @@
   --color-type-fairy: #D685AD;
 
   /* ── Fonts ── */
-  --font-display: var(--font-space-grotesk), "Space Grotesk", ui-monospace, monospace;
-  --font-body: var(--font-plus-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
 
   /* ── Radii ── */
-  --radius-card: 0.75rem;
+  --radius-card: 0.875rem;
   --radius-button: 0.5rem;
   --radius-badge: 9999px;
 }
 
 /* ── Base ── */
-body {
+html, body {
   background: var(--color-surface);
   color: var(--color-on-surface);
   font-family: var(--font-body);
 }
 
+body {
+  position: relative;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% -5%, rgba(255, 45, 122, 0.16), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(126, 34, 206, 0.16), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ── Faint diagnostic grid (very subtle, only on tall page bg) ── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.32;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
 /* ── Card ── */
 .card {
-  background: var(--color-surface-low);
+  background: rgba(15, 9, 22, 0.6);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
 }
 
 /* ── Card Interactive ── */
 .card-interactive {
-  background: var(--color-surface-low);
+  background: rgba(15, 9, 22, 0.6);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-card);
   transition: background-color 150ms, border-color 150ms;
 }
 .card-interactive:hover {
-  background: var(--color-surface-mid);
-  border-color: var(--color-on-surface-muted);
+  background: rgba(26, 20, 36, 0.8);
+  border-color: rgba(255, 210, 63, 0.35);
 }
 
-/* ── Button Primary ── */
+/* ── Button Primary (gold, design's main CTA) ── */
 .btn-primary {
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: var(--color-surface);
-  font-weight: 500;
+  font-weight: 700;
   border-radius: var(--radius-button);
-  transition: background-color 150ms;
+  transition: background-color 150ms, box-shadow 150ms;
 }
 .btn-primary:hover {
-  background: color-mix(in srgb, var(--color-primary) 85%, black);
+  background: color-mix(in srgb, var(--color-accent) 88%, white);
+  box-shadow: 0 0 0 3px rgba(255, 210, 63, 0.18);
 }
 .btn-primary:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
+/* ── Button Gradient (hero / strong-action CTA) ── */
+.btn-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-surface);
+  font-weight: 700;
+  border-radius: var(--radius-button);
+  transition: filter 150ms, box-shadow 150ms;
+}
+.btn-gradient:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 3px rgba(255, 45, 122, 0.18);
+}
+
 /* ── Button Ghost ── */
 .btn-ghost {
   background: transparent;
   border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-muted);
+  color: var(--color-on-surface);
   border-radius: var(--radius-button);
   transition: all 150ms;
 }
 .btn-ghost:hover {
-  background: var(--color-surface-high);
-  color: var(--color-on-surface);
+  background: var(--color-surface-mid);
+  border-color: var(--color-on-surface-muted);
 }
 
 /* ── Input Field ── */
 .input-field {
-  background: var(--color-surface-lowest);
+  background: rgba(10, 5, 16, 0.7);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-button);
+  color: var(--color-on-surface);
   transition: border-color 150ms, box-shadow 150ms;
 }
 .input-field:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 25%, transparent);
   outline: none;
+}
+
+/* ── Mono section label (◆ THING · 12) ── */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* ── Gradient text helper ── */
+.text-gradient {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 /* ── Status Dots ── */
@@ -134,9 +201,28 @@ body {
   height: 8px;
   border-radius: 9999px;
 }
-.status-built { background: var(--color-secondary); }
+.status-built { background: var(--color-success); }
 .status-training { background: var(--color-accent); }
 .status-wishlist { background: var(--color-primary); }
+
+/* ── Live pulse dot ── */
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 10px var(--color-primary);
+  animation: pcomp-pulse 1.4s ease-in-out infinite;
+}
+@keyframes pcomp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── Pixel-art image rendering ── */
+.image-rendering-pixelated {
+  image-rendering: pixelated;
+}
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
@@ -150,4 +236,7 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-outline-variant);
   border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-on-surface-dim);
 }

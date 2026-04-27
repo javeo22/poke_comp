@@ -29,19 +29,24 @@ poke_comp/
 - **No ORM:** Direct Supabase client queries, SQL migrations
 - **Types:** Pydantic models (Python) are source of truth; TypeScript interfaces mirror manually
 - **Borders:** 1px solid `outline-variant` on cards, panels, and inputs for clear boundaries.
-- **Radii:** 0.75rem for cards, 0.5rem for buttons/inputs, 9999px only for badges/dots.
-- **Text color:** Use on-surface (#E4E7ED), never pure white (#FFFFFF).
+- **Radii:** 0.875rem for cards, 0.5rem for buttons/inputs, 9999px only for badges/dots.
+- **Text color:** Use on-surface (#EDE9F4), never pure white (#FFFFFF).
 
-## Design System: Battle Station
-Tactical, high-contrast dark UI built for competitive play scan speed. Information-dense but never cluttered.
+## Design System: PokeComp Redesign (V2 — Apr 27 2026)
+Pro-tool esports-broadcast feel on a magenta/gold/purple palette. Scan-speed first, but warmer and more confident than the old "Battle Station" theme. Implemented from the design handoff in `pokecomp/project/PokeComp Redesign.html`.
 - **Core Principle:** Scan speed over spectacle. Data in 200ms during live matches.
-- **Flat Materiality:** Opaque panels with borders. No glassmorphism, no 3D perspective, no backdrop-blur.
-- **Motion:** GSAP for entrance staggers and panel slides. 2D only -- no 3D tilt, no perspective transforms.
-- **Cards:** `.card` (static) or `.card-interactive` (hoverable) classes. Opaque bg-surface-low with 1px border.
-- **Buttons:** `.btn-primary` (solid sky blue) or `.btn-ghost` (transparent with border). No gradients, no glow.
-- **Inputs:** `.input-field` class. Focus ring with primary color.
-- **Hover:** CSS-only `transition-colors duration-150`. No GSAP hover effects.
-- **Grid entrance:** `gsap.fromTo` with `{ opacity: 0, y: 20 }` -> `{ opacity: 1, y: 0 }`, stagger 0.03s.
+- **Palette:** `#0a0510` near-black background with magenta + purple radial gradients. Magenta `#FF2D7A` (primary, live state, danger), gold `#FFD23F` (CTA, accent), purple `#7E22CE` (AI/contextual notes), green `#22c55e` (success), amber `#F59E0B` (legacy warning, kept on `--color-tertiary` for back-compat).
+- **Typography:** Inter for everything visible (body + display); JetBrains Mono for ALL-CAPS labels, telemetry, IDs, percentages. Headlines tracked tight (-0.035em / -0.045em).
+- **Mono labels:** Section headers use the `◆ LABEL · COUNT` mono pattern with letter-spacing 0.22em.
+- **Materiality:** Opaque panels with subtle gradient washes. No glassmorphism, no 3D perspective; ok to use radial-gradient halos behind sprite cards and 1px inner-shadow accents.
+- **Motion:** GSAP for entrance staggers in lists. CSS pulse for live-state dots. 2D only.
+- **Cards:** `.card` (static) or `.card-interactive` (hoverable). Background `rgba(15,9,22,.6)` with `--color-outline-variant` border. Hover lifts to gold-tinted border.
+- **Buttons:** `.btn-primary` is solid gold `#FFD23F` with dark text (the design's main CTA). `.btn-gradient` is the magenta→gold linear gradient for hero/strong-action moments. `.btn-ghost` is transparent with a 1px border.
+- **Inputs:** `.input-field` with gold focus ring (was crimson).
+- **Brand mark:** 30×30 conic-gradient tile (magenta → purple → gold) wrapping a near-black square with a gold "P" — never use Pokeball/Nintendo IP.
+- **Imagery:** PokeAPI official-artwork for hero/card art, PokeAPI front sprites for lists/matrices/cheatsheets, item sprites (`/sprites/items/<slug>.png`) for held items and the "Buy me a Potion" tip-jar. Disclaimer in footer + closing CTA: "A solo fan project. Not affiliated with The Pokemon Company, Nintendo, or Game Freak."
+- **Type pills:** Inline `<TypePill>` per page; flat color from `--color-type-<name>`, dark text, mono uppercase, tight letter-spacing.
+- **Helpers:** `.text-gradient` (magenta→gold text fill), `.pulse-dot` (live state), `.mono-label` (telemetry header), `.image-rendering-pixelated` (sprite crispness).
 
 ## Data Model Decisions
 - `movepool` and `abilities` on pokemon table are TEXT[] (denormalized, no FK to moves/abilities tables)

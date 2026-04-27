@@ -147,27 +147,30 @@ export default function RosterPage() {
   const wishlistCount = entries.filter((e) => e.build_status === "wishlist").length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+    <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
-            My Roster
+          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-primary mb-1.5">
+            ◆ MY ROSTER · {count} {count === 1 ? "MON" : "MONS"}
+          </div>
+          <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
+            Track every build.
           </h1>
-          <p className="mt-1 font-body text-sm text-on-surface-muted">
-            {count} Pokemon in collection
+          <p className="mt-2 max-w-xl text-on-surface-muted text-base">
+            Items, abilities, EV spreads, moves. Built, training, or wishlist — all in one place.
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleQuickAdd}
-            className="btn-primary h-10 px-5 font-display text-xs font-medium uppercase tracking-wider"
+            className="btn-primary h-10 px-5 font-display text-sm"
           >
             Quick Add
           </button>
           <button
             onClick={handleCreate}
-            className="btn-ghost h-10 px-5 font-display text-xs font-medium uppercase tracking-wider"
+            className="btn-ghost h-10 px-5 font-mono text-[0.7rem] uppercase tracking-[0.18em]"
           >
             Full Form
           </button>

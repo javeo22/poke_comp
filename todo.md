@@ -28,6 +28,7 @@
 - [x] Responsive audit (375/768/1280px) -- landing, pokedex, moves, items, type-chart, meta, login all verified
 - [x] Fix: moves table min-w-[700px] for mobile horizontal scroll (was clipping category badges)
 - [x] Auth callback route: /auth/callback for Supabase email confirmation flow
+- [x] PokeComp Redesign V2 (2026-04-27): full visual rebrand from Battle Station to magenta/gold/purple esports-broadcast feel. Tokens swapped in `globals.css` (palette + Inter/JetBrains Mono fonts + new helpers `.btn-gradient`, `.text-gradient`, `.pulse-dot`, `.mono-label`). Nav rebuilt with conic-gradient brand mark + 7 primary links + Potion CTA. Custom restyles for Home (full V2 hero + Live Draft Board + Meta Movers + Roster/Cheatsheet split + closing CTA), Pokedex / Draft / Roster / Cheatsheet headers. Other pages auto-harmonize via token swap. CLAUDE.md design system section rewritten.
 
 ### Data Quality
 - [x] Item legality: fixed Smogon ingest to recalculate percentages after filtering, ran --fix to clean 131 entries

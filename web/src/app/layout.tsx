@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { Nav } from "@/components/nav";
 import { OnboardingTour } from "@/components/onboarding-tour";
@@ -7,14 +7,16 @@ import { AdSlot } from "@/components/ad-slot";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 // Static pages (terms, privacy, support) are server components.
@@ -56,7 +58,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${plusJakarta.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <script
@@ -85,17 +87,17 @@ export default function RootLayout({
             {children}
           </main>
           <AdSlot />
-          <footer className="px-6 py-5 text-center flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-              <a href="/terms" className="hover:text-on-surface transition-colors">
+          <footer className="relative z-10 mt-12 border-t border-outline-variant px-6 py-6 text-center flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-muted">
+              <a href="/terms" className="hover:text-accent transition-colors">
                 Terms
               </a>
               <span className="text-outline-variant">|</span>
-              <a href="/privacy" className="hover:text-on-surface transition-colors">
+              <a href="/privacy" className="hover:text-accent transition-colors">
                 Privacy
               </a>
               <span className="text-outline-variant">|</span>
-              <a href="/support" className="hover:text-on-surface transition-colors">
+              <a href="/support" className="hover:text-accent transition-colors">
                 Support
               </a>
               <span className="text-outline-variant">|</span>
@@ -105,7 +107,7 @@ export default function RootLayout({
                   href="https://pokeapi.co"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-on-surface transition-colors"
+                  className="hover:text-accent transition-colors"
                 >
                   PokeAPI
                 </a>
@@ -114,7 +116,7 @@ export default function RootLayout({
                   href="https://pikalytics.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-on-surface transition-colors"
+                  className="hover:text-accent transition-colors"
                 >
                   Pikalytics
                 </a>
@@ -123,15 +125,14 @@ export default function RootLayout({
                   href="https://www.smogon.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-on-surface transition-colors"
+                  className="hover:text-accent transition-colors"
                 >
                   Smogon
                 </a>
               </span>
             </div>
-            <p className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              PokeComp is a fan project. Not affiliated with or endorsed by
-              The Pokemon Company, Nintendo, or Game Freak.
+            <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted">
+              A solo fan project. Not affiliated with The Pokemon Company, Nintendo, or Game Freak.
             </p>
           </footer>
         </Providers>

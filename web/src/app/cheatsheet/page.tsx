@@ -204,14 +204,17 @@ export default function CheatsheetPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+    <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
-          Cheatsheets
+      <div className="mb-7">
+        <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent mb-1.5">
+          ◆ CHEATSHEET
+        </div>
+        <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
+          Print it. <span className="text-gradient">Or read it.</span>
         </h1>
-        <p className="mt-1 font-body text-sm text-on-surface-muted">
-          AI-generated game plans &middot; One page per team
+        <p className="mt-2 max-w-xl text-on-surface-muted text-base">
+          AI-generated game plans, one A4 page per team. Bring it on a tablet or print it in a sleeve.
         </p>
       </div>
 

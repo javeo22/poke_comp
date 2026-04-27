@@ -83,14 +83,17 @@ export function PokemonView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+    <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-10">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-on-surface">
-          Pokedex
+      <div className="mb-7">
+        <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent mb-2">
+          ◆ POKEDEX · CHAMPIONS-ELIGIBLE
+        </div>
+        <h1 className="m-0 font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-[-0.035em] text-on-surface leading-[1]">
+          Every pick. <span className="text-gradient">Live data.</span>
         </h1>
-        <p className="mt-1 font-body text-sm text-on-surface-muted">
-          Pokemon Champions database
+        <p className="mt-3 max-w-xl text-on-surface-muted text-base">
+          Stats, movepools, abilities, usage. Everything that matters for team-prep.
         </p>
       </div>
 
