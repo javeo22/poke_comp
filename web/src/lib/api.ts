@@ -529,6 +529,22 @@ export async function fetchPublicStats(): Promise<PublicStats> {
   return apiFetch<PublicStats>("/public/stats");
 }
 
+export interface DataFreshnessFormat {
+  snapshot_date: string;
+  days_old: number | null;
+  stale: boolean;
+}
+
+export interface DataFreshnessResponse {
+  checked_at: string;
+  stale_threshold_days: number;
+  formats: Record<string, DataFreshnessFormat>;
+}
+
+export async function fetchDataFreshness(): Promise<DataFreshnessResponse> {
+  return apiFetch<DataFreshnessResponse>("/public/data-freshness");
+}
+
 export async function checkUsername(
   username: string
 ): Promise<{ available: boolean; username: string; reason?: string }> {

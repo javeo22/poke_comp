@@ -17,6 +17,7 @@ import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 import { CheatsheetContent } from "@/components/cheatsheet/cheatsheet-content";
+import { DataFreshness } from "@/components/data-freshness";
 
 // ── Helpers ──
 
@@ -207,8 +208,11 @@ export default function CheatsheetPage() {
     <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
       {/* Header */}
       <div className="mb-7">
-        <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent mb-1.5">
-          ◆ CHEATSHEET
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-1.5">
+          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent">
+            ◆ CHEATSHEET
+          </div>
+          <DataFreshness format="doubles" />
         </div>
         <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
           Print it. <span className="text-gradient">Or read it.</span>

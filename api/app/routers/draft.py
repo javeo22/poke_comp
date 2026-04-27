@@ -31,6 +31,11 @@ from app.services.damage_calc import (
     format_damage_string,
     from_base_stats,
 )
+from app.services.data_freshness import (
+    STALE_USAGE_THRESHOLD_DAYS,
+    is_stale,
+    snapshot_age_days,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/draft", tags=["draft"])
@@ -61,15 +66,24 @@ def _make_hash_v1(opponent: list[str], my_pokemon_ids: list[str]) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
-def _check_cache(opponent: list[str], my_pokemon_ids: list[str]) -> DraftAnalysis | None:
-    """Try v2 key first, fall back to legacy v1 during grace window."""
+def _check_cache(
+    opponent: list[str],
+    my_pokemon_ids: list[str],
+    snapshot_floor: str | None = None,
+) -> DraftAnalysis | None:
+    """Try v2 key first, fall back to legacy v1 during grace window.
+
+    ``snapshot_floor`` evicts cached rows whose ``created_at`` predates the
+    latest ``pokemon_usage`` snapshot for the team's format -- a meta
+    refresh invalidates downstream draft analyses.
+    """
     for request_hash, is_legacy in (
         (_make_hash_v2(opponent, my_pokemon_ids), False),
         (_make_hash_v1(opponent, my_pokemon_ids), True),
     ):
         result = (
             supabase.table("ai_analyses")
-            .select("response_json, expires_at")
+            .select("response_json, expires_at, created_at")
             .eq("request_hash", request_hash)
             .maybe_single()
             .execute()
@@ -82,6 +96,17 @@ def _check_cache(opponent: list[str], my_pokemon_ids: list[str]) -> DraftAnalysi
         if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
             supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
             continue
+
+        if snapshot_floor:
+            created = row.get("created_at")
+            if created and created[:10] < snapshot_floor[:10]:
+                logger.info(
+                    "draft cache evicted: cached_at=%s < snapshot=%s",
+                    created[:10],
+                    snapshot_floor[:10],
+                )
+                supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
+                continue
 
         if is_legacy:
             logger.info("draft cache v1 hit (grace window): %s", request_hash[:12])
@@ -417,6 +442,8 @@ def _build_prompt(
     my_usage: list[dict],
     tournament_context: str = "",
     personal_context: str = "",
+    usage_snapshot_date: str | None = None,
+    usage_age_days: int | None = None,
 ) -> str:
     # Format my team
     my_lines = []
@@ -475,8 +502,25 @@ def _build_prompt(
     if my_team.get("mega_pokemon_id"):
         mega_note = f"\nMy designated Mega: Pokemon ID {my_team['mega_pokemon_id']}"
 
+    if usage_age_days is None:
+        freshness_line = (
+            "DATA FRESHNESS: No usage snapshot available. Recommend conservatively "
+            "and flag uncertainty.\n\n"
+        )
+    elif usage_age_days <= 1:
+        freshness_line = (
+            f"DATA FRESHNESS: Usage data is current "
+            f"(snapshot {usage_snapshot_date}, {usage_age_days} day(s) old).\n\n"
+        )
+    else:
+        freshness_line = (
+            f"DATA FRESHNESS: Usage data is {usage_age_days} day(s) old "
+            f"(snapshot {usage_snapshot_date}). Caveat any usage-derived claims "
+            "if the metagame may have shifted.\n\n"
+        )
+
     header = (
-        "You are a competitive Pokemon Champions VGC doubles analyst. "
+        freshness_line + "You are a competitive Pokemon Champions VGC doubles analyst. "
         "Analyze this team preview matchup.\n\n"
         "CRITICAL ACCURACY RULES:\n"
         "- Only reference Pokemon that appear in 'My Team' or 'Opponent's Team' below.\n"
@@ -575,12 +619,35 @@ def analyze_draft(
 
     # Fetch my team data
     my_team = _fetch_team_pokemon(body.my_team_id, user_id)
+    team_format = my_team.get("format", "doubles")
+
+    # Hard-block on stale usage data. The opponent_usage block below feeds
+    # the bring-4 / lead recommendation -- on stale data we'd rather refuse
+    # than recommend off an old metagame.
+    snapshot_date, age_days = snapshot_age_days(team_format)
+    if is_stale(age_days):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "stale_data",
+                "format": team_format,
+                "snapshot_date": snapshot_date,
+                "age_days": age_days,
+                "threshold_days": STALE_USAGE_THRESHOLD_DAYS,
+                "message": (
+                    "Pokemon usage data is stale. Draft analysis is paused "
+                    "until the next ingest run completes."
+                ),
+            },
+        )
 
     # Build cache key
     my_pokemon_ids = [str(p["name"]) for p in my_team["pokemon"]]
 
-    # Check cache (tries v2 first, falls back to v1 during grace window)
-    cached = _check_cache(body.opponent_team, my_pokemon_ids)
+    # Check cache (tries v2 first, falls back to v1 during grace window).
+    # The snapshot date acts as a cache floor: any analysis cached before
+    # the latest pokemon_usage refresh is evicted.
+    cached = _check_cache(body.opponent_team, my_pokemon_ids, snapshot_floor=snapshot_date)
     if cached:
         log_ai_usage(user_id, "draft", model, 0, 0, cached=True)
         return DraftResponse(analysis=cached, cached=True, estimated_cost_usd=0.0)
@@ -594,7 +661,6 @@ def analyze_draft(
     opponent_names = [p["name"] for p in opponent_pokemon]
     opponent_ids = [p["id"] for p in opponent_pokemon if p.get("id", 0) > 0]
 
-    team_format = my_team.get("format", "doubles")
     opponent_usage = _fetch_usage_context(opponent_names, team_format)
     my_usage: list[dict] = []
 
@@ -609,6 +675,8 @@ def analyze_draft(
         my_usage,
         tournament_context,
         personal_context,
+        usage_snapshot_date=snapshot_date,
+        usage_age_days=age_days,
     )
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)

@@ -42,12 +42,130 @@ def get_admin_user(user_id: str = Depends(get_current_user)) -> str:
 # ═══════════════════════════════════════════════════════════════════
 
 
+STALE_USAGE_THRESHOLD_DAYS = 14
+
+
+def _days_old(snap: str | None) -> int | None:
+    if not snap:
+        return None
+    try:
+        return (date.today() - date.fromisoformat(snap[:10])).days
+    except (ValueError, TypeError):
+        return None
+
+
+def _latest_pokemon_usage_by_format() -> dict[str, dict[str, Any]]:
+    """`{format: {date, days_old}}` for the freshest snapshot per format."""
+    rows: list[dict] = (
+        supabase.table("pokemon_usage").select("format, snapshot_date").execute().data  # type: ignore[assignment]
+    )
+    latest: dict[str, str] = {}
+    for r in rows:
+        fmt = r.get("format") or "unknown"
+        snap = r.get("snapshot_date")
+        if not snap:
+            continue
+        if fmt not in latest or snap > latest[fmt]:
+            latest[fmt] = snap
+    return {fmt: {"date": snap, "days_old": _days_old(snap)} for fmt, snap in latest.items()}
+
+
+def _latest_meta_snapshot_by_format() -> dict[str, dict[str, Any]]:
+    rows: list[dict] = (
+        supabase.table("meta_snapshots").select("format, snapshot_date").execute().data  # type: ignore[assignment]
+    )
+    latest: dict[str, str] = {}
+    for r in rows:
+        fmt = r.get("format") or "unknown"
+        snap = r.get("snapshot_date")
+        if not snap:
+            continue
+        if fmt not in latest or snap > latest[fmt]:
+            latest[fmt] = snap
+    return {fmt: {"date": snap, "days_old": _days_old(snap)} for fmt, snap in latest.items()}
+
+
+def _last_cron_runs_per_source() -> list[dict[str, Any]]:
+    """Most recent cron_runs row per source. Tolerates a missing table."""
+    try:
+        rows: list[dict] = (
+            supabase.table("cron_runs")
+            .select(
+                "source, started_at, finished_at, duration_ms, status, "
+                "rows_inserted, rows_updated, rows_skipped, warnings, error"
+            )
+            .order("started_at", desc=True)
+            .limit(200)
+            .execute()
+            .data  # type: ignore[assignment]
+        )
+    except Exception:
+        return []
+    seen: set[str] = set()
+    most_recent: list[dict[str, Any]] = []
+    for r in rows:
+        src = r.get("source")
+        if not src or src in seen:
+            continue
+        seen.add(src)
+        warnings = r.get("warnings") or []
+        most_recent.append(
+            {
+                "source": src,
+                "status": r.get("status"),
+                "started_at": r.get("started_at"),
+                "duration_ms": r.get("duration_ms"),
+                "rows_inserted": r.get("rows_inserted", 0),
+                "rows_updated": r.get("rows_updated", 0),
+                "rows_skipped": r.get("rows_skipped", 0),
+                "warnings_count": len(warnings) if isinstance(warnings, list) else 0,
+                "error": r.get("error"),
+            }
+        )
+    return most_recent
+
+
+def _stale_warnings(
+    usage_by_format: dict[str, dict[str, Any]],
+    last_runs: list[dict[str, Any]],
+) -> list[str]:
+    out: list[str] = []
+    threshold = STALE_USAGE_THRESHOLD_DAYS
+    for fmt, info in usage_by_format.items():
+        days = info.get("days_old")
+        if days is None:
+            out.append(f"pokemon_usage[{fmt}] has no snapshot date on record")
+        elif days > threshold:
+            out.append(f"pokemon_usage[{fmt}] is {days} days old (threshold {threshold})")
+    for r in last_runs:
+        if r.get("status") == "fail":
+            err = r.get("error") or "unknown error"
+            out.append(f"{r['source']} last run FAILED: {err}")
+        elif r.get("status") == "warn":
+            touched = r.get("rows_inserted", 0) + r.get("rows_updated", 0)
+            if touched == 0:
+                out.append(f"{r['source']} last run produced zero rows")
+    return out
+
+
 @router.get("/data-health")
 def data_health(_: str = Depends(get_admin_user)):
     """Run data validation checks and return a health report."""
     report = run_validation(supabase, fix=False)
     result = report.to_dict()
     result["overall"] = "healthy" if report.total_issues == 0 else "degraded"
+
+    usage_by_format = _latest_pokemon_usage_by_format()
+    meta_by_format = _latest_meta_snapshot_by_format()
+    last_runs = _last_cron_runs_per_source()
+    warnings = _stale_warnings(usage_by_format, last_runs)
+
+    result["latest_pokemon_usage_per_format"] = usage_by_format
+    result["latest_meta_snapshot_per_format"] = meta_by_format
+    result["last_cron_runs"] = last_runs
+    result["stale_warnings"] = warnings
+    if warnings and result["overall"] == "healthy":
+        result["overall"] = "stale"
     return result
 
 

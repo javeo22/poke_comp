@@ -10,11 +10,8 @@
   ],
   "regions": ["iad1"],
   "crons": [
-    { "path": "/api/admin/cron/ingest-smogon",     "schedule": "0 6 * * 1" },
-    { "path": "/api/admin/cron/ingest-pikalytics", "schedule": "0 7 * * 1" },
-    { "path": "/api/admin/cron/ingest-limitless",  "schedule": "0 8 * * *" },
-    { "path": "/api/admin/cron/validate-data",     "schedule": "30 9 * * 1" },
-    { "path": "/api/admin/cron/cache-warmup",      "schedule": "0 10 * * 2" }
+    { "path": "/api/admin/cron/daily",  "schedule": "0 8 * * *" },
+    { "path": "/api/admin/cron/weekly", "schedule": "0 6 * * 1" }
   ],
   "headers": [
     {

@@ -1,5 +1,17 @@
 # TODO - Active Tasks
 
+## Done (2026-04-27) - Data pipeline visibility + AI freshness gating
+
+Investigation triggered by user report "scrapers fail constantly." Phase 1 audit found the actual problem: zero `/admin/cron/*` invocations in 7 days of prod logs -- crons aren't firing, almost certainly hitting the Hobby plan cron cap. Plan: stabilize-first (observability + freshness signals) before any scraper rewrites. Plan file: `.claude/plans/need-to-check-on-stateful-biscuit.md`.
+
+- [x] Phase 1: Vercel log audit -- 1000-entry sample shows zero cron invocations, all 200/304 user traffic. Endpoint reachable (curl returns 401 on bad bearer). Cause is upstream of the FastAPI app
+- [x] Phase 2: Audit log -- new `cron_runs` table (migration `20260427000000_cron_runs.sql`); `admin_cron.py` rewrites with `_record_cron_run` wrapper that persists every invocation, raises HTTPException(500) on script exceptions so Vercel marks invocations red instead of swallowing failures as warnings
+- [x] Phase 3: Freshness exposure -- `/admin/data-health` extended with `latest_pokemon_usage_per_format`, `latest_meta_snapshot_per_format`, `last_cron_runs`, `stale_warnings`. New unauthenticated `GET /public/data-freshness`. New `<DataFreshness>` component renders `◆ DATA · N DAYS OLD` badge in cheatsheet + draft headers (gold + pulse-dot when fresh, magenta when >14d stale)
+- [x] Phase 4: AI staleness gate -- `cheatsheet.py` and `draft.py` now hard-block with HTTP 503 when `pokemon_usage` is >14d old, inject a `DATA FRESHNESS:` line into the Claude prompt, and evict cached `ai_analyses` rows whose `created_at` predates the latest snapshot. Shared helper at `api/app/services/data_freshness.py`
+- [x] Phase 5: Validator hardening -- `scripts/validate_data.py` now runs a connectivity probe before the 8 checks, isolates each check (crashes are `error` status, distinct from data `fail`), refuses `--fix` when more than half the checks crashed. Replaces the 2026-04-17 broken report (all 8 checks crashing on DNS error)
+- [x] Local verification: API import-check + uvicorn smoke test (auth 401/200, /public/data-freshness returns expected shape, cron stub returns IngestResult), web preview confirms DataFreshness badge renders on /cheatsheet and /draft, validate_data run replaces the stale broken report (8 pass, 0 errors)
+- [x] Phase 6 (cron consolidation, same day): collapsed 5 schedules to 2 (`cron-daily` + `cron-weekly`) to fit Hobby plan cap. Aggregator helper `_aggregate` reuses `_record_cron_run` per step + persists a parent row, so the audit log captures both step-level and aggregator-level outcomes. Migration applied to Supabase prod and prod curl returns 200 with the expected merged IngestResult; rows land in `cron_runs` end-to-end.
+
 ## In Progress
 
 ### Improvements Plan v2 (see .claude/plans/rippling-stargazing-codd.md)
@@ -134,9 +146,10 @@ Plan: `.claude/plans/oponen-team-selection-is-rosy-tower.md`. Five user-reported
 - [x] 2.4 Workstream G audit: `LEGAL_AND_DEV_GUIDELINES.md` section 1.C refreshed with last-verified dates, Serebii 0.5s delay reconfirmed, Game8 removal reconfirmed across live code, new Third-Party Data Recipients table in section 3 (Anthropic/Supabase/Vercel/Ko-fi/EthicalAds with PII assertions). `refresh_meta.py` SOURCES emptied, marked deprecated. CLAUDE.md data pipeline docs updated
 
 ### Outstanding user actions (Week 3 handoff)
-- [ ] Vercel cron limits: Hobby plan allows limited cron jobs. This config ships 5 schedules; if you hit the plan cap, prune to the 3 weekly ingests and the daily Limitless (validate-data + cache-warmup are nice-to-have). Confirm in Vercel dashboard after next deploy
-- [ ] Manually hit one cron endpoint on a preview deploy with `curl -H "Authorization: Bearer $CRON_SECRET" https://<preview>.vercel.app/api/admin/cron/cache-warmup` to confirm routing before Monday's 06:00 UTC first fire
-- [ ] Once cache-warmup Phase 5.2 lands, swap the stub for the real `cache_warmup.run()` call
+- [x] **Vercel cron limits resolved (2026-04-27)**: consolidated 5 schedules to 2 to fit Hobby plan cap. New aggregator endpoints `GET /admin/cron/daily` (Limitless, every day 08:00 UTC) and `GET /admin/cron/weekly` (Smogon -> Pikalytics -> validate-data, Mon 06:00 UTC). Per-source endpoints retained for manual triggers but no longer scheduled. cache-warmup stub stays callable but unscheduled until Phase 5.2 lands.
+- [x] Migration `20260427000000_cron_runs.sql` applied to Supabase prod (2026-04-27).
+- [x] Prod smoke test (2026-04-27): `curl -H "Authorization: Bearer $CRON_SECRET" https://www.pokecomp.app/api/admin/cron/daily` returns 200 with merged IngestResult; both child (`ingest_limitless`) and parent (`cron_daily`) rows land in `cron_runs`. End-to-end audit log confirmed working in production.
+- [ ] Once cache-warmup Phase 5.2 lands, swap the stub for the real `cache_warmup.run()` call (still unscheduled in the new 2-cron config; will need to fold into the weekly aggregator or replace one of the two slots)
 
 ---
 

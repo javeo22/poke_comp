@@ -47,7 +47,7 @@ DRIFT_THRESHOLD_PCT = 20.0  # Flag if sources differ by more than 20%
 @dataclass
 class CheckResult:
     name: str
-    status: str  # "pass", "warn", "fail"
+    status: str  # "pass", "warn", "fail", "error"
     message: str
     details: list[str] = field(default_factory=list)
     fixed: int = 0
@@ -58,11 +58,14 @@ class ValidationReport:
     checks: list[CheckResult] = field(default_factory=list)
     total_issues: int = 0
     total_fixed: int = 0
+    total_errors: int = 0  # checks that crashed (network/db issues, NOT data issues)
 
     def add(self, result: CheckResult) -> None:
         self.checks.append(result)
         if result.status in ("warn", "fail"):
             self.total_issues += len(result.details) or 1
+        if result.status == "error":
+            self.total_errors += 1
         self.total_fixed += result.fixed
 
     def to_dict(self) -> dict:
@@ -70,6 +73,7 @@ class ValidationReport:
             "checked_at": date.today().isoformat(),
             "total_issues": self.total_issues,
             "total_fixed": self.total_fixed,
+            "total_errors": self.total_errors,
             "checks": [
                 {
                     "name": c.name,
@@ -86,7 +90,11 @@ class ValidationReport:
         passes = sum(1 for c in self.checks if c.status == "pass")
         warns = sum(1 for c in self.checks if c.status == "warn")
         fails = sum(1 for c in self.checks if c.status == "fail")
-        return f"{passes} pass, {warns} warn, {fails} fail ({self.total_issues} total issues)"
+        errors = sum(1 for c in self.checks if c.status == "error")
+        return (
+            f"{passes} pass, {warns} warn, {fails} fail, {errors} error "
+            f"({self.total_issues} data issues, {errors} crashed)"
+        )
 
 
 # =============================================================================
@@ -512,23 +520,81 @@ ALL_CHECKS = [
 ]
 
 
+def _probe_connectivity(sb: Client) -> CheckResult | None:
+    """Quick "can we even reach Supabase" probe before running real checks.
+
+    Catches DNS / network / auth issues that would otherwise turn every
+    downstream check into an `error` row with the same root cause -- the
+    2026-04-17 weekly run logged `[Errno 8] nodename nor servname provided`
+    on all 8 checks, which is what motivated this probe.
+
+    Returns ``None`` on success, or an ``error``-status CheckResult that
+    the caller should add to the report and use as a kill-switch.
+    """
+    try:
+        sb.table("pokemon").select("id").limit(1).execute()
+    except Exception as exc:  # noqa: BLE001 -- want any failure surfaced verbatim
+        return CheckResult(
+            name="connectivity_probe",
+            status="error",
+            message=(
+                f"Cannot reach Supabase: {type(exc).__name__}: {exc}. "
+                "Skipping all data checks -- this is a connectivity issue, "
+                "not a data issue."
+            ),
+        )
+    return None
+
+
 def run_validation(sb: Client, fix: bool = False) -> ValidationReport:
-    """Run all validation checks and return a report."""
+    """Run all validation checks and return a report.
+
+    Each check runs in isolation -- a crash in one is captured as an
+    ``error`` status (distinct from data-integrity ``fail``), so a single
+    network blip can't tank the whole report. ``--fix`` mode refuses to
+    run remediations when more than half the checks errored, since a
+    half-blind fix is more dangerous than no fix.
+    """
     report = ValidationReport()
+
+    probe_failure = _probe_connectivity(sb)
+    if probe_failure is not None:
+        report.add(probe_failure)
+        print(f"[Connectivity Probe]\n  ERROR: {probe_failure.message}\n")
+        return report
+
+    error_threshold = (len(ALL_CHECKS) + 1) // 2  # > half => abort fix
+    errors_seen = 0
 
     for name, check_fn in ALL_CHECKS:
         print(f"[{name}]")
-        try:
-            result = check_fn(sb, fix=fix)
-        except Exception as e:
+        if fix and errors_seen >= error_threshold:
             result = CheckResult(
                 name=name.lower().replace(" ", "_"),
-                status="fail",
-                message=f"Check crashed: {e}",
+                status="error",
+                message=(
+                    f"Skipped: {errors_seen} earlier checks crashed -- "
+                    "refusing to apply --fix on partial data."
+                ),
             )
+        else:
+            try:
+                result = check_fn(sb, fix=fix)
+            except Exception as exc:  # noqa: BLE001 -- isolation per check
+                errors_seen += 1
+                result = CheckResult(
+                    name=name.lower().replace(" ", "_"),
+                    status="error",
+                    message=f"Check crashed: {type(exc).__name__}: {exc}",
+                )
         report.add(result)
 
-        icon = {"pass": "OK", "warn": "WARN", "fail": "FAIL"}[result.status]
+        icon = {
+            "pass": "OK",
+            "warn": "WARN",
+            "fail": "FAIL",
+            "error": "ERROR",
+        }[result.status]
         print(f"  {icon}: {result.message}")
         for detail in result.details[:5]:
             print(f"    - {detail}")
@@ -559,8 +625,8 @@ def main() -> None:
         json.dump(report.to_dict(), f, indent=2)
     print(f"\nReport written to {report_path}")
 
-    # Exit with error code if any failures
-    if any(c.status == "fail" for c in report.checks):
+    # Exit with error code if any failures or unrecoverable errors
+    if any(c.status in ("fail", "error") for c in report.checks):
         sys.exit(1)
 
 

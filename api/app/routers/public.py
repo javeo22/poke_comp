@@ -1,5 +1,8 @@
 """Public endpoints (no auth required): user profiles and shared cheatsheets."""
 
+from datetime import date
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from postgrest.types import CountMethod
 from pydantic import BaseModel
@@ -7,6 +10,51 @@ from pydantic import BaseModel
 from app.database import supabase
 
 router = APIRouter(prefix="/public", tags=["public"])
+
+STALE_USAGE_THRESHOLD_DAYS = 14
+
+
+@router.get("/data-freshness")
+def public_data_freshness() -> dict[str, Any]:
+    """Latest pokemon_usage snapshot per format, plus a `stale` flag.
+
+    Surfaces just enough for the freshness badge in the cheatsheet/draft
+    headers. No row counts, no warnings, no auth required.
+    """
+    try:
+        rows: list[dict] = (
+            supabase.table("pokemon_usage").select("format, snapshot_date").execute().data  # type: ignore[assignment]
+        )
+    except Exception:
+        return {"checked_at": date.today().isoformat(), "formats": {}}
+
+    latest: dict[str, str] = {}
+    for r in rows:
+        fmt = r.get("format") or "unknown"
+        snap = r.get("snapshot_date")
+        if not snap:
+            continue
+        if fmt not in latest or snap > latest[fmt]:
+            latest[fmt] = snap
+
+    today = date.today()
+    formats: dict[str, dict[str, Any]] = {}
+    for fmt, snap in latest.items():
+        try:
+            days_old = (today - date.fromisoformat(snap[:10])).days
+        except (ValueError, TypeError):
+            days_old = None
+        formats[fmt] = {
+            "snapshot_date": snap,
+            "days_old": days_old,
+            "stale": days_old is not None and days_old > STALE_USAGE_THRESHOLD_DAYS,
+        }
+
+    return {
+        "checked_at": today.isoformat(),
+        "stale_threshold_days": STALE_USAGE_THRESHOLD_DAYS,
+        "formats": formats,
+    }
 
 
 @router.get("/stats")

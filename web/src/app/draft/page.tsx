@@ -12,6 +12,7 @@ import type { AiUsageMonth, AiUsageToday } from "@/lib/api";
 import { QuotaIndicator } from "@/components/quota-indicator";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
+import { DataFreshness } from "@/components/data-freshness";
 
 const THREAT_COLORS: Record<string, string> = {
   high: "text-primary",
@@ -290,9 +291,12 @@ export default function DraftPage() {
       {/* Header */}
       <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="mb-1.5 flex items-center gap-2 font-mono text-[0.7rem] tracking-[0.22em] text-primary">
-            <span className="pulse-dot" />
-            LIVE DRAFT · TEAM PREVIEW
+          <div className="mb-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <div className="flex items-center gap-2 font-mono text-[0.7rem] tracking-[0.22em] text-primary">
+              <span className="pulse-dot" />
+              LIVE DRAFT · TEAM PREVIEW
+            </div>
+            <DataFreshness format="doubles" />
           </div>
           <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
             Draft Helper

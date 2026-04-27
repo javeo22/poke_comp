@@ -40,6 +40,11 @@ from app.services.cache_utils import (
     cache_hash_v2,
     normalize_roster,
 )
+from app.services.data_freshness import (
+    STALE_USAGE_THRESHOLD_DAYS,
+    is_stale,
+    snapshot_age_days,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -351,15 +356,24 @@ def _make_cache_key_v1(roster: list[RosterEntry]) -> str:
     return "cheatsheet:" + hashlib.sha256(key_data.encode()).hexdigest()
 
 
-def _check_cache(roster: list[RosterEntry]) -> dict | None:
-    """Try v2 key first, fall back to legacy v1 during grace window."""
+def _check_cache(
+    roster: list[RosterEntry],
+    snapshot_floor: str | None = None,
+) -> dict | None:
+    """Try v2 key first, fall back to legacy v1 during grace window.
+
+    ``snapshot_floor`` is the ISO date of the freshest ``pokemon_usage``
+    snapshot for this format. Cached rows whose ``created_at`` predates
+    that snapshot are evicted -- a fresh ingest should invalidate any
+    analysis built on the older meta.
+    """
     for request_hash, is_legacy in (
         (_make_cache_key_v2(roster), False),
         (_make_cache_key_v1(roster), True),
     ):
         result = (
             supabase.table("ai_analyses")
-            .select("response_json, expires_at")
+            .select("response_json, expires_at, created_at")
             .eq("request_hash", request_hash)
             .maybe_single()
             .execute()
@@ -372,6 +386,17 @@ def _check_cache(roster: list[RosterEntry]) -> dict | None:
         if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
             supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
             continue
+
+        if snapshot_floor:
+            created = row.get("created_at")
+            if created and created[:10] < snapshot_floor[:10]:
+                logger.info(
+                    "cheatsheet cache evicted: cached_at=%s < snapshot=%s",
+                    created[:10],
+                    snapshot_floor[:10],
+                )
+                supabase.table("ai_analyses").delete().eq("request_hash", request_hash).execute()
+                continue
 
         if is_legacy:
             logger.info("cheatsheet cache v1 hit (grace window): %s", request_hash[:12])
@@ -407,6 +432,8 @@ def _build_prompt(
     speed_tiers: list[SpeedTier],
     tier_data: list[dict],
     usage_data: list[dict],
+    usage_snapshot_date: str | None = None,
+    usage_age_days: int | None = None,
 ) -> str:
     # ── Team section ──
     team_lines = []
@@ -453,9 +480,29 @@ def _build_prompt(
             f"- {name} ({pct}%): Moves=[{top_moves}] Items=[{top_items}] Teammates=[{top_mates}]"
         )
 
+    if usage_age_days is None:
+        freshness_line = (
+            "DATA FRESHNESS: No usage snapshot available for this format. "
+            "Recommendations are based on the team composition only."
+        )
+    elif usage_age_days <= 1:
+        freshness_line = (
+            f"DATA FRESHNESS: Usage statistics are current "
+            f"(snapshot {usage_snapshot_date}, {usage_age_days} day(s) old)."
+        )
+    else:
+        freshness_line = (
+            f"DATA FRESHNESS: {team_format.title()} usage statistics are "
+            f"{usage_age_days} day(s) old (snapshot {usage_snapshot_date}). "
+            "You may caveat recommendations if the metagame may have shifted "
+            "since then."
+        )
+
     return f"""\
 You are an expert Pokemon Champions VGC doubles analyst creating a \
 pre-match cheat sheet for a competitive team.
+
+{freshness_line}
 
 ## My Team: <team_name>{team_name}</team_name> ({team_format} format)
 {chr(10).join(team_lines)}
@@ -731,9 +778,32 @@ def generate_cheatsheet(
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 
+    # 5b. Hard-block on stale usage data. The Claude prompt below treats
+    # pokemon_usage as primary meta context; if it's >14d old, the
+    # recommendation is based on a stale metagame and we'd rather refuse
+    # than mislead.
+    snapshot_date, age_days = snapshot_age_days(team["format"])
+    if is_stale(age_days):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "stale_data",
+                "format": team["format"],
+                "snapshot_date": snapshot_date,
+                "age_days": age_days,
+                "threshold_days": STALE_USAGE_THRESHOLD_DAYS,
+                "message": (
+                    "Pokemon usage data is stale. Cheatsheet generation is paused "
+                    "until the next ingest run completes."
+                ),
+            },
+        )
+
     # 6. Check cache (tries v2 first, falls back to v1 during grace window).
     # `force=true` skips the lookup so the user can force a fresh AI run.
-    cached = None if force else _check_cache(roster)
+    # The snapshot date acts as a cache floor: any analysis cached before
+    # the latest pokemon_usage refresh is evicted.
+    cached = None if force else _check_cache(roster, snapshot_floor=snapshot_date)
     if cached:
         # Re-inject live roster/speed data (may have changed)
         cached["roster"] = [r.model_dump(mode="json") for r in roster]
@@ -761,6 +831,8 @@ def generate_cheatsheet(
         speed_tiers,
         tier_data,
         usage_data,
+        usage_snapshot_date=snapshot_date,
+        usage_age_days=age_days,
     )
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
