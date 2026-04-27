@@ -25,7 +25,7 @@ router = APIRouter(prefix="/user-pokemon", tags=["user_pokemon"])
 def list_user_pokemon(
     build_status: str | None = Query(None, description="Filter by build status"),
     pokemon_id: int | None = Query(None, description="Filter by pokemon"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user_id: str = Depends(get_current_user),
 ):
