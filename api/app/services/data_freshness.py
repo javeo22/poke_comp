@@ -49,5 +49,19 @@ def snapshot_age_days(team_format: str) -> tuple[str | None, int | None]:
 
 
 def is_stale(age_days: int | None) -> bool:
-    """True when usage data is missing or older than the threshold."""
-    return age_days is None or age_days > STALE_USAGE_THRESHOLD_DAYS
+    """True when usage data EXISTS but is older than the threshold.
+
+    A return of False here covers two distinct cases the AI endpoints
+    handle the same way (proceed):
+      1. Data exists and is fresh (age_days <= threshold)
+      2. No data exists for this format yet (age_days is None)
+
+    Case 2 should NOT hard-block -- many formats simply lack a usage
+    snapshot (e.g. ``megas`` is real-team data with no Pikalytics feed).
+    The Claude prompt's freshness line already says "no usage snapshot
+    available" so the AI knows to caveat. Hard-blocking would make the
+    cheatsheet/draft unusable for any non-doubles team.
+    """
+    if age_days is None:
+        return False
+    return age_days > STALE_USAGE_THRESHOLD_DAYS
