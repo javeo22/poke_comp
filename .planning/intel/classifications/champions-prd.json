@@ -1,0 +1,24 @@
+{
+  "source_path": "/Users/javiervega/projects/poke_comp/champions-prd.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "PRD: Pokemon Champions Trainer Companion",
+  "summary": "Product requirements doc v1.0 (Apr 10 2026) defining the 8-week MVP scope, F1-F6 features, data model, and phasing for a personal Pokemon Champions companion app.",
+  "scope": [
+    "personal roster manager",
+    "team builder",
+    "static reference database",
+    "meta tracker",
+    "AI draft helper",
+    "matchup log",
+    "data model",
+    "data source strategy",
+    "phasing",
+    "risks and mitigations"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "PRD content corroborates: explicit '# PRD:' H1, sections for Goals/Non-goals, Success Metrics, User Personas, Core Features F1-F6, Stretch features F7+."
+}

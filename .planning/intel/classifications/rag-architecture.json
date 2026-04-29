@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/javiervega/projects/poke_comp/rag-architecture.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "AI Draft Helper: Dual RAG Architecture",
+  "summary": "Proposed Dual RAG architecture for the AI Draft Helper that blends Limitless tournament stats with personal matchup logs before invoking Claude.",
+  "scope": [
+    "AI Draft Helper",
+    "Dual RAG pipeline",
+    "FastAPI retrieval services",
+    "Supabase tournament_teams table",
+    "Supabase tournament_matchups table",
+    "Supabase matchup_log table",
+    "Claude prompt augmentation",
+    "JSONB GIN indexes",
+    "Row Level Security"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Manifest-declared SPEC. Status reads 'Proposed Architecture' so treat as forward-looking technical contract; some elements (matchup_log table, retrieval services, prompt augmentation) may be aspirational vs the existing api/app/routers/draft.py implementation."
+}

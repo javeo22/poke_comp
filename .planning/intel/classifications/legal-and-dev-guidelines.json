@@ -1,0 +1,29 @@
+{
+  "source_path": "/Users/javiervega/projects/poke_comp/LEGAL_AND_DEV_GUIDELINES.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Legal and Development Guidelines",
+  "summary": "Ethical scraping, IP, monetization, and development standards for Pokemon Champions Companion, including a per-source ToS audit (last reviewed 2026-04-16).",
+  "scope": [
+    "ethical web scraping",
+    "data source ToS audit (PokeAPI, Pikalytics, Smogon/pkmn, Limitless VGC, Serebii, Game8)",
+    "Pokemon Champions IP considerations",
+    "intellectual property and fair use",
+    "monetization strategy",
+    "third-party data recipients (Anthropic, Supabase, Vercel, Ko-fi, EthicalAds)",
+    "development standards (data verification, security, transparency)"
+  ],
+  "cross_refs": [
+    "api/scripts/ingest/serebii_static.py",
+    "api/scripts/refresh_meta.py",
+    "api/app/routers/admin_cron.py",
+    "vercel.json",
+    "CLAUDE.md",
+    "20260418000000_clear_game8_snapshots.sql",
+    "prompt_guard.py"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Constraints document — its rules (Game8 HIGH risk excluded, Pikalytics safe, Serebii MEDIUM) should surface as project constraints in the synthesis."
+}

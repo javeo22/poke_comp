@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/javiervega/projects/poke_comp/decisions.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Decision Log",
+  "summary": "Architectural and design decision log (D001-D009) capturing locked technical choices for the Pokemon Champions Companion MVP from 2026-04-10 onward.",
+  "scope": [
+    "PokeAPI ID strategy",
+    "pokemon table schema (movepool, abilities)",
+    "Champions vs PokeAPI baseline data",
+    "items seeding",
+    "shared types between Python and TypeScript",
+    "Tailwind CSS v4 configuration",
+    "monorepo tooling",
+    "next/image sprite handling",
+    "multi-source data ingestion (Serebii, Pikalytics, Limitless)"
+  ],
+  "cross_refs": [],
+  "locked": true,
+  "precedence": null,
+  "notes": "Manifest declared ADR; document is a multi-decision log where each Dxxx entry follows Context/Decision/Rationale ADR structure. All entries stated as final decisions (no Proposed/Draft markers), so treated as Accepted/locked per orchestrator instruction to treat decisions as authoritative."
+}
