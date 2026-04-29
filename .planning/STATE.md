@@ -88,9 +88,9 @@ Tracked against NFR-success-metrics. Snapshot at bootstrap:
 
 ## Session Continuity
 
-**Where to resume next session:** Open `.planning/ROADMAP.md` Phase 1 detail, then `git status` to confirm the untracked file list still matches Phase 1 success criterion #1. Start by committing the untracked files and the modified consumers in a single change so a clean clone builds.
+**Where to resume next session:** Start Phase 2 Tech-debt cleanup. Begin by auditing `api/scripts/seed_champions.py` for Game8 strings.
 
-**Last session intent:** Bootstrap planning artifacts from synthesized intel + codebase maps. No code changes attempted.
+**Last session intent:** Execute Phase 1 stabilization. Committed untracked files for F7/F8.
 
 **Files written this session:**
 - `.planning/PROJECT.md`
@@ -100,6 +100,10 @@ Tracked against NFR-success-metrics. Snapshot at bootstrap:
 
 **Files referenced (not modified):**
 - `.planning/intel/{SYNTHESIS,decisions,requirements,constraints,context}.md`
+- `.planning/codebase/{STACK,INTEGRATIONS,ARCHITECTURE,STRUCTURE,CONVENTIONS,TESTING,CONCERNS}.md`
+- `.planning/INGEST-CONFLICTS.md`
+- `CLAUDE.md`
+rements,constraints,context}.md`
 - `.planning/codebase/{STACK,INTEGRATIONS,ARCHITECTURE,STRUCTURE,CONVENTIONS,TESTING,CONCERNS}.md`
 - `.planning/INGEST-CONFLICTS.md`
 - `CLAUDE.md`
