@@ -17,6 +17,10 @@ import { CoverageSummary } from "@/components/roster/coverage-summary";
 import { QuickAddModal } from "@/components/roster/quick-add-modal";
 import { RosterCard } from "@/components/roster/roster-card";
 import { RosterForm } from "@/components/roster/roster-form";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 export default function RosterPage() {
   const searchParams = useSearchParams();
@@ -27,6 +31,7 @@ export default function RosterPage() {
   const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
 
   // Form modal state
@@ -39,6 +44,7 @@ export default function RosterPage() {
 
   const loadRoster = useCallback(async (status?: string) => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await fetchUserPokemon({
         build_status: status || undefined,
@@ -61,7 +67,7 @@ export default function RosterPage() {
       for (const item of itemsResult.data) iMap.set(item.id, item);
       setItemsMap(iMap);
     } catch (err) {
-      console.error("Failed to fetch roster:", err);
+      setError(friendlyError(err).message);
       setEntries([]);
       setCount(0);
     } finally {
@@ -217,28 +223,32 @@ export default function RosterPage() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-xl bg-surface-low" />
-          ))}
-        </div>
+        <LoadingSkeleton variant="card" count={8} />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load roster"
+          message={error}
+          onRetry={() => loadRoster(statusFilter)}
+        />
       ) : entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <p className="font-display text-lg text-on-surface-muted">
-            {statusFilter ? "No Pokemon with this status" : "Your roster is empty"}
-          </p>
-          <p className="mt-1 text-sm text-on-surface-muted">
-            {statusFilter ? "Try a different filter" : "Add your first Pokemon to get started"}
-          </p>
-          {!statusFilter && (
-            <button
-              onClick={handleQuickAdd}
-              className="mt-6 btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
-            >
-              Add Pokemon
-            </button>
-          )}
-        </div>
+        <EmptyState
+          title={statusFilter ? "No Pokemon with this status" : "Your roster is empty"}
+          description={
+            statusFilter
+              ? "Try a different filter, or add new Pokemon from the Pokedex or Meta page."
+              : "Add your first Pokemon to start tracking builds, items, and EV spreads."
+          }
+          action={
+            !statusFilter ? (
+              <button
+                onClick={handleQuickAdd}
+                className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
+              >
+                Add Pokemon
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {entries.map((entry) => (

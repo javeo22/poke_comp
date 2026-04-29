@@ -5,6 +5,10 @@ import type { Move } from "@/types/move";
 import { fetchMoves } from "@/lib/api";
 import { TypeBadge } from "@/features/pokemon/components/type-badge";
 import { POKEMON_TYPES } from "@/features/pokemon/types";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 const PAGE_SIZE = 50;
 
@@ -41,23 +45,11 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-function MoveTableSkeleton() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-12 animate-pulse rounded-[1rem] bg-surface-low"
-        />
-      ))}
-    </div>
-  );
-}
-
 export default function MovesPage() {
   const [moves, setMoves] = useState<Move[]>([]);
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<FilterState>({
     name: "",
@@ -70,6 +62,7 @@ export default function MovesPage() {
 
   const loadMoves = useCallback(async (f: FilterState, newOffset: number) => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await fetchMoves({
         name: f.name || undefined,
@@ -82,7 +75,8 @@ export default function MovesPage() {
       setMoves(result.data);
       setCount(result.count);
     } catch (err) {
-      console.error("Failed to fetch moves:", err);
+      const friendly = friendlyError(err);
+      setError(friendly.message);
       setMoves([]);
       setCount(0);
     } finally {
@@ -183,13 +177,18 @@ export default function MovesPage() {
 
       {/* Table */}
       {isLoading ? (
-        <MoveTableSkeleton />
+        <LoadingSkeleton variant="table" count={10} />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load moves"
+          message={error}
+          onRetry={() => loadMoves(filters, offset)}
+        />
       ) : moves.length === 0 ? (
-        <div className="rounded-[1rem] bg-surface-low px-6 py-12 text-center">
-          <p className="font-display text-sm text-on-surface-muted">
-            No moves found matching your filters.
-          </p>
-        </div>
+        <EmptyState
+          title="No moves found"
+          description="Try adjusting the filters or turning off the Champions toggle."
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px]" role="table">

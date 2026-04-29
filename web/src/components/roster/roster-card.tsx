@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { SpriteFallback } from "@/components/ui/sprite-fallback";
 import type { Item } from "@/types/item";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
@@ -47,7 +48,7 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
 
       {/* Header */}
       <div className="mb-3 flex items-start gap-3">
-        {pokemon.sprite_url && (
+        {pokemon.sprite_url ? (
           <Image
             src={pokemon.sprite_url}
             alt={pokemon.name}
@@ -56,6 +57,8 @@ export function RosterCard({ entry, pokemon, itemsMap, onEdit, onDelete }: Roste
             className="image-rendering-pixelated"
             unoptimized
           />
+        ) : (
+          <SpriteFallback size={56} />
         )}
         <div className="min-w-0 flex-1">
           <p className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">

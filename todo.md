@@ -1,5 +1,48 @@
 # TODO - Active Tasks
 
+## Done (2026-04-28) - Phase 5D Wave 2: error/loading polish on user-scoped pages
+
+Plan: `.claude/plans/phase-5d-ux-polish.md`. Workstream A Wave 2 of 3.
+
+- [x] **6 user-scoped pages converted** to use `<LoadingSkeleton>` / `<ErrorCard>` / `<EmptyState>` primitives. Each page now: shows a typed skeleton during initial fetch, surfaces a retry-able ErrorCard on failure (piped through `friendlyError()`), and renders an EmptyState with helpful copy + an action when results are empty.
+  - `web/src/app/roster/page.tsx` -- skeleton + retry-able error + EmptyState differentiated by "no roster yet" vs "no Pokemon match this status filter". Empty state has an "Add Pokemon" action when there is no filter.
+  - `web/src/app/teams/page.tsx` -- same pattern; empty state has a contextual action ("Go to Roster" if roster is empty, "New Team" otherwise).
+  - `web/src/app/matches/page.tsx` -- list-variant skeleton; empty state has "Log Your First Match" action.
+  - `web/src/app/profile/page.tsx` -- detail-variant skeleton; new error path with retry that previously silently swallowed errors. Loader extracted to `loadProfile()` helper for retry support.
+  - `web/src/app/u/[username]/page.tsx` -- detail skeleton; ErrorCard for trainer-not-found; EmptyState for "no shared cheatsheets yet".
+  - `web/src/app/pokemon/[id]/page.tsx` -- replaced inline `DetailSkeleton` helper (now deleted) with `<LoadingSkeleton variant="detail">`; replaced inline error box with `<ErrorCard>`. Error mapping now goes through `friendlyError()` instead of bespoke 404/5xx string switching.
+- [x] **Verification**: `pnpm tsc --noEmit` clean, `pnpm lint` 0 errors / 6 pre-existing warnings (unchanged from Wave 1), `pnpm build` succeeds. Live preview: `/pokemon/727` hydrates with Incineroar h1 + 77-row movepool + shiny toggle button intact; `/u/nonexistent_user_zzz` shows ErrorCard with "Trainer not found / No trainer with username \"nonexistent_user_zzz\" exists." and a working Browse Pokedex button. All 5 other Wave 2 routes return 200 in dev preview.
+
+Wave 3 (heavy state machines: draft/cheatsheet/admin) is the remaining workstream-A task; sequenced for the next session.
+
+## Done (2026-04-28) - Phase 5D Wave 1: error/loading polish on reference pages
+
+Plan: `.claude/plans/phase-5d-ux-polish.md`. Workstream A Wave 1 of 3.
+
+- [x] **`web/src/lib/errors.ts`** -- new `friendlyError(err)` helper maps common errors (401/403/404/429/503/5xx, network, generic) to `{title, message}` pairs. Single source of truth so the UI never leaks "Failed to fetch" or stack traces.
+- [x] **6 reference pages converted** to use `<LoadingSkeleton>` / `<ErrorCard>` / `<EmptyState>` primitives that previously had zero adoption. Each page now: shows a typed skeleton during initial fetch, surfaces a retry-able ErrorCard on failure, renders an EmptyState with helpful copy when results are empty.
+  - `web/src/features/pokemon/components/pokemon-view.tsx` -- replaced inline `ListSkeleton` with `<LoadingSkeleton variant="card" count={8}>`, replaced `<div className="text-red-400">` with `<ErrorCard>`, replaced inline "No Pokemon found" with `<EmptyState>`. Cleaned up 2 dead helper functions (`PokemonListSuspended`, `Pagination`) that were leftover from a refactor and were generating 4 ESLint warnings.
+  - `web/src/app/moves/page.tsx` -- same pattern; deleted the inline `MoveTableSkeleton` helper.
+  - `web/src/app/items/page.tsx` -- same pattern; deleted the inline `ItemCardSkeleton` helper.
+  - `web/src/app/speed-tiers/page.tsx` -- same pattern; collapsed inline error div + skeleton block.
+  - `web/src/app/calc/page.tsx` -- inline `<ErrorCard variant="inline">` for the run-calc error path with retry.
+  - `web/src/app/meta/page.tsx` -- list-variant skeleton, error card, two empty states (usage tab + tiers tab).
+  - `web/src/app/type-chart/page.tsx` -- no changes needed (fully static, no fetch).
+- [x] **Verification**: `pnpm tsc --noEmit` clean, `pnpm lint` 0 errors (warnings dropped 10 -> 6), `pnpm build` succeeds. Live preview: `/moves` walked through all three states -- 50 rows on success, EmptyState ("No moves found / Try adjusting the filters...") when searching `zzzzzzzzz`, ErrorCard ("Couldn't load moves / We couldn't reach the server. Check your connection and try again." + working "Try again" button) when API is offline.
+
+Wave 2 (user-scoped pages: roster/teams/matches/profile/pokemon-detail) and Wave 3 (heavy state machines: draft/cheatsheet/admin) are sequenced for upcoming sessions per plan.
+
+## Done (2026-04-28) - Phase 5B feature completion (F1-F8 closed)
+
+Closes the last MVP-shaped feature gaps so F1-F8 are all user-reachable. Plan: `.claude/plans/is-there-anything-left-iterative-peacock.md`.
+
+- [x] **Speed tier reference page** `/speed-tiers` -- new endpoint `GET /pokemon/speed-tiers?format=&champions_only=` returns each Pokemon with `base_speed` + derived `neutral_max` / `positive_max` / `scarf_max` (level 50, 252 EV / 31 IV) plus the latest usage % for the requested format. Cached `public, max-age=3600, swr=86400`. Frontend page is a sortable table (base / neutral / +nat / scarf / usage), search-by-name, "Champions only" toggle, sprite + TypePill columns. Mobile horizontal-scroll verified at 375px (327px container, 760px table). Wired into nav as "Speed". Added "see full speed tiers" link in stat-point-editor footer. New Pydantic models: `SpeedTierEntry`, `SpeedTierList`.
+- [x] **F7 Damage Calculator UI** `/calc` -- new POST `/calc` endpoint orchestrating the existing `damage_calc.py` engine. Request accepts attacker/defender/move IDs + optional EV overrides + optional nature (`{plus, minus}`) + weather + `is_doubles`. Standalone stat-formula helper supports level-50 IV31 with optional EV/nature math (mirrors mainline). Frontend two-panel page: searchable Pokemon dropdowns, attacker movepool gates the move picker (status moves + 0-power filtered out), weather radio buttons, doubles toggle, result card with min-max damage + HP bar + OHKO verdict + STAB/effectiveness chips + copy-to-clipboard. Smoke test: Incineroar Flare Blitz vs Garchomp returns `21.9-25.7%` -- matches Smogon calc within rounding. CTA link added from meta detail panel ("Run Calc") with `?defender={id}` URL param hydration.
+- [x] **F8 Sprite improvements** -- new `pokeArtShiny()` + `pokeSpriteShiny()` helpers in `web/src/lib/sprites.ts`. New `<SpriteFallback>` SVG component (magenta-tinted Pokeball silhouette) wired into pokemon detail page, roster card, team card, meta detail panel for null-sprite cases. Shiny toggle button added to pokemon detail page with `onError` fallback chain. Gender variants and form variants beyond what's already in DB deferred (Champions has only ~2 cosmetic gender cases).
+- [x] **Local verification**: `ruff` clean; pyright on touched files clean (no new errors above the 17 pre-existing pokemon.py Supabase JSON narrowing complaints); `pnpm tsc --noEmit` clean; `pnpm lint` 0 errors; `pnpm build` builds all 14 routes incl. new `/calc` and `/speed-tiers`. Live preview: speed-tiers renders 201 entries with V2 magenta/gold tokens; calc page form controls render and POST returns expected damage. Mobile (375px) horizontal scroll verified.
+- [x] **Out-of-scope follow-up flagged**: pokemon detail endpoint returns 500 on `/pokemon/{id}/detail` due to duplicate `mega_evolution_names` kwarg in `get_pokemon_detail` -- this is pre-existing (verified via stash test against HEAD `14892e6`). Spawned task chip; the shiny-toggle UI is type-clean but won't be live-verifiable until that bug is fixed.
+- [x] **Detail-endpoint bug fixed (same day, 2026-04-28)**: in `api/app/routers/pokemon.py:get_pokemon_detail`, pop `mega_evolution_names` from `base.model_dump()` before spreading into `PokemonDetail(...)` so the explicit kwarg no longer collides. `curl http://localhost:8000/pokemon/727/detail` returns 200 with full Incineroar payload (77 moves, 2 abilities, types fire/dark). Dual-mega case verified on Charizard (id 6) -- `mega_evolution_names=['Mega Charizard X','Mega Charizard Y']`, back-compat `mega_evolution_name='Mega Charizard X'`. Live preview: detail page hydrates cleanly, shiny toggle swaps `/official-artwork/727.png` -> `/official-artwork/shiny/727.png` and renders the cream/orange shiny variant. Phase 5B F8 shiny toggle now end-to-end verified.
+
 ## Done (2026-04-27) - Data pipeline visibility + AI freshness gating
 
 Investigation triggered by user report "scrapers fail constantly." Phase 1 audit found the actual problem: zero `/admin/cron/*` invocations in 7 days of prod logs -- crons aren't firing, almost certainly hitting the Hobby plan cron cap. Plan: stabilize-first (observability + freshness signals) before any scraper rewrites. Plan file: `.claude/plans/need-to-check-on-stateful-biscuit.md`.
@@ -82,7 +125,7 @@ Plan: `.claude/plans/oponen-team-selection-is-rosy-tower.md`. Five user-reported
 - [ ] W3 Layer C: fix `serebii_static.py` regional-form scrape (URL/parse pattern issue causing Alolan Ninetales et al. to miss Serebii overlay)
 - [ ] W5b: SSE streaming for draft + cheatsheet (Anthropic SDK `messages.stream()` + Vercel AI SDK on the web side); ~1 day
 - [ ] W5c: counter_index from pokemon_usage + tournament_teams co-occurrence; speed-tier table injected into draft prompt; "what changed" delta callout from meta_snapshots
-- [ ] Apply migrations `20260601100000_matchup_actual_lineup.sql` + `20260601200000_movepool_overrides.sql` to Supabase prod (manual user action)
+- [x] Apply migrations `20260601100000_matchup_actual_lineup.sql` + `20260601200000_movepool_overrides.sql` to Supabase prod (verified live 2026-04-28: applied 2026-04-18 as `matchup_actual_lineup` + `movepool_overrides`. `matchup_log.my_team_actual` column present; Alolan Ninetales movepool contains `Freeze-dry`.)
 
 ### Dual-Mega Support (2026-04-17) -- LANDED
 - [x] Migration `20260422000000_dual_mega_support.sql`: added `pokemon.mega_evolution_ids INT[]` (backfilled from `mega_evolution_id`; Charizard set to `[10034, 10035]`), added `teams.mega_form_pokemon_id INT` FK to record specific mega form selection.
@@ -156,9 +199,9 @@ Plan: `.claude/plans/oponen-team-selection-is-rosy-tower.md`. Five user-reported
 ## Backlog
 - [x] Dedup pokemon_usage: ingest scripts now clean old snapshots; 19 stale rows deleted
 - [x] ISR migration: 9 static pages (pokemon, moves, items, type-chart, meta, login, terms, privacy, support), 10 dynamic (auth-gated)
-- [x] F7: Damage calculator (landed 2026-04-17 as Session E W5a -- engine in api/app/services/damage_calc.py, integrated into draft AI; standalone calc UI deferred)
-- [ ] F8: Sprite display improvements
-- [ ] Speed tier reference page (/speed-tiers)
+- [x] F7: Damage calculator (landed 2026-04-17 as Session E W5a -- engine in api/app/services/damage_calc.py, integrated into draft AI; standalone calc UI landed 2026-04-28)
+- [x] F8: Sprite display improvements (shiny toggle + fallback placeholder, 2026-04-28)
+- [x] Speed tier reference page /speed-tiers (landed 2026-04-28)
 
 ---
 

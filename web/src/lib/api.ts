@@ -188,6 +188,77 @@ export async function fetchPokemonDetail(pokemonId: number) {
   return apiFetch<PokemonDetail>(`/pokemon/${pokemonId}/detail`);
 }
 
+// ── Speed Tiers (Reference) ──
+
+export interface SpeedTierEntry {
+  id: number;
+  name: string;
+  types: string[];
+  sprite_url: string | null;
+  base_speed: number;
+  neutral_max: number;
+  positive_max: number;
+  scarf_max: number;
+  usage_percent: number | null;
+}
+
+export interface SpeedTierListResponse {
+  data: SpeedTierEntry[];
+  count: number;
+}
+
+export async function fetchSpeedTiers(
+  format: string = "doubles",
+  championsOnly: boolean = true
+): Promise<SpeedTierListResponse> {
+  return cachedFetch<SpeedTierListResponse>("/pokemon/speed-tiers", {
+    format,
+    champions_only: championsOnly,
+  });
+}
+
+// ── Damage Calc ──
+
+export interface CalcRequest {
+  attacker_id: number;
+  defender_id: number;
+  move_id: number;
+  attacker_evs?: Record<string, number>;
+  defender_evs?: Record<string, number>;
+  attacker_nature?: { plus?: string; minus?: string };
+  defender_nature?: { plus?: string; minus?: string };
+  weather?: "none" | "sun" | "rain" | "snow" | "sand";
+  is_doubles?: boolean;
+  extra_modifier?: number;
+}
+
+export interface CalcResponse {
+  min: number;
+  max: number;
+  min_pct: number;
+  max_pct: number;
+  defender_hp: number;
+  type_effectiveness: number;
+  stab: boolean;
+  is_ohko_chance: boolean;
+  is_guaranteed_ohko: boolean;
+  skipped_reason: string | null;
+  formatted: string;
+  attacker_name: string;
+  defender_name: string;
+  move_name: string;
+  move_type: string;
+  move_category: string;
+  move_power: number;
+}
+
+export async function runCalc(body: CalcRequest): Promise<CalcResponse> {
+  return apiFetch<CalcResponse>("/calc", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 // ── User Pokemon (Roster) ──
 
 export interface UserPokemonFilters {

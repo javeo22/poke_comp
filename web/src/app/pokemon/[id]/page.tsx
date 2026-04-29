@@ -7,6 +7,11 @@ import Link from "next/link";
 import { fetchPokemonDetail } from "@/lib/api";
 import { TypeBadge } from "@/features/pokemon/components/type-badge";
 import { StatBar } from "@/features/pokemon/components/stat-bar";
+import { SpriteFallback } from "@/components/ui/sprite-fallback";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { pokeArt, pokeArtShiny } from "@/lib/sprites";
+import { friendlyError } from "@/lib/errors";
 import type { PokemonDetail, MoveDetail } from "@/features/pokemon/types";
 
 const CATEGORY_STYLES: Record<string, string> = {
@@ -25,33 +30,40 @@ export default function PokemonDetailPage() {
   const [error, setError] = useState<string | null>(isValidId ? null : "Invalid Pokemon ID");
   const [moveFilter, setMoveFilter] = useState("");
   const [moveCategoryFilter, setMoveCategoryFilter] = useState<string>("all");
+  const [shiny, setShiny] = useState(false);
+  const [spriteFailed, setSpriteFailed] = useState(false);
 
   useEffect(() => {
     if (!isValidId) return;
 
     fetchPokemonDetail(pokemonId)
       .then(setPokemon)
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("404") || /not found/i.test(msg)) {
-          setError("Pokemon not found.");
-        } else if (/5\d\d/.test(msg)) {
-          setError("Server error — please try again.");
-        } else {
-          setError(`Could not load Pokemon data. Check your connection.`);
-        }
-      })
+      .catch((err: unknown) => setError(friendlyError(err).message))
       .finally(() => setLoading(false));
   }, [pokemonId, isValidId]);
 
-  if (loading) return <DetailSkeleton />;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-8">
+        <LoadingSkeleton variant="detail" />
+      </div>
+    );
+  }
   if (error || !pokemon) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-12 text-center">
-        <p className="text-on-surface-muted">{error || "Pokemon not found"}</p>
-        <Link href="/pokemon" className="mt-4 inline-block text-primary hover:underline">
-          Back to Pokedex
-        </Link>
+      <div className="mx-auto max-w-4xl px-6 py-12">
+        <ErrorCard
+          title="Couldn't load Pokemon"
+          message={error || "Pokemon not found."}
+        />
+        <div className="mt-6 text-center">
+          <Link
+            href="/pokemon"
+            className="font-display text-sm text-primary hover:underline"
+          >
+            Back to Pokedex
+          </Link>
+        </div>
       </div>
     );
   }
@@ -82,16 +94,35 @@ export default function PokemonDetailPage() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           {/* Sprite + basic info */}
           <div className="flex items-center gap-4 sm:flex-col sm:items-center sm:min-w-[140px]">
-            {pokemon.sprite_url && (
-              <Image
-                src={pokemon.sprite_url}
-                alt={pokemon.name}
-                width={96}
-                height={96}
-                className="image-rendering-pixelated drop-shadow-lg"
-                unoptimized
-              />
-            )}
+            <div className="relative">
+              {!spriteFailed && pokemon.sprite_url ? (
+                <Image
+                  src={shiny ? pokeArtShiny(pokemon.id) : pokeArt(pokemon.id)}
+                  alt={pokemon.name}
+                  width={120}
+                  height={120}
+                  className="drop-shadow-lg"
+                  unoptimized
+                  onError={() => setSpriteFailed(true)}
+                />
+              ) : (
+                <SpriteFallback size={120} />
+              )}
+              <button
+                onClick={() => {
+                  setShiny((v) => !v);
+                  setSpriteFailed(false);
+                }}
+                className={`absolute -bottom-1 right-0 rounded-full px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] transition-colors ${
+                  shiny
+                    ? "bg-accent text-surface"
+                    : "bg-surface-high text-on-surface-muted hover:text-accent"
+                }`}
+                title="Toggle shiny artwork"
+              >
+                {shiny ? "Shiny" : "Normal"}
+              </button>
+            </div>
             <div className="sm:text-center">
               <p className="font-display text-xs uppercase tracking-wider text-on-surface-muted">
                 #{String(pokemon.id).padStart(4, "0")}
@@ -353,29 +384,3 @@ function UsageRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-function DetailSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 animate-pulse">
-      <div className="h-4 w-32 rounded bg-surface-high mb-6" />
-      <div className="card p-6 mb-6">
-        <div className="flex gap-6">
-          <div className="h-24 w-24 rounded bg-surface-high" />
-          <div className="flex-1 space-y-3">
-            <div className="h-6 w-48 rounded bg-surface-high" />
-            <div className="h-4 w-32 rounded bg-surface-high" />
-            <div className="space-y-2 mt-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-3 rounded bg-surface-high" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2 mb-6">
-        <div className="card p-6 h-48" />
-        <div className="card p-6 h-48" />
-      </div>
-      <div className="card p-6 h-96" />
-    </div>
-  );
-}

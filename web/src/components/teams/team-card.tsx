@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { SpriteFallback } from "@/components/ui/sprite-fallback";
 import Link from "next/link";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
@@ -113,7 +114,7 @@ export function TeamCard({
                 : "bg-surface-lowest"
             }`}
           >
-            {poke.sprite_url && (
+            {poke.sprite_url ? (
               <Image
                 src={poke.sprite_url}
                 alt={poke.name}
@@ -122,6 +123,8 @@ export function TeamCard({
                 className="image-rendering-pixelated"
                 unoptimized
               />
+            ) : (
+              <SpriteFallback size={36} />
             )}
             <span className="max-w-14 truncate text-center font-display text-[0.5rem] text-on-surface-muted">
               {poke.name}

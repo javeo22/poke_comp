@@ -10,6 +10,7 @@ from app.routers import (
     admin,
     admin_cron,
     ai_usage,
+    calc,
     cheatsheet,
     draft,
     items,
@@ -77,6 +78,7 @@ app.include_router(admin.router)
 app.include_router(admin_cron.router)
 app.include_router(public.router)
 app.include_router(strategy.router)
+app.include_router(calc.router)
 
 
 @app.get("/health")

@@ -7,58 +7,11 @@ import { useGSAP } from "@gsap/react";
 import { usePokemonSuspense } from "../api";
 import { PokemonFilters, type FilterState } from "./pokemon-filters";
 import { PokemonCard } from "./pokemon-card";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const PAGE_SIZE = 50;
-
-function PokemonListSuspended({ filters, offset, onUpdateCount }: { filters: FilterState; offset: number, onUpdateCount: (c: number) => void }) {
-  const { data } = usePokemonSuspense({
-    name: filters.name || undefined,
-    type: filters.type || undefined,
-    generation: filters.generation ? Number(filters.generation) : undefined,
-    champions_only: filters.championsOnly || undefined,
-    limit: PAGE_SIZE,
-    offset,
-  });
-
-  // Since we render during render pass, we can call onUpdateCount to surface count? 
-  // It's technically better to not setState in render, so let's let the parent calculate or just pass it in effect.
-  // Actually, TanStack Query is awesome, we can just render.
-
-  if (data.data.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="font-display text-lg text-on-surface-muted">
-          No Pokemon found
-        </p>
-        <p className="mt-1 text-sm text-on-surface-muted">
-          Try adjusting your filters
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <p className="mb-4 font-display text-xs uppercase tracking-[0.05rem] text-on-surface-muted">
-        {data.count} result{data.count !== 1 ? "s" : ""}
-      </p>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {data.data.map((p) => (
-          <PokemonCard key={p.id} pokemon={p} />
-        ))}
-      </div>
-      {data.count > PAGE_SIZE && (
-        <Pagination offset={offset} count={data.count} />
-      )}
-    </>
-  );
-}
-
-// A simple local pagination, though it changes parental states
-function Pagination({ offset, count } : { offset: number, count: number }) {
-    // Just a placeholder here. We need to pass down setOffset and startTransition
-    return null; 
-}
 
 export function PokemonView() {
   const [offset, setOffset] = useState(0);
@@ -101,8 +54,15 @@ export function PokemonView() {
         <PokemonFilters filters={filters} onFilterChange={handleFilterChange} />
       </div>
 
-      <ErrorBoundary fallback={<div className="py-20 text-center text-red-400">Failed to load Pokemon matching these filters.</div>}>
-        <Suspense fallback={<ListSkeleton />}>
+      <ErrorBoundary
+        fallback={
+          <ErrorCard
+            title="Couldn't load Pokemon"
+            message="We couldn't load Pokemon matching these filters. Try resetting the filters or reloading the page."
+          />
+        }
+      >
+        <Suspense fallback={<LoadingSkeleton variant="card" count={8} className="mt-2" />}>
           <ListContainer filters={filters} offset={offset} onPageChange={handlePageChange} />
         </Suspense>
       </ErrorBoundary>
@@ -146,9 +106,10 @@ function ListContainer({ filters, offset, onPageChange }: { filters: FilterState
   return (
     <>
       {data.data.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <p className="font-display text-lg text-on-surface-muted">No Pokemon found</p>
-        </div>
+        <EmptyState
+          title="No Pokemon found"
+          description="Try clearing a filter or switching off the Champions toggle."
+        />
       ) : (
         <>
           <p className="mb-4 font-display text-xs uppercase tracking-[0.05rem] text-on-surface-muted">
@@ -189,15 +150,3 @@ function ListContainer({ filters, offset, onPageChange }: { filters: FilterState
   );
 }
 
-function ListSkeleton() {
-  return (
-    <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-64 animate-pulse rounded-xl bg-surface-low/50"
-        />
-      ))}
-    </div>
-  );
-}

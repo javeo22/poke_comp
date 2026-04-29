@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Item } from "@/types/item";
 import { fetchItems } from "@/lib/api";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 const PAGE_SIZE = 30;
 
@@ -20,16 +24,11 @@ interface FilterState {
   championsOnly: boolean;
 }
 
-function ItemCardSkeleton() {
-  return (
-    <div className="h-44 animate-pulse rounded-[1rem] bg-surface-low" />
-  );
-}
-
 export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<FilterState>({
     name: "",
@@ -41,6 +40,7 @@ export default function ItemsPage() {
 
   const loadItems = useCallback(async (f: FilterState, newOffset: number) => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await fetchItems({
         name: f.name || undefined,
@@ -52,7 +52,8 @@ export default function ItemsPage() {
       setItems(result.data);
       setCount(result.count);
     } catch (err) {
-      console.error("Failed to fetch items:", err);
+      const friendly = friendlyError(err);
+      setError(friendly.message);
       setItems([]);
       setCount(0);
     } finally {
@@ -140,17 +141,18 @@ export default function ItemsPage() {
 
       {/* Card Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <ItemCardSkeleton key={i} />
-          ))}
-        </div>
+        <LoadingSkeleton variant="card" count={9} />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load items"
+          message={error}
+          onRetry={() => loadItems(filters, offset)}
+        />
       ) : items.length === 0 ? (
-        <div className="rounded-[1rem] bg-surface-low px-6 py-12 text-center">
-          <p className="font-display text-sm text-on-surface-muted">
-            No items found matching your filters.
-          </p>
-        </div>
+        <EmptyState
+          title="No items found"
+          description="Try adjusting the filters or turning off the Champions toggle."
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (

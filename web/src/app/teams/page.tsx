@@ -24,6 +24,10 @@ import { TeamCard } from "@/components/teams/team-card";
 import { TeamForm } from "@/components/teams/team-form";
 import { ImportReview } from "@/components/teams/import-review";
 import { RosterForm } from "@/components/roster/roster-form";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -32,6 +36,7 @@ export default function TeamsPage() {
   const [rosterLookup, setRosterLookup] = useState<Map<string, UserPokemon>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cheatsheetStatus, setCheatsheetStatus] = useState<Record<string, string>>({});
   const [formatFilter, setFormatFilter] = useState("");
 
@@ -57,6 +62,7 @@ export default function TeamsPage() {
 
   const loadData = useCallback(async (format?: string) => {
     setIsLoading(true);
+    setError(null);
     try {
       const [teamsResult, rosterResult, pokemonResult] = await Promise.all([
         fetchTeams({ format: format || undefined, limit: 200 }),
@@ -88,7 +94,7 @@ export default function TeamsPage() {
           .catch(() => {});
       }
     } catch (err) {
-      console.error("Failed to load teams data:", err);
+      setError(friendlyError(err).message);
       setTeams([]);
       setCount(0);
     } finally {
@@ -286,37 +292,43 @@ export default function TeamsPage() {
 
       {/* Teams grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-low" />
-          ))}
-        </div>
+        <LoadingSkeleton variant="card" count={4} className="lg:grid-cols-2" />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load teams"
+          message={error}
+          onRetry={() => loadData(formatFilter)}
+        />
       ) : teams.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <p className="font-display text-lg text-on-surface-muted">
-            {formatFilter ? "No teams in this format" : "No teams yet"}
-          </p>
-          <p className="mt-1 text-sm text-on-surface-muted">
-            {formatFilter ? "Try a different format" : "Build your first team to get started"}
-          </p>
-          {!formatFilter && roster.length === 0 && (
-            <p className="mt-2 text-xs text-on-surface-muted">
-              Add Pokemon to your{" "}
-              <a href="/roster" className="text-primary hover:underline">
-                Roster
-              </a>{" "}
-              first, then build teams from them.
-            </p>
-          )}
-          {!formatFilter && (
-            <button
-              onClick={handleCreate}
-              className="mt-6 btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
-            >
-              New Team
-            </button>
-          )}
-        </div>
+        <EmptyState
+          title={formatFilter ? "No teams in this format" : "No teams yet"}
+          description={
+            formatFilter
+              ? "Try switching to a different format."
+              : roster.length === 0
+                ? "Add Pokemon to your Roster first, then build teams from them."
+                : "Build your first team from your roster."
+          }
+          action={
+            !formatFilter ? (
+              roster.length === 0 ? (
+                <a
+                  href="/roster"
+                  className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
+                >
+                  Go to Roster
+                </a>
+              ) : (
+                <button
+                  onClick={handleCreate}
+                  className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
+                >
+                  New Team
+                </button>
+              )
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {teams.map((team) => (

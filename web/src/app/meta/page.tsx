@@ -8,6 +8,10 @@ import { fetchLatestMeta, fetchUsage } from "@/lib/api";
 import { TierListCard } from "@/components/meta/tier-list-card";
 import { UsageList } from "@/components/meta/usage-list";
 import { PokemonDetailPanel } from "@/components/meta/pokemon-detail-panel";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 type ViewMode = "usage" | "tiers";
 
@@ -22,12 +26,14 @@ export default function MetaPage() {
   const [usageData, setUsageData] = useState<PokemonUsage[]>([]);
   const [usageFallback, setUsageFallback] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formatFilter, setFormatFilter] = useState("doubles");
   const [viewMode, setViewMode] = useState<ViewMode>("usage");
   const [selectedPokemon, setSelectedPokemon] = useState<SelectedPokemon | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     setUsageFallback(false);
     try {
       const [metaData, usage] = await Promise.all([
@@ -44,7 +50,7 @@ export default function MetaPage() {
         setUsageData(usage.data);
       }
     } catch (err) {
-      console.error("Failed to load meta data:", err);
+      setError(friendlyError(err).message);
       setSnapshots([]);
       setUsageData([]);
     } finally {
@@ -121,17 +127,19 @@ export default function MetaPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-surface-low" />
-          ))}
-        </div>
+        <LoadingSkeleton variant="list" count={8} />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load meta data"
+          message={error}
+          onRetry={loadData}
+        />
       ) : viewMode === "usage" ? (
         usageData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <p className="font-display text-lg text-on-surface-muted">No usage data yet</p>
-            <p className="mt-2 text-sm text-on-surface-muted">Usage data is refreshed automatically from Pikalytics.</p>
-          </div>
+          <EmptyState
+            title="No usage data yet"
+            description="Usage data is refreshed automatically from Pikalytics."
+          />
         ) : (
           <>
             {usageFallback && (
@@ -147,10 +155,10 @@ export default function MetaPage() {
       ) : (
         <div className="animate-stagger flex flex-col gap-6">
           {filteredSnapshots.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <p className="font-display text-lg text-on-surface-muted">No tier data yet</p>
-              <p className="mt-2 text-sm text-on-surface-muted">Tier data is sourced from Smogon, Pikalytics, and Limitless.</p>
-            </div>
+            <EmptyState
+              title="No tier data yet"
+              description="Tier data is sourced from Smogon, Pikalytics, and Limitless."
+            />
           ) : (
             filteredSnapshots.map((snapshot) => (
               <TierListCard

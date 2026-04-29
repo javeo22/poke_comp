@@ -1,0 +1,20 @@
+# Ingest manifest for /gsd-ingest-docs
+#
+# Scopes ingestion to the 4 authoritative planning docs only. The stale
+# design docs (design/palette.md, design/ANTIGRAVITY_DESIGN_REVIEW.md) and
+# the running task list (todo.md, plan.md) are intentionally excluded —
+# they would create conflicts with the live V2 design system documented
+# in CLAUDE.md and the actual implemented state captured in
+# .planning/codebase/.
+#
+# Default precedence chain ADR > SPEC > PRD > DOC applies; no overrides.
+
+docs:
+  - path: decisions.md
+    type: ADR
+  - path: rag-architecture.md
+    type: SPEC
+  - path: champions-prd.md
+    type: PRD
+  - path: LEGAL_AND_DEV_GUIDELINES.md
+    type: DOC

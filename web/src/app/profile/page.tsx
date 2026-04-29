@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { fetchProfile, updateProfile } from "@/lib/api";
 import { AvatarPickerModal } from "@/components/profile/avatar-picker-modal";
 import { TrainerCard } from "@/components/profile/trainer-card";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { friendlyError } from "@/lib/errors";
 import type { FullProfile } from "@/types/profile";
 
 export default function ProfilePage() {
@@ -14,7 +17,17 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<FullProfile | null>(null);
   const [loading, setLoading] = useState(!!supabase);
+  const [error, setError] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+
+  const loadProfile = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetchProfile()
+      .then(setProfile)
+      .catch((err) => setError(friendlyError(err).message))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -24,13 +37,9 @@ export default function ProfilePage() {
         router.push("/login");
         return;
       }
-
-      fetchProfile()
-        .then(setProfile)
-        .catch(() => {})
-        .finally(() => setLoading(false));
+      loadProfile();
     });
-  }, [supabase, router]);
+  }, [supabase, router, loadProfile]);
 
   const handleUpdateDisplayName = async (name: string) => {
     const updated = await updateProfile({
@@ -94,23 +103,19 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 rounded bg-surface-high" />
-          <div className="card p-8">
-            <div className="flex items-start gap-5">
-              <div className="h-16 w-16 rounded-xl bg-surface-high" />
-              <div className="space-y-3">
-                <div className="h-6 w-40 rounded bg-surface-high" />
-                <div className="h-4 w-24 rounded bg-surface-high" />
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-20 rounded-lg bg-surface-high" />
-            ))}
-          </div>
-        </div>
+        <LoadingSkeleton variant="detail" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <ErrorCard
+          title="Couldn't load your profile"
+          message={error}
+          onRetry={loadProfile}
+        />
       </div>
     );
   }

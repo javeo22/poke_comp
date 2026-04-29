@@ -13,6 +13,8 @@ from app.models.pokemon import (
     PokemonDetail,
     PokemonList,
     PokemonUsageSummary,
+    SpeedTierEntry,
+    SpeedTierList,
 )
 
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
@@ -121,6 +123,69 @@ def list_pokemon(
     )
 
 
+@router.get("/speed-tiers", response_model=SpeedTierList)
+def list_speed_tiers(
+    response: Response,
+    format: str = Query("doubles", description="Format key for usage % overlay"),
+    champions_only: bool = Query(True, description="Only Champions-eligible Pokemon"),
+):
+    """Global speed-tier reference table. Returns every Pokemon ordered by
+    base speed descending, with derived neutral / +nature / scarf max stats
+    (level 50, 252 EV, 31 IV). Optionally augmented with the latest usage
+    percentage for the requested format.
+
+    Stat formula matches `damage_calc.from_base_stats()` -- level-50, 252 EV,
+    31 IV, neutral nature: floor((2*base + 31 + 63) * 50/100) + 5.
+    """
+    query = supabase.table("pokemon").select("id, name, types, sprite_url, base_stats")
+    if champions_only:
+        query = query.eq("champions_eligible", True)
+    result = query.execute()
+    rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    # Resolve latest usage % per Pokemon name for the requested format.
+    usage_map: dict[str, float] = {}
+    usage_result = (
+        supabase.table("pokemon_usage")
+        .select("pokemon_name, usage_percent, snapshot_date")
+        .eq("format", format)
+        .order("snapshot_date", desc=True)
+        .execute()
+    )
+    usage_rows: list[dict[str, Any]] = usage_result.data or []  # type: ignore[assignment]
+    for u in usage_rows:
+        # Keep the latest only (rows are ordered desc by date).
+        name = u.get("pokemon_name")
+        if name and name not in usage_map:
+            usage_map[name] = float(u.get("usage_percent") or 0)
+
+    entries: list[SpeedTierEntry] = []
+    for row in rows:
+        base_stats = row.get("base_stats") or {}
+        base_speed = int(base_stats.get("speed", 0) or 0)
+        # Level-50, 252 EV, 31 IV, neutral nature.
+        neutral_max = ((2 * base_speed + 31 + 63) * 50 // 100) + 5
+        positive_max = int(neutral_max * 1.1)
+        scarf_max = int(positive_max * 1.5)
+        entries.append(
+            SpeedTierEntry(
+                id=row["id"],
+                name=row["name"],
+                types=row.get("types") or [],
+                sprite_url=row.get("sprite_url"),
+                base_speed=base_speed,
+                neutral_max=neutral_max,
+                positive_max=positive_max,
+                scarf_max=scarf_max,
+                usage_percent=usage_map.get(row["name"]),
+            )
+        )
+
+    entries.sort(key=lambda e: (-e.base_speed, e.name))
+    response.headers["Cache-Control"] = _STATIC_CACHE_HEADER
+    return SpeedTierList(data=entries, count=len(entries))
+
+
 @router.get("/{pokemon_id}", response_model=PokemonBase)
 def get_pokemon(pokemon_id: int):
     try:
@@ -202,8 +267,10 @@ def get_pokemon_detail(pokemon_id: int):
         id_to_name = {r["id"]: r["name"] for r in mega_res.data}  # type: ignore[union-attr]
         mega_names = [id_to_name[mid] for mid in detail_mega_ids if mid in id_to_name]
 
+    base_dict = base.model_dump()
+    base_dict.pop("mega_evolution_names", None)
     return PokemonDetail(
-        **base.model_dump(),
+        **base_dict,
         move_details=move_details,
         ability_details=ability_details,
         usage=usage,

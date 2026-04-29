@@ -20,9 +20,11 @@ const PRIMARY_LINKS = [
   { href: "/", label: "Home", match: (p: string) => p === "/" },
   { href: "/pokemon", label: "Pokedex", match: (p: string) => p.startsWith("/pokemon") },
   { href: "/draft", label: "Draft", match: (p: string) => p.startsWith("/draft") },
+  { href: "/calc", label: "Calc", match: (p: string) => p.startsWith("/calc") },
   { href: "/roster", label: "Roster", match: (p: string) => p.startsWith("/roster") || p.startsWith("/teams") },
   { href: "/cheatsheet", label: "Cheatsheet", match: (p: string) => p.startsWith("/cheatsheet") },
   { href: "/meta", label: "Meta", match: (p: string) => p.startsWith("/meta") },
+  { href: "/speed-tiers", label: "Speed", match: (p: string) => p.startsWith("/speed-tiers") },
   { href: "/matches", label: "Matches", match: (p: string) => p.startsWith("/matches") },
 ] as const;
 

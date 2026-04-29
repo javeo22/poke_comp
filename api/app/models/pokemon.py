@@ -74,3 +74,27 @@ class PokemonDetail(PokemonBase):
     ability_details: list[AbilityDetail] = []
     usage: list[PokemonUsageSummary] = []
     mega_evolution_name: str | None = None  # kept for compat; prefer mega_evolution_names
+
+
+class SpeedTierEntry(BaseModel):
+    """One row in the global speed-tier reference table.
+
+    All speed values are level-50 actual stats (post-stat formula).
+    `neutral_max` assumes 252 EV / 31 IV / neutral nature.
+    `positive_max` applies the +Speed nature multiplier (1.1).
+    `scarf_max` applies Choice Scarf on top of positive nature (1.5)."""
+
+    id: int
+    name: str
+    types: list[str]
+    sprite_url: str | None = None
+    base_speed: int
+    neutral_max: int
+    positive_max: int
+    scarf_max: int
+    usage_percent: float | None = None
+
+
+class SpeedTierList(BaseModel):
+    data: list[SpeedTierEntry]
+    count: int

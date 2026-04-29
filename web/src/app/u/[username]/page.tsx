@@ -10,6 +10,9 @@ import {
 } from "@/lib/api";
 import type { PublicProfile, PublicCheatsheetSummary } from "@/lib/api";
 import { SupporterBadge } from "@/components/profile/supporter-badge";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -44,29 +47,26 @@ export default function PublicProfilePage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 rounded bg-surface-high" />
-          <div className="h-24 rounded-lg bg-surface-high" />
-        </div>
+        <LoadingSkeleton variant="detail" />
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-20 text-center">
-        <h1 className="font-display text-2xl font-bold text-on-surface">
-          Trainer Not Found
-        </h1>
-        <p className="mt-2 text-sm text-on-surface-muted">
-          No trainer with username &quot;{username}&quot; exists.
-        </p>
-        <Link
-          href="/pokemon"
-          className="mt-6 inline-block btn-primary px-6 py-2 font-display text-xs uppercase tracking-wider"
-        >
-          Browse Pokedex
-        </Link>
+      <div className="mx-auto max-w-2xl px-6 py-20">
+        <ErrorCard
+          title="Trainer not found"
+          message={`No trainer with username "${username}" exists.`}
+        />
+        <div className="mt-6 text-center">
+          <Link
+            href="/pokemon"
+            className="btn-primary px-6 py-2 font-display text-xs uppercase tracking-wider"
+          >
+            Browse Pokedex
+          </Link>
+        </div>
       </div>
     );
   }
@@ -118,11 +118,10 @@ export default function PublicProfilePage() {
           Shared Cheatsheets
         </h2>
         {cheatsheets.length === 0 ? (
-          <div className="card py-12 text-center">
-            <p className="text-sm text-on-surface-muted">
-              No shared cheatsheets yet.
-            </p>
-          </div>
+          <EmptyState
+            title="No shared cheatsheets yet"
+            description={`${displayName} hasn't shared any cheatsheets publicly.`}
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {cheatsheets.map((cs) => (

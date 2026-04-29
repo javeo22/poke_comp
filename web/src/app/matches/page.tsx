@@ -49,6 +49,10 @@ import {
 import type { UserPokemon } from "@/types/user-pokemon";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorCard } from "@/components/ui/error-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { friendlyError } from "@/lib/errors";
 
 type ViewMode = "log" | "stats";
 
@@ -63,6 +67,7 @@ export default function MatchesPage() {
   const [pokemonNameById, setPokemonNameById] = useState<Map<number, string>>(new Map());
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("log");
 
   // Filters
@@ -90,6 +95,7 @@ export default function MatchesPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [matchResult, statsResult, teamsResult, pokemonResult, usageResult, userPokeResult] =
         await Promise.all([
@@ -144,7 +150,7 @@ export default function MatchesPage() {
 
       setPokemonOptions([...topOptions, ...restOptions]);
     } catch (err) {
-      console.error("Failed to load matches:", err);
+      setError(friendlyError(err).message);
     } finally {
       setIsLoading(false);
     }
@@ -369,25 +375,28 @@ export default function MatchesPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-surface-low" />
-          ))}
-        </div>
+        <LoadingSkeleton variant="list" count={6} />
+      ) : error ? (
+        <ErrorCard
+          title="Couldn't load matches"
+          message={error}
+          onRetry={loadData}
+        />
       ) : viewMode === "log" ? (
         /* Match log */
         matchups.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <p className="font-display text-lg text-on-surface-muted">
-              No matches logged yet
-            </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="btn-primary mt-6 h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
-            >
-              Log Your First Match
-            </button>
-          </div>
+          <EmptyState
+            title="No matches logged yet"
+            description="Log your first match to start tracking win rates by team, format, and matchup."
+            action={
+              <button
+                onClick={() => setShowForm(true)}
+                className="btn-primary h-10 px-6 font-display text-xs font-medium uppercase tracking-wider"
+              >
+                Log Your First Match
+              </button>
+            }
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {matchups.map((m) => (

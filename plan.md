@@ -236,9 +236,9 @@
 - J: Custom AI strategy (phased: caching -> tiered models -> fine-tuning)
 
 ### Remaining
-- [ ] F7: Damage calculator
-- [ ] F8: Sprite display improvements
-- [ ] Speed tier reference page
+- [x] F7: Damage calculator (engine 2026-04-17 Session E W5a; standalone /calc UI 2026-04-28 Phase 5B)
+- [x] F8: Sprite display improvements (shiny toggle + fallback placeholder, 2026-04-28 Phase 5B; gender/form variants deferred)
+- [x] Speed tier reference page /speed-tiers (2026-04-28 Phase 5B)
 - [x] Open source release (MIT LICENSE committed 2026-04-16)
 - [x] README with setup instructions (committed 2026-04-16)
 
@@ -257,22 +257,11 @@ Goal: open a revenue channel without violating scan-speed UX. Ad approval runs i
 - [ ] EthicalAds integration once approved: client component gated on `!user.supporter`, server-fetched in layout, `next/script` with `afterInteractive`. Single below-fold slot on pokedex/meta/moves/items/type-chart. Skip on auth/settings/admin/share routes
 - [ ] Privacy Policy: one-line disclosure of EthicalAds (privacy-first contextual ads, no personal tracking)
 
-### 5B: MVP feature completion (3-4 sessions, ~12-18 hr)
+### 5B: MVP feature completion -- COMPLETE (2026-04-28)
 Goal: close F7/F8/speed-tiers so F1-F8 are all shipped.
-- [ ] Speed tier reference page `/speed-tiers` (~3 hr)
-  - Use existing `pokemon_usage` data + base stats
-  - Sortable table: Pokemon, Base Speed, +Speed nature, Max Scarf, common variants
-  - Filter by Champions-eligible, format (regulation toggle), tier
-  - Link from stat editor and roster coverage panel
-- [ ] F7: Damage calculator (~8-12 hr, split across 2 sessions)
-  - Session 1: backend damage engine in `api/app/services/damage_calc.py`. Pure function: attacker/defender stats + move + field state -> min/max damage. Covers STAB, type effectiveness, weather (rain/sun/sand/snow), terrain (electric/grassy/psychic/misty), items (Life Orb, Choice Band/Specs, Assault Vest), abilities (Levitate, Sap Sipper, weather boosters), crit multiplier, random factor (85-100%). Pydantic request/response models. POST /calc endpoint. Unit tests against known Smogon calc values
-  - Session 2: frontend `/calc` page. Two-panel attacker/defender picker (dropdowns from roster + meta), move selector, field state toggles (weather/terrain/screens). Result card: min/max damage, percent of defender HP, OHKO/2HKO/3HKO verdict. Copy-to-clipboard share string. Link from meta detail panel and draft results
-- [ ] F8: Sprite display improvements (~2-4 hr)
-  - Replace static default sprites with PokeAPI front_default for consistency (audit which pages use animated vs static)
-  - Add gender differences where they exist (rare but notable: Pikachu, Meowstic)
-  - Form variants (Rotom, Urshifu, Ogerpon) -- verify correct sprite loads via `name_resolver`
-  - Shiny toggle on Pokemon detail page (persist in user preferences)
-  - Fallback placeholder for missing sprites (currently shows broken image)
+- [x] Speed tier reference page `/speed-tiers` -- `GET /pokemon/speed-tiers` endpoint + sortable client page
+- [x] F7: Damage calculator standalone UI (`POST /calc` endpoint + `/calc` page). Engine landed 2026-04-17 in Session E.
+- [x] F8: Sprite display improvements (MVP-light) -- shiny toggle + SpriteFallback placeholder. Gender/form variants deferred.
 
 ### 5C: Data infrastructure (1-2 sessions, ~4-6 hr)
 Goal: data stays fresh without manual script runs; legal risk closed.

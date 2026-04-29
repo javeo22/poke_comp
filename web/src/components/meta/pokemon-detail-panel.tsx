@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { SpriteFallback } from "@/components/ui/sprite-fallback";
 import Link from "next/link";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { PokemonUsage, UsageEntry } from "@/types/usage";
@@ -145,7 +146,7 @@ export function PokemonDetailPanel({
           <div className="flex flex-col gap-5 p-6">
             {/* Identity */}
             <div className="flex items-start gap-4">
-              {pokemon.sprite_url && (
+              {pokemon.sprite_url ? (
                 <Image
                   src={pokemon.sprite_url}
                   alt={pokemon.name}
@@ -154,6 +155,8 @@ export function PokemonDetailPanel({
                   className="image-rendering-pixelated"
                   unoptimized
                 />
+              ) : (
+                <SpriteFallback size={80} />
               )}
               <div>
                 <p className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
@@ -172,7 +175,7 @@ export function PokemonDetailPanel({
 
             {/* Actions */}
             {pokemon.champions_eligible && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/roster?add=${pokemon.id}`}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-4 py-2 font-display text-xs uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
@@ -184,6 +187,12 @@ export function PokemonDetailPanel({
                   className="inline-flex items-center gap-1.5 rounded-lg bg-surface-mid px-4 py-2 font-display text-xs uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-surface-high hover:text-on-surface"
                 >
                   View Details
+                </Link>
+                <Link
+                  href={`/calc?defender=${pokemon.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent/15 px-4 py-2 font-display text-xs uppercase tracking-wider text-accent transition-colors hover:bg-accent/25"
+                >
+                  Run Calc
                 </Link>
               </div>
             )}

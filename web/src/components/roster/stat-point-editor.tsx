@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 const STAT_KEYS = ["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"] as const;
 
 const STAT_LABELS: Record<string, string> = {
@@ -151,6 +153,15 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
             )}
           </div>
         )}
+
+        <div className="mt-2 text-center">
+          <Link
+            href="/speed-tiers"
+            className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted hover:text-accent transition-colors"
+          >
+            See full speed tiers →
+          </Link>
+        </div>
       </div>
     </div>
   );
