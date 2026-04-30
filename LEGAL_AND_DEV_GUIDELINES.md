@@ -86,6 +86,7 @@ If the project is released publicly, the following monetization guidelines apply
 | **Supabase** | Database + auth hosting | All user data (encrypted at rest) | Yes (emails, auth identifiers) | Privacy Policy Section 3 |
 | **Vercel** | Hosting + Analytics | Page views, performance metrics | No -- Vercel Analytics is privacy-first, no cookies, no cross-site tracking | Privacy Policy Section 3 |
 | **Ko-fi** | Donations (supporter tier) | Only the Ko-fi username the supporter chooses to share | No -- we never receive payment card details | Privacy Policy Section 3 |
+| **Slack/Discord (Incoming Webhooks)** | Internal operational alerting | Cron failure logs (no user PII) | No | Privacy Policy Section 3 |
 | **EthicalAds** | Contextual display ads (free tier only) | Page URL + user-agent for contextual matching | **No** -- ethicalads.io does not collect PII, use cookies, or cross-site track. Supporters are ad-free. | Privacy Policy Section 5 |
 
 ---

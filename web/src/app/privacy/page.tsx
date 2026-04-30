@@ -5,7 +5,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="font-body text-xs text-on-surface-muted mb-8">
-        Last updated: April 16, 2026
+        Last updated: April 30, 2026
       </p>
 
       <div className="flex flex-col gap-8 font-body text-sm leading-relaxed text-on-surface">
@@ -119,6 +119,11 @@ export default function PrivacyPage() {
                 Ko-fi Privacy Policy
               </a>
               .
+            </li>
+            <li>
+              <strong>Slack/Discord (Incoming Webhooks)</strong> &mdash;
+              Internal operational alerting. We may send system error logs (containing
+              no user personal data) to these services for real-time monitoring.
             </li>
           </ul>
         </section>
