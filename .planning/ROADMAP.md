@@ -11,7 +11,7 @@
 
 - [x] **Phase 1: Stabilize F7 + F8** — Commit untracked damage-calc + sprite-fallback + speed-tiers work, finish UAT, and ship the speed-tiers reference page.
 - [x] **Phase 2: Tech-debt cleanup** — Resolve `CONCERNS.md` items that are operationally risky (stale Game8 strings, deprecated `refresh_meta.py`, stale design docs, hardcoded password, pyright noise).
-- [ ] **Phase 3: REQ-rag-augmentation (Dual RAG)** — Implement `matchup_log` retrieval + `tournament_teams` retrieval + Super-Prompt augmentation per `rag-architecture.md`.
+- [x] **Phase 3: REQ-rag-augmentation (Dual RAG)** — Implement `matchup_log` retrieval + `tournament_teams` retrieval + Super-Prompt augmentation per `rag-architecture.md`.
 - [ ] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
 - [ ] **Phase 5+: Stretch backlog (F9–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
 
@@ -65,7 +65,7 @@
 **Plans:**
 - [x] 03-01-PLAN.md — Land GIN indexes, Supabase similarity RPCs, and retrieval service.
 - [x] 03-02-PLAN.md — Refactor draft helper for XML context injection.
-- [ ] 03-03-PLAN.md — Verify RAG performance and strategy quality.
+- [x] 03-03-PLAN.md — Verify RAG performance and strategy quality.
 
 
 ### Phase 4: Cron alerting + freshness telemetry
@@ -78,7 +78,9 @@
   2. `/admin/data-health` surfaces the most recent `cron_runs` status per schedule (`cron_daily`, `cron_weekly`) plus age of the oldest active source's last successful refresh.
   3. The privacy ledger / Privacy Policy section 3 is updated if a new third-party recipient (Slack workspace, etc.) is introduced.
   4. The alert is verified end-to-end by a deliberate failure injection (e.g., temporarily expired `CRON_SECRET` or a forced `raise` in a stub run).
-**Plans:** TBD
+**Plans:**
+- [ ] 04-01-PLAN.md — Alerting infrastructure and freshness telemetry.
+- [ ] 04-02-PLAN.md — Integration, compliance, and end-to-end verification.
 
 ### Phase 5+: Stretch backlog (F9–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
@@ -100,7 +102,7 @@
 | 1. Stabilize F7 + F8 | 1/1 | Completed | 2026-04-29 |
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
-| 4. Cron alerting + freshness telemetry | 0/TBD | Active (current) | - |
+| 4. Cron alerting + freshness telemetry | 0/2 | Active (current) | - |
 | 5. Data Truth + HITL Review | 0/TBD | Not started | - |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
