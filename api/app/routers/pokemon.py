@@ -1,9 +1,5 @@
 from typing import Any, TypeAlias
 
-
-# Type alias for Supabase response rows to avoid pyright JSON narrowing noise
-SupabaseRow: TypeAlias = dict[str, Any]
-
 from fastapi import APIRouter, HTTPException, Query, Response
 from postgrest.types import CountMethod
 
@@ -22,6 +18,9 @@ from app.models.pokemon import (
 )
 
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
+
+# Type alias for Supabase response rows to avoid pyright JSON narrowing noise
+SupabaseRow: TypeAlias = dict[str, Any]
 
 # Pokemon static data changes rarely (game balance patches). Cache aggressively
 # at the edge with a long stale-while-revalidate window so a slow refresh never

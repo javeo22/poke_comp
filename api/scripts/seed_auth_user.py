@@ -43,7 +43,7 @@ def seed_user():
         print("Password updated.")
         print("\nYou can log in at /login with:")
         print(f"Email: {user.user.email}")
-        print(f"Password: [from SEED_USER_PASSWORD]")
+        print("Password: [from SEED_USER_PASSWORD]")
     except Exception:
         print("User does not exist, creating...")
         try:
