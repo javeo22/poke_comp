@@ -85,6 +85,24 @@ def _latest_meta_snapshot_by_format() -> dict[str, dict[str, Any]]:
     return {fmt: {"date": snap, "days_old": _days_old(snap)} for fmt, snap in latest.items()}
 
 
+def _latest_tournament_teams_age() -> int | None:
+    """Days since the most recent tournament team was added."""
+    try:
+        rows: list[dict] = (
+            supabase.table("tournament_teams")
+            .select("created_at")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+            .data  # type: ignore[assignment]
+        )
+        if not rows:
+            return None
+        return _days_old(rows[0].get("created_at"))
+    except Exception:
+        return None
+
+
 def _last_cron_runs_per_source() -> list[dict[str, Any]]:
     """Most recent cron_runs row per source. Tolerates a missing table."""
     try:
@@ -157,11 +175,25 @@ def data_health(_: str = Depends(get_admin_user)):
 
     usage_by_format = _latest_pokemon_usage_by_format()
     meta_by_format = _latest_meta_snapshot_by_format()
+    tournament_teams_age = _latest_tournament_teams_age()
     last_runs = _last_cron_runs_per_source()
     warnings = _stale_warnings(usage_by_format, last_runs)
 
+    # Calculate oldest_data_age_days (maximum staleness)
+    ages = []
+    for info in usage_by_format.values():
+        if info.get("days_old") is not None:
+            ages.append(info["days_old"])
+    for info in meta_by_format.values():
+        if info.get("days_old") is not None:
+            ages.append(info["days_old"])
+    if tournament_teams_age is not None:
+        ages.append(tournament_teams_age)
+
+    result["oldest_data_age_days"] = max(ages) if ages else None
     result["latest_pokemon_usage_per_format"] = usage_by_format
     result["latest_meta_snapshot_per_format"] = meta_by_format
+    result["tournament_teams_age_days"] = tournament_teams_age
     result["last_cron_runs"] = last_runs
     result["stale_warnings"] = warnings
     if warnings and result["overall"] == "healthy":
