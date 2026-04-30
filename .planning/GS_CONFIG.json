@@ -1,0 +1,8 @@
+{
+  "model_profile": "sonnet-3.5",
+  "research_depth": "surgical",
+  "plan_check_strictness": "lightweight",
+  "branching_strategy": "direct",
+  "verifier_mode": "structural",
+  "quota_mode": true
+}
