@@ -36,6 +36,8 @@ from app.services.data_freshness import (
     is_stale,
     snapshot_age_days,
 )
+from app.services.retrieval import fetch_personal_context, fetch_tournament_context
+from app.services.strategy_context import fetch_strategy_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/draft", tags=["draft"])
@@ -227,92 +229,68 @@ def _fetch_usage_context(pokemon_names: list[str], format_key: str = "doubles") 
 
 
 def _fetch_personal_context(user_id: str, opponent_names: list[str]) -> str:
-    """Fetch user's matchup history against teams containing similar Pokemon.
+    """Fetch user's matchup history using the retrieval service.
 
     Part of the Dual RAG pipeline: personal context stream.
+    Formatted as <user_personal_context> XML block.
     """
     if not opponent_names:
         return ""
 
-    result = (
-        supabase.table("matchup_log")
-        .select("outcome, opponent_team_data, lead_pair, notes, played_at")
-        .eq("user_id", user_id)
-        .order("played_at", desc=True)
-        .limit(50)
-        .execute()
-    )
-    if not result.data:
+    matchups = fetch_personal_context(user_id, opponent_names)
+    if not matchups:
         return ""
 
-    rows: list[dict] = result.data  # type: ignore[assignment]
-    opp_set = {n.lower().strip() for n in opponent_names}
-
-    # Find matches where opponent team overlaps with current opponent
-    relevant: list[dict] = []
-    for row in rows:
-        opp_team = row.get("opponent_team_data") or []
-        opp_names_in_match = {p.get("name", "").lower() for p in opp_team}
-        overlap = opp_set & opp_names_in_match
-        if len(overlap) >= 2:
-            relevant.append({**row, "overlap": len(overlap)})
-
-    if not relevant:
-        return ""
-
-    # Sort by overlap count (most similar first), take top 5
-    relevant.sort(key=lambda r: r["overlap"], reverse=True)
-    relevant = relevant[:5]
-
-    wins = sum(1 for r in relevant if r["outcome"] == "win")
-    losses = len(relevant) - wins
-    total = len(relevant)
-    win_rate = round(wins / total * 100, 1) if total else 0
-
-    lines = [f"- Your record vs similar teams: {wins}W {losses}L ({win_rate}% win rate)"]
-    for r in relevant:
-        opp_team = r.get("opponent_team_data") or []
+    lines = []
+    for m in matchups:
+        opp_team = m.get("opponent_team_data") or []
         opp_names_str = ", ".join(p.get("name", "?") for p in opp_team[:6])
-        outcome = r["outcome"].upper()
-        leads = r.get("lead_pair") or []
+        outcome = (m.get("outcome") or "unknown").upper()
+        leads = m.get("lead_pair") or []
         lead_str = f" (led: {', '.join(leads)})" if leads else ""
-        notes = sanitize_user_text(r.get("notes") or "")
+        notes = sanitize_user_text(m.get("notes") or "")
         note_str = f' -- Notes: "{notes}"' if notes else ""
         lines.append(f"- {outcome} vs [{opp_names_str}]{lead_str}{note_str}")
 
+    content = "\n".join(lines)
     return (
         "\n\n## Your Personal History\n"
-        "Your past results against similar team compositions:\n" + "\n".join(lines)
+        "<user_personal_context>\n"
+        "Your past results against similar team compositions:\n"
+        f"{content}\n"
+        "</user_personal_context>"
     )
 
 
 def _fetch_tournament_context(pokemon_ids: list[int]) -> str:
-    """Fetch tournament archetype if this exact team combination has placed recently."""
-    if len(pokemon_ids) < 4:
+    """Fetch tournament archetypes using the retrieval service.
+
+    Part of the Dual RAG pipeline: tournament context stream.
+    Formatted as <limitless_pro_context> XML block.
+    """
+    if not pokemon_ids:
         return ""
 
-    result = (
-        supabase.table("tournament_teams")
-        .select("archetype, tournament_name, placement")
-        .lte("placement", 8)
-        .order("created_at", desc=True)
-        .limit(10)
-        .execute()
+    teams = fetch_tournament_context(pokemon_ids)
+    if not teams:
+        return ""
+
+    lines = []
+    for t in teams:
+        placement = t.get("placement")
+        tournament = t.get("tournament_name")
+        archetype = t.get("archetype")
+        player = t.get("player_name") or "Unknown Player"
+        lines.append(f"- {archetype} ({placement} place at {tournament}) by {player}")
+
+    content = "\n".join(lines)
+    return (
+        "\n\n## Tournament Context\n"
+        "<limitless_pro_context>\n"
+        "Similar successful tournament teams:\n"
+        f"{content}\n"
+        "</limitless_pro_context>"
     )
-
-    if result.data:
-        arch: dict = result.data[0]  # type: ignore[assignment]
-        placement = arch["placement"]
-        tournament = arch["tournament_name"]
-        archetype = arch["archetype"]
-        return (
-            f"\n\n## Tournament Context\n"
-            f"A similar team recently placed {placement} in "
-            f"{tournament}, classified as the '{archetype}' "
-            f"archetype. Keep this in mind for the opponent's strategy."
-        )
-
-    return ""
 
 
 def _compute_damage_calcs(
@@ -522,6 +500,11 @@ def _build_prompt(
     header = (
         freshness_line + "You are a competitive Pokemon Champions VGC doubles analyst. "
         "Analyze this team preview matchup.\n\n"
+        "RAG CONTEXT:\n"
+        "- If <limitless_pro_context> is provided, it contains recent high-placing tournament "
+        "teams similar to the opponent's. Use this to infer their likely archetypes and sets.\n"
+        "- If <user_personal_context> is provided, it contains your own match history against "
+        "similar teams. Use this to avoid past mistakes and double down on winning strategies.\n\n"
         "CRITICAL ACCURACY RULES:\n"
         "- Only reference Pokemon that appear in 'My Team' or 'Opponent's Team' below.\n"
         "- Only reference moves that appear in the provided movepools OR in the "
@@ -592,8 +575,6 @@ Focus on:
 Return ONLY the JSON object, no markdown fences or explanation."""
 
     # Strategy notes enrichment
-    from app.services.strategy_context import fetch_strategy_context
-
     strategy_ctx = fetch_strategy_context(format=my_team.get("format", "vgc2026"))
     strategy_section = f"\n\n{strategy_ctx}" if strategy_ctx else ""
 
