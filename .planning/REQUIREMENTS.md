@@ -211,10 +211,10 @@ Per `champions-prd.md` section 6 + scope guard in section 11. **Not scheduled fo
 | F4 — REQ-meta-tracker | (shipped pre-roadmap) | Done |
 | F5 — REQ-ai-draft-helper | (shipped pre-roadmap) | Done (generic; RAG pending) |
 | F6 — REQ-matchup-log | (shipped pre-roadmap) | Done |
-| F7 — REQ-damage-calculator | Phase 1 | In flight (untracked) |
-| F8 — REQ-sprite-and-speed-tiers | Phase 1 | In flight (untracked) |
-| REQ-rag-augmentation | Phase 3 | Proposed |
-| REQ-rag-implementation-tasks | Phase 3 | Proposed |
+| F7 — REQ-damage-calculator | Phase 1 | Done |
+| F8 — REQ-sprite-and-speed-tiers | Phase 1 | Done |
+| REQ-rag-augmentation | Phase 3 | In Progress |
+| REQ-rag-implementation-tasks | Phase 3 | Done |
 | F9–F15 | Phase 5+ | Backlog |
 | NFR-success-metrics | All phases | Active gate |
 | NFR-mvp-timebox | All phases | Active gate |

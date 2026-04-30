@@ -63,9 +63,10 @@
   5. AI quota math (`api/app/ai_quota.py`) accommodates the ~300–800 input-token delta without breaking existing supporter / free caps.
   6. `prompt_guard.py` runs on user-supplied free-text notes that flow into the new context blocks (covers `matchup_log.notes`).
 **Plans:**
-- [ ] 03-01-PLAN.md — Land GIN indexes, Supabase similarity RPCs, and retrieval service.
-- [ ] 03-02-PLAN.md — Refactor draft helper for XML context injection.
+- [x] 03-01-PLAN.md — Land GIN indexes, Supabase similarity RPCs, and retrieval service.
+- [x] 03-02-PLAN.md — Refactor draft helper for XML context injection.
 - [ ] 03-03-PLAN.md — Verify RAG performance and strategy quality.
+
 
 ### Phase 4: Cron alerting + freshness telemetry
 **Goal:** Close the "no automated alerting on cron failures" gap from `CONCERNS.md` so a multi-week silent failure cannot leave AI endpoints in fallback mode without anyone noticing.
@@ -98,7 +99,7 @@
 |-------|----------------|--------|-----------|
 | 1. Stabilize F7 + F8 | 1/1 | Completed | 2026-04-29 |
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
-| 3. REQ-rag-augmentation | 3/3 | Active (current) | - |
+| 3. REQ-rag-augmentation | 2/3 | Active (current) | - |
 | 4. Cron alerting + freshness telemetry | 0/TBD | Not started | - |
 | 5+. Stretch backlog | 0/TBD | Backlog | - |
 
