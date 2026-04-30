@@ -30,6 +30,7 @@ from fastapi import APIRouter, Header, HTTPException
 from app.config import settings
 from app.database import supabase
 from app.models.ingest import IngestResult
+from app.services.alerting import send_alert
 from scripts.ingest import limitless_teams, pikalytics_usage, smogon_meta
 from scripts.validate_data import run_validation
 
@@ -113,6 +114,7 @@ def _record_cron_run(source: str, runner: Callable[[], IngestResult]) -> IngestR
             status="fail",
             error=f"{type(exc).__name__}: {exc}\n{tb}",
         )
+        send_alert(f"🚨 Cron Failure: {source}\nError: {type(exc).__name__}: {exc}")
         raise HTTPException(
             status_code=500,
             detail={"source": source, "error": f"{type(exc).__name__}: {exc}"},
@@ -308,3 +310,14 @@ async def cron_weekly(authorization: str | None = Header(default=None)) -> Inges
             ("validate_data", _validate),
         ],
     )
+
+
+@router.get("/test-alert", response_model=IngestResult)
+async def cron_test_alert(authorization: str | None = Header(default=None)) -> IngestResult:
+    """Deliberate failure endpoint to verify alerting integration."""
+    require_cron_secret(authorization)
+
+    def _fail() -> IngestResult:
+        raise Exception("Deliberate failure for alerting test")
+
+    return await asyncio.to_thread(_record_cron_run, "test_alert", _fail)
