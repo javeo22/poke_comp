@@ -9,8 +9,8 @@
 
 ## Phases
 
-- [ ] **Phase 1: Stabilize F7 + F8** — Commit untracked damage-calc + sprite-fallback + speed-tiers work, finish UAT, and ship the speed-tiers reference page.
-- [ ] **Phase 2: Tech-debt cleanup** — Resolve `CONCERNS.md` items that are operationally risky (stale Game8 strings, deprecated `refresh_meta.py`, stale design docs, hardcoded password, pyright noise).
+- [x] **Phase 1: Stabilize F7 + F8** — Commit untracked damage-calc + sprite-fallback + speed-tiers work, finish UAT, and ship the speed-tiers reference page.
+- [x] **Phase 2: Tech-debt cleanup** — Resolve `CONCERNS.md` items that are operationally risky (stale Game8 strings, deprecated `refresh_meta.py`, stale design docs, hardcoded password, pyright noise).
 - [ ] **Phase 3: REQ-rag-augmentation (Dual RAG)** — Implement `matchup_log` retrieval + `tournament_teams` retrieval + Super-Prompt augmentation per `rag-architecture.md`.
 - [ ] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
 - [ ] **Phase 5+: Stretch backlog (F9–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
@@ -31,7 +31,8 @@
   4. The speed-tiers page at `/speed-tiers` lists Champions-eligible Pokemon ordered by effective Speed (base + stat-points + nature) with a working format/tier filter and renders 200+ sprites without layout breakage.
   5. `<SpriteFallback>` renders typed SVG when an upstream PokeAPI sprite URL 404s; verified across the four consumer files listed in `CONCERNS.md`.
   6. `/calc` endpoint carries an explicit comment marking it intentionally public (per `CONCERNS.md` audit recommendation).
-**Plans:** TBD
+**Plans:**
+- [x] 01-01-PLAN.md — Land F7/F8 work and verify build/calc.
 **UI hint**: yes
 
 ### Phase 2: Tech-debt cleanup
@@ -46,7 +47,8 @@
   4. `api/scripts/seed_auth_user.py` reads its password from an env var with no default, refuses to run when `SUPABASE_URL` looks like production, and renames the email away from `orbital.net` (legacy "Orbital Archive" leftover).
   5. `api/app/routers/pokemon.py` pyright noise is reduced — either via a typed `SupabaseRow = dict[str, Any]` alias adopted consistently, or a typed wrapper around `.data` access. Target: zero `# type: ignore[assignment]` comments below line 60.
   6. `cache_warmup` cron stub at `api/app/routers/admin_cron.py:197-212` is either implemented or removed; the surface area no longer lies about its readiness.
-**Plans:** TBD
+**Plans:**
+- [x] 02-01-PLAN.md — Sanitize Game8, secure seeding, and archive stale docs.
 
 ### Phase 3: REQ-rag-augmentation (Dual RAG)
 **Goal:** Move the AI Draft Helper from generic stateless reasoning to personalized, retrieval-augmented strategy that combines tournament-stat context with the user's own matchup history.
@@ -60,7 +62,10 @@
   4. Retrieval latency budget honored: end-to-end p95 of the two parallel reads is < 50ms in production logs (measured via existing `api/app/logging/` facilities or a one-shot benchmark).
   5. AI quota math (`api/app/ai_quota.py`) accommodates the ~300–800 input-token delta without breaking existing supporter / free caps.
   6. `prompt_guard.py` runs on user-supplied free-text notes that flow into the new context blocks (covers `matchup_log.notes`).
-**Plans:** TBD
+**Plans:**
+- [ ] 03-01-PLAN.md — Land GIN indexes, Supabase similarity RPCs, and retrieval service.
+- [ ] 03-02-PLAN.md — Refactor draft helper for XML context injection.
+- [ ] 03-03-PLAN.md — Verify RAG performance and strategy quality.
 
 ### Phase 4: Cron alerting + freshness telemetry
 **Goal:** Close the "no automated alerting on cron failures" gap from `CONCERNS.md` so a multi-week silent failure cannot leave AI endpoints in fallback mode without anyone noticing.
@@ -93,7 +98,7 @@
 |-------|----------------|--------|-----------|
 | 1. Stabilize F7 + F8 | 1/1 | Completed | 2026-04-29 |
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
-| 3. REQ-rag-augmentation | 0/1 | Active (current) | - |
+| 3. REQ-rag-augmentation | 3/3 | Active (current) | - |
 | 4. Cron alerting + freshness telemetry | 0/TBD | Not started | - |
 | 5+. Stretch backlog | 0/TBD | Backlog | - |
 
