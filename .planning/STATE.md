@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MVP
-status: active
-last_updated: "2026-04-30"
+status: unknown
+last_updated: "2026-04-30T20:00:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 75
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
+  percent: 100
 ---
 
 # State
@@ -22,7 +22,7 @@ progress:
 
 **Name:** Pokemon Champions Companion
 **Core value:** Personal companion app for the competitive Pokemon Champions player — roster + team builder + Champions-aware reference + AI draft helper + matchup log, in one tool.
-**Current focus:** Shipped Dual RAG. Moving to Phase 4 for Cron alerting and freshness telemetry.
+**Current focus:** Phase 4 complete. Automated alerting and compliance in place.
 
 ---
 
@@ -31,9 +31,9 @@ progress:
 **Milestone:** MVP completion (8-week timebox: 2026-04-10 → 2026-06-05).
 
 **Position prose:**
-Phase 3 is complete. **Dual RAG augmentation is live**, providing Claude with tournament stats (Limitless) and personal matchup history (matchup_log) via XML-tagged context. Retrieval services are verified with < 120ms latency including network RTT.
+Phase 4 is complete. **Automated alerting for cron failures is live** via Slack/Discord webhooks. Compliance documentation has been updated to disclose third-party recipients. The system now closes the observability loop, ensuring data freshness failures are paged out-of-band.
 
-**Active phase:** Phase 4 — Cron alerting + freshness telemetry.
+**Active phase:** None (Phase 4 complete).
 
 ---
 
@@ -44,7 +44,7 @@ Phase 3 is complete. **Dual RAG augmentation is live**, providing Claude with to
 | 1 | Stabilize F7 + F8 | **Completed** |
 | 2 | Tech-debt cleanup | **Completed** |
 | 3 | REQ-rag-augmentation (Dual RAG) | **Completed** |
-| 4 | Cron alerting + freshness telemetry | **Active** |
+| 4 | Cron alerting + freshness telemetry | **Completed** |
 | 5+ | Stretch backlog (F9–F15) | Backlog |
 
 ---
@@ -52,17 +52,18 @@ Phase 3 is complete. **Dual RAG augmentation is live**, providing Claude with to
 ## Accumulated Context
 
 ### Decisions (locked)
-- D010 — Vercel Python Functions + Vercel Cron is production runtime.
 
-### Open Todos (Phase 4 entry)
-- Implement Slack/Webhook alerting for cron failures.
-- Surface source freshness in the admin dashboard.
-- Update privacy ledger for new alerting third-parties.
+- D010 — Vercel Python Functions + Vercel Cron is production runtime.
+- D011 — Slack/Discord incoming webhooks used for operational alerting (no PII).
+
+### Open Todos (Phase 5 entry)
+
+- Promotion of stretch backlog items (F9-F15) based on user priority.
 
 ---
 
 ## Session Continuity
 
-**Where to resume next session:** Start Phase 4. Begin by researching Vercel webhook alerting for cron failure events.
+**Where to resume next session:** Checkpoint for Phase 4 completion. Evaluate roadmap for Phase 5 prioritization.
 
-**Last session intent:** Execute Phase 3 Dual RAG. Implemented retrieval foundation, refactored draft helper, and verified performance.
+**Last session intent:** Execute Phase 4-02. Integrated alerting into cron, added test endpoint, and updated legal documentation.

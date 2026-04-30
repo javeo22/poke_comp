@@ -79,8 +79,8 @@
   3. The privacy ledger / Privacy Policy section 3 is updated if a new third-party recipient (Slack workspace, etc.) is introduced.
   4. The alert is verified end-to-end by a deliberate failure injection (e.g., temporarily expired `CRON_SECRET` or a forced `raise` in a stub run).
 **Plans:**
-- [ ] 04-01-PLAN.md — Alerting infrastructure and freshness telemetry.
-- [ ] 04-02-PLAN.md — Integration, compliance, and end-to-end verification.
+1/2 plans executed
+- [x] 04-02-PLAN.md — Integration, compliance, and end-to-end verification.
 
 ### Phase 5+: Stretch backlog (F9–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
@@ -102,7 +102,7 @@
 | 1. Stabilize F7 + F8 | 1/1 | Completed | 2026-04-29 |
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
-| 4. Cron alerting + freshness telemetry | 0/2 | Active (current) | - |
+| 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
 | 5. Data Truth + HITL Review | 0/TBD | Not started | - |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
