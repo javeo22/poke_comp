@@ -11,24 +11,39 @@ def seed_user():
 
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_KEY")
+    password = os.environ.get("SEED_USER_PASSWORD")
 
     if not url or not key:
         print("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
         return
 
+    # Security check: Refuse to run against production Supabase projects
+    is_local = "localhost" in url or "127.0.0.1" in url
+    if not is_local:
+        print(f"REFUSED: SUPABASE_URL ({url}) does not look like localhost.")
+        print("This script is for local development only.")
+        return
+
+    if not password:
+        print("Error: SEED_USER_PASSWORD environment variable not set.")
+        print("Set it in .env to specify the password for the seeded user.")
+        return
+
     supabase: Client = create_client(url, key)
 
     uuid = "bc5bc231-9f20-42cf-9bfa-bca4f5dfcd36"
-    email = "commander@orbital.net"
-    password = "password123"
+    email = "admin@pokecomp.app"
 
     try:
         # Check if user with UUID already exists
         user = supabase.auth.admin.get_user_by_id(uuid)
         print(f"User already exists: {user.user.email} (ID: {user.user.id})")
-        print("You can log in at /login with:")
+        print("Updating password from SEED_USER_PASSWORD...")
+        supabase.auth.admin.update_user_by_id(uuid, {"password": password})
+        print("Password updated.")
+        print("\nYou can log in at /login with:")
         print(f"Email: {user.user.email}")
-        print("Password: [whatever was previously set, or we can update it]")
+        print(f"Password: [from SEED_USER_PASSWORD]")
     except Exception:
         print("User does not exist, creating...")
         try:
@@ -43,7 +58,7 @@ def seed_user():
             print(f"Created user {res.user.email} with id {res.user.id}")
             print("\nSeeded Auth user successfully!")
             print(f"Email: {email}")
-            print(f"Password: {password}")
+            print("Password: [from SEED_USER_PASSWORD]")
         except Exception as create_err:
             print(f"Failed to create user: {create_err}")
 

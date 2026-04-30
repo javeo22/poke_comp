@@ -127,6 +127,7 @@ def _validate_nature(nature: dict[str, str] | None) -> None:
             )
 
 
+# NOTE: This endpoint is intentionally public (no auth required) as it provides reference calculation services.
 @router.post("", response_model=CalcResponseShape)
 def run_calc(req: CalcRequest) -> CalcResponseShape:
     _validate_nature(req.attacker_nature)

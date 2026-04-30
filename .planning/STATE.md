@@ -70,11 +70,11 @@ Tracked against NFR-success-metrics. Snapshot at bootstrap:
 - D009 — Volatility-tiered ingestion (Serebii static / Pikalytics meta / Limitless contextual).
 - D010 — **NEW** Vercel Python Functions + Vercel Cron is production runtime; Cloud Run config retained as legacy fallback only.
 
-### Open Todos (Phase 1 entry)
-- Commit untracked F7/F8 files in a single coherent change (don't split — they wedge a clean checkout otherwise).
-- Convert `api/scripts/test_damage_calc.py` from a standalone script into a pytest module gated by CI.
-- Mark `/calc` endpoint with an explicit "intentionally public" comment per `CONCERNS.md` audit recommendation.
-- Verify the speed-tiers page handles 200+ sprite renders without GitHub-rate-limit blowback (consider Vercel Edge sprite proxy if needed; defer the proxy to Phase 5+ unless it blocks Phase 1).
+### Open Todos (Phase 3 entry)
+- Implement `matchup_log` retrieval service.
+- Implement `tournament_teams` retrieval service.
+- Refactor `draft.py` to support XML context injection.
+- Add JSONB GIN indexes for retrieval speed.
 
 ### Blockers
 - None at bootstrap.
@@ -88,9 +88,9 @@ Tracked against NFR-success-metrics. Snapshot at bootstrap:
 
 ## Session Continuity
 
-**Where to resume next session:** Start Phase 2 Tech-debt cleanup. Begin by auditing `api/scripts/seed_champions.py` for Game8 strings.
+**Where to resume next session:** Start Phase 3 REQ-rag-augmentation. Begin by researching the JSONB GIN index implementation for `opponent_team_data`.
 
-**Last session intent:** Execute Phase 1 stabilization. Committed untracked files for F7/F8.
+**Last session intent:** Execute Phase 2 tech-debt cleanup. Sanitized Game8 references, secured seeding scripts, archived stale design docs, and fixed pyright errors.
 
 **Files written this session:**
 - `.planning/PROJECT.md`

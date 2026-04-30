@@ -1,6 +1,6 @@
 """Centralized Pokemon name resolver.
 
-Normalizes names from external sources (Game8, Smogon, Pikalytics) to
+Normalizes names from external sources (Smogon, Pikalytics, etc.) to
 canonical database format (Title Case, hyphenated forms).
 
 All ingest scripts and scrapers should use this module to map external
@@ -16,7 +16,7 @@ Examples:
 # Explicit alias table for names that don't follow a predictable pattern.
 # Keys are external names; values are canonical DB names (or their base form).
 _ALIASES: dict[str, str] = {
-    # Rotom forms: Game8 and some sources put the form adjective first
+    # Rotom forms: some sources put the form adjective first
     "Wash Rotom": "Rotom-Wash",
     "Heat Rotom": "Rotom-Heat",
     "Frost Rotom": "Rotom-Frost",
@@ -52,7 +52,7 @@ _ALIASES: dict[str, str] = {
     "Aqua Breed Tauros": "Tauros-Paldea-Aqua",
     # Gender variants
     "Basculegion": "Basculegion-Male",
-    # Ogerpon masks (Game8 may omit the "Mask" suffix)
+    # Ogerpon masks (some sources may omit the "Mask" suffix)
     "Ogerpon Wellspring": "Ogerpon-Wellspring-Mask",
     "Ogerpon Hearthflame": "Ogerpon-Hearthflame-Mask",
     "Ogerpon Cornerstone": "Ogerpon-Cornerstone-Mask",
@@ -146,7 +146,7 @@ def normalize_tier_data(
     the returned unresolved list for logging.
 
     Args:
-        tier_data: Mapping of tier -> list of Pokemon names (e.g. from Game8 scrape).
+        tier_data: Mapping of tier -> list of Pokemon names (e.g. from meta scrape).
         roster_index: Built by build_roster_index().
 
     Returns:

@@ -92,8 +92,8 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Stabilize F7 + F8 | 1/1 | Completed | 2026-04-29 |
-| 2. Tech-debt cleanup | 0/TBD | Active (current) | - |
-| 3. REQ-rag-augmentation | 0/TBD | Not started | - |
+| 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
+| 3. REQ-rag-augmentation | 0/1 | Active (current) | - |
 | 4. Cron alerting + freshness telemetry | 0/TBD | Not started | - |
 | 5+. Stretch backlog | 0/TBD | Backlog | - |
 

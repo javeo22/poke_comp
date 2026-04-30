@@ -194,24 +194,6 @@ async def cron_validate_data(
     return await asyncio.to_thread(_record_cron_run, "validate_data", _run)
 
 
-@router.get("/cache-warmup", response_model=IngestResult)
-async def cron_cache_warmup(
-    authorization: str | None = Header(default=None),
-) -> IngestResult:
-    """Stub endpoint -- real implementation lands in Phase 5.2 (cache warmup).
-
-    Returns a well-formed IngestResult so the cron schedule can be wired
-    ahead of implementation without cron invocations erroring out. Logged
-    so that a future "cache_warmup never ran" investigation is one grep away.
-    """
-    require_cron_secret(authorization)
-    logger.info("cron.cache_warmup result=warn reason=not_implemented")
-    return IngestResult(
-        source="cache_warmup",
-        warnings=["cache_warmup not yet implemented (Phase 5.2)"],
-    )
-
-
 # ═══════════════════════════════════════════════════════════════════
 # Aggregators -- the only two endpoints actually scheduled in Vercel
 # Cron under the Hobby plan's 2-cron cap.

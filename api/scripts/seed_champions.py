@@ -30,7 +30,7 @@ Run this AFTER import_pokeapi.py. This script:
 5. Upserts Champions shop items (held items, berries, mega stones)
 6. Seeds initial meta snapshot with tier data
 
-Data sourced from serebii.net and game8.co on 2026-04-10 (launch week).
+Data sourced from serebii.net on 2026-04-10 (launch week).
 """
 
 import sys
@@ -322,7 +322,7 @@ CLASSIC_MEGA_SLUGS: list[tuple[int, str]] = [
 
 # =============================================================================
 # NEW MEGA EVOLUTIONS - Champions / Legends Z-A exclusive (not in PokeAPI)
-# IDs 20001+. Types and abilities from game8.co mega evolutions guide.
+# IDs 20001+. Types and abilities from community-sourced mega evolutions guide.
 # Stats and abilities verified via community datamine (April 10, 2026).
 # =============================================================================
 # fmt: off
@@ -556,7 +556,7 @@ MEGA_STONES: list[tuple[str, str, int]] = [
 
 # =============================================================================
 # INITIAL META TIER DATA
-# Source: game8.co/games/Pokemon-Champions/archives/592465 (2026-04-10)
+# Source: launch-seed (2026-04-10)
 # =============================================================================
 INITIAL_TIER_DATA: dict[str, dict] = {
     "singles": {
@@ -887,7 +887,7 @@ def seed_items(supabase: Client) -> None:
 
 
 def seed_initial_meta(supabase: Client) -> None:
-    """Seed the first meta snapshot with Game8 tier data."""
+    """Seed the first meta snapshot with initial launch tier data."""
     print("Seeding initial meta snapshot...")
 
     for format_key, tiers in INITIAL_TIER_DATA.items():
@@ -896,8 +896,8 @@ def seed_initial_meta(supabase: Client) -> None:
                 "snapshot_date": "2026-04-10",
                 "format": format_key,
                 "tier_data": tiers,
-                "source_url": "https://game8.co/games/Pokemon-Champions/archives/592465",
-                "source": "Game8",
+                "source_url": None,
+                "source": "launch-seed",
             },
             on_conflict="snapshot_date,format",
         ).execute()

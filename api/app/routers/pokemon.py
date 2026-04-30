@@ -1,4 +1,8 @@
-from typing import Any
+from typing import Any, TypeAlias
+
+
+# Type alias for Supabase response rows to avoid pyright JSON narrowing noise
+SupabaseRow: TypeAlias = dict[str, Any]
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from postgrest.types import CountMethod
@@ -106,8 +110,9 @@ def list_pokemon(
         mega_rows = (
             supabase.table("pokemon").select("id, name").in_("id", list(all_mega_ids)).execute()
         )
-        for m in mega_rows.data:  # type: ignore[union-attr]
-            mega_name_map[m["id"]] = m["name"]
+        mega_data: list[SupabaseRow] = mega_rows.data  # type: ignore[assignment]
+        for m in mega_data:
+            mega_name_map[int(m["id"])] = str(m["name"])
 
     pokemon_list = []
     for row in rows:
@@ -264,7 +269,8 @@ def get_pokemon_detail(pokemon_id: int):
     mega_names: list[str] = []
     if detail_mega_ids:
         mega_res = supabase.table("pokemon").select("id, name").in_("id", detail_mega_ids).execute()
-        id_to_name = {r["id"]: r["name"] for r in mega_res.data}  # type: ignore[union-attr]
+        mega_rows: list[SupabaseRow] = mega_res.data  # type: ignore[assignment]
+        id_to_name = {int(r["id"]): str(r["name"]) for r in mega_rows}
         mega_names = [id_to_name[mid] for mid in detail_mega_ids if mid in id_to_name]
 
     base_dict = base.model_dump()
