@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from app.database import supabase
 from postgrest.exceptions import APIError
+
+from app.database import supabase
 
 logger = logging.getLogger(__name__)
 
