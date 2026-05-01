@@ -12,8 +12,9 @@
 - [x] **Phase 1: Stabilize F7 + F8** — Commit untracked damage-calc + sprite-fallback + speed-tiers work, finish UAT, and ship the speed-tiers reference page.
 - [x] **Phase 2: Tech-debt cleanup** — Resolve `CONCERNS.md` items that are operationally risky (stale Game8 strings, deprecated `refresh_meta.py`, stale design docs, hardcoded password, pyright noise).
 - [x] **Phase 3: REQ-rag-augmentation (Dual RAG)** — Implement `matchup_log` retrieval + `tournament_teams` retrieval + Super-Prompt augmentation per `rag-architecture.md`.
-- [ ] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
-- [ ] **Phase 5+: Stretch backlog (F9–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
+- [x] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
+- [ ] **Phase 5: Data Truth & HITL Review** — Ensure 100% data accuracy by staging suspect scraper results and replacing hardcoded Meta trends.
+- [ ] **Phase 6+: Stretch backlog (F9–F10, F12–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
 
 ---
 
@@ -33,7 +34,6 @@
   6. `/calc` endpoint carries an explicit comment marking it intentionally public (per `CONCERNS.md` audit recommendation).
 **Plans:**
 - [x] 01-01-PLAN.md — Land F7/F8 work and verify build/calc.
-**UI hint**: yes
 
 ### Phase 2: Tech-debt cleanup
 **Goal:** Eliminate operationally risky drift flagged in `.planning/codebase/CONCERNS.md` so future ingests / re-seeds cannot regress legal posture or developer onboarding.
@@ -79,18 +79,35 @@
   3. The privacy ledger / Privacy Policy section 3 is updated if a new third-party recipient (Slack workspace, etc.) is introduced.
   4. The alert is verified end-to-end by a deliberate failure injection (e.g., temporarily expired `CRON_SECRET` or a forced `raise` in a stub run).
 **Plans:**
-1/2 plans executed
+- [x] 04-01-PLAN.md — Implement alerting service and admin health dashboard.
 - [x] 04-02-PLAN.md — Integration, compliance, and end-to-end verification.
 
-### Phase 5+: Stretch backlog (F9–F15)
+### Phase 5: Data Truth & HITL Review
+**Goal:** Ensure 100% data accuracy by staging suspect scraper results and replacing hardcoded Meta trends.
+**Depends on:** Phase 4.
+**Requirements covered:** F11 (Limitless Champions data), F4 (Meta Tracker evolution).
+**Constraints in force:** D009 (Claude-powered parsing), C-LEGAL-SOURCE-AUDIT.
+**Success criteria:**
+  1. All scraper data (Limitless/Pikalytics) lands in a `scraper_review_queue` instead of production tables.
+  2. AI classifier distinguishes between Champions and Standard VGC tournament formats.
+  3. Admin UI at `/admin/review` allows for approval/rejection of staged data.
+  4. Homepage meta trends fetch from `/api/meta/trends` and display real-time usage swings.
+  5. Cheatsheet design matches the homepage esports broadcast aesthetic.
+**Plans:**
+- [ ] 05-01-PLAN.md — Foundation: DB staging, AI classifier, and review logic.
+- [ ] 05-02-PLAN.md — Scraper refactor: adopt staging-first ingestion.
+- [ ] 05-03-PLAN.md — Admin UI: build the HITL review dashboard.
+- [ ] 05-04-PLAN.md — Dynamic Meta: build trends API and unify UI design.
+
+### Phase 6+: Stretch backlog (F9–F10, F12–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
-**Depends on:** Phases 1–4 (and a successful MVP launch checkpoint).
-**Requirements covered:** F9 (VP-cost calculator), F10 (counter-team builder), F11 (Limitless Champions data), F12 (OCR), F13 (public-share polish), F14 (Discord bot), F15 (push notifications).
-**Constraints in force:** All of PROJECT.md's locked decisions remain — F11 stays inside the volatility-tiered ingestion model (D009); F12 OCR cannot bypass `prompt_guard.py`; F13 must hold to RLS + the public-share posture already shipped.
+**Depends on:** Phases 1–5 (and a successful MVP launch checkpoint).
+**Requirements covered:** F9 (VP-cost calculator), F10 (counter-team builder), F12 (OCR), F13 (public-share polish), F14 (Discord bot), F15 (push notifications).
+**Constraints in force:** All of PROJECT.md's locked decisions remain — F12 OCR cannot bypass `prompt_guard.py`; F13 must hold to RLS + the public-share posture already shipped.
 **Success criteria:**
   1. Each promoted item gets its own phase entry (with full Goal / Depends-on / Requirements / Constraints / Success Criteria / Plans block) before any code lands.
   2. The corresponding REQUIREMENTS.md row is moved out of "Stretch Backlog" and into a numbered phase, and the traceability table is updated.
-  3. Promotion is recorded in STATE.md with date and reason (mirrors how F7/F8 were promoted on 2026-04-28).
+  3. Promotion is recorded in STATE.md with date and reason.
 **Plans:** TBD
 
 ---
@@ -103,10 +120,8 @@
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
-| 5. Data Truth + HITL Review | 0/TBD | Active (current) | - |
+| 5. Data Truth + HITL Review | 0/4 | Active (current) | - |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
-
-
 
 ---
 
