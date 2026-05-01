@@ -9,6 +9,7 @@ class IngestResult(BaseModel):
     source: str
     rows_inserted: int = 0
     rows_updated: int = 0
+    rows_staged: int = 0
     rows_skipped: int = 0
     warnings: list[str] = Field(default_factory=list)
     duration_ms: int = 0

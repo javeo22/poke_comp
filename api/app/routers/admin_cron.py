@@ -57,6 +57,7 @@ def _persist_run(
     status: str,
     rows_inserted: int = 0,
     rows_updated: int = 0,
+    rows_staged: int = 0,
     rows_skipped: int = 0,
     warnings: list[str] | None = None,
     error: str | None = None,
@@ -72,6 +73,7 @@ def _persist_run(
                 "status": status,
                 "rows_inserted": rows_inserted,
                 "rows_updated": rows_updated,
+                "rows_staged": rows_staged,
                 "rows_skipped": rows_skipped,
                 "warnings": warnings or [],
                 "error": error,
@@ -121,19 +123,20 @@ def _record_cron_run(source: str, runner: Callable[[], IngestResult]) -> IngestR
         ) from exc
 
     finished_at = int(time.time() * 1000)
-    rows_touched = result.rows_inserted + result.rows_updated
+    rows_touched = result.rows_inserted + result.rows_updated + result.rows_staged
     if result.warnings or rows_touched == 0:
         status = "warn"
     else:
         status = "pass"
     logger.info(
         "cron.%s result=%s duration_ms=%d rows_inserted=%d rows_updated=%d "
-        "rows_skipped=%d warnings=%d",
+        "rows_staged=%d rows_skipped=%d warnings=%d",
         source,
         status,
         finished_at - started_at,
         result.rows_inserted,
         result.rows_updated,
+        result.rows_staged,
         result.rows_skipped,
         len(result.warnings),
     )
@@ -144,6 +147,7 @@ def _record_cron_run(source: str, runner: Callable[[], IngestResult]) -> IngestR
         status=status,
         rows_inserted=result.rows_inserted,
         rows_updated=result.rows_updated,
+        rows_staged=result.rows_staged,
         rows_skipped=result.rows_skipped,
         warnings=result.warnings,
     )
@@ -229,6 +233,7 @@ def _aggregate(source: str, steps: list[tuple[str, Callable[[], IngestResult]]])
             continue
         merged.rows_inserted += result.rows_inserted
         merged.rows_updated += result.rows_updated
+        merged.rows_staged += result.rows_staged
         merged.rows_skipped += result.rows_skipped
         for w in result.warnings:
             merged.warnings.append(f"{step_name}: {w}")
@@ -237,7 +242,7 @@ def _aggregate(source: str, steps: list[tuple[str, Callable[[], IngestResult]]])
     if failed_steps:
         agg_status = "fail"
         agg_error = "; ".join(failed_steps)
-    elif merged.warnings or (merged.rows_inserted + merged.rows_updated == 0):
+    elif merged.warnings or (merged.rows_inserted + merged.rows_updated + merged.rows_staged == 0):
         agg_status = "warn"
         agg_error = None
     else:
@@ -258,6 +263,7 @@ def _aggregate(source: str, steps: list[tuple[str, Callable[[], IngestResult]]])
         status=agg_status,
         rows_inserted=merged.rows_inserted,
         rows_updated=merged.rows_updated,
+        rows_staged=merged.rows_staged,
         rows_skipped=merged.rows_skipped,
         warnings=merged.warnings,
         error=agg_error,

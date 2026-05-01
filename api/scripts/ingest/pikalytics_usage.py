@@ -13,12 +13,14 @@ Usage:
     uv run python -m scripts.ingest.pikalytics_usage
 """
 
+import asyncio
 import json
 import re
 import sys
 import time
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import httpx
 from bs4 import BeautifulSoup, Comment, Tag
@@ -26,12 +28,15 @@ from supabase import Client, create_client
 
 from app.config import settings
 from app.models.ingest import IngestResult
+from app.services.review_service import ReviewService
 
 # Translation cache built by scripts/build_pikalytics_translations.py -- maps
 # foreign-language names (German/French/Japanese/etc.) back to canonical
 # English. Needed because Pikalytics serves localized content for a subset
 # of Pokemon URLs regardless of Accept-Language.
-_TRANSLATIONS_PATH = Path(__file__).resolve().parent.parent.parent / "pikalytics_translations.json"
+_TRANSLATIONS_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "pikalytics_translations.json"
+)
 
 # Champions tournament format -- NOT the generic VGC page
 PIKALYTICS_BASE = "https://pikalytics.com/pokedex/championstournaments"
@@ -58,10 +63,12 @@ TOP_N_POKEMON = 50
 # =============================================================================
 
 
-def _fetch_page(url: str) -> str | None:
+async def _fetch_page(client: httpx.AsyncClient, url: str) -> str | None:
     """Fetch an HTML page with error handling."""
     try:
-        resp = httpx.get(url, headers=REQUEST_HEADERS, timeout=30, follow_redirects=True)
+        resp = await client.get(
+            url, headers=REQUEST_HEADERS, timeout=30, follow_redirects=True
+        )
         resp.raise_for_status()
         return resp.text
     except httpx.HTTPStatusError as e:
@@ -85,7 +92,7 @@ def _parse_percent(text: str) -> float:
 # =============================================================================
 
 
-def fetch_pokemon_list() -> list[dict[str, str | float]]:
+async def fetch_pokemon_list(client: httpx.AsyncClient) -> list[dict[str, str | float]]:
     """Fetch the top Pokemon usage list from Pikalytics Champions Tournaments.
 
     Returns a list of dicts with 'name', 'usage_percent', and 'slug' keys.
@@ -99,7 +106,7 @@ def fetch_pokemon_list() -> list[dict[str, str | float]]:
       </a>
     """
     print(f"Fetching Pokemon list from {PIKALYTICS_LIST_URL}...")
-    html = _fetch_page(PIKALYTICS_LIST_URL)
+    html = await _fetch_page(client, PIKALYTICS_LIST_URL)
     if not html:
         return []
 
@@ -155,7 +162,9 @@ def fetch_pokemon_list() -> list[dict[str, str | float]]:
 # =============================================================================
 
 
-def _parse_section_by_id(soup: BeautifulSoup, wrapper_id: str) -> list[dict[str, str | float]]:
+def _parse_section_by_id(
+    soup: BeautifulSoup, wrapper_id: str
+) -> list[dict[str, str | float]]:
     """Parse a section identified by a wrapper div ID.
 
     Pikalytics detail pages use wrapper IDs like 'moves_wrapper',
@@ -207,13 +216,13 @@ def _parse_spreads_section(soup: BeautifulSoup) -> list[dict[str, str | float]]:
     return entries
 
 
-def fetch_pokemon_detail(pokemon_slug: str) -> dict | None:
+async def fetch_pokemon_detail(client: httpx.AsyncClient, pokemon_slug: str) -> dict | None:
     """Fetch detailed usage data for a single Pokemon.
 
     Returns moves, items, abilities, teammates, and spreads.
     """
     url = f"{PIKALYTICS_BASE}/{pokemon_slug}"
-    html = _fetch_page(url)
+    html = await _fetch_page(client, url)
     if not html:
         return None
 
@@ -251,7 +260,9 @@ PIKALYTICS_NAME_ALIASES: dict[str, str] = {
 }
 
 
-def _build_canonical_lookups(sb: Client) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+def _build_canonical_lookups(
+    sb: Client,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Build normalized-name -> canonical-name maps for moves, items, abilities.
 
     Combines two sources:
@@ -348,7 +359,7 @@ def _build_roster(sb: Client) -> dict[str, str]:
 # =============================================================================
 
 
-def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
+async def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
     """Mark items found in tournament usage data as champions_shop_available.
 
     If Pikalytics shows an item being used competitively, it should be
@@ -378,8 +389,8 @@ def _auto_mark_used_items(sb: Client, seen_item_names: set[str]) -> None:
     print(f"  Auto-marked {marked} items.")
 
 
-def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
-    """Scrape Pikalytics Champions Tournaments usage data and upsert into pokemon_usage.
+async def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
+    """Scrape Pikalytics Champions Tournaments usage data and stage for review.
 
     Only ingests Champions-eligible Pokemon. Items and abilities are NOT
     filtered because Pikalytics Champions tournament data already reflects
@@ -399,172 +410,155 @@ def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
         f"{len(abilities_map)} abilities"
     )
 
-    # Step 1: Get top Pokemon list
-    pokemon_list = fetch_pokemon_list()
-    if not pokemon_list:
-        result.warnings.append("Failed to fetch Pokemon list from Pikalytics")
-        result.duration_ms = int((time.monotonic() - started) * 1000)
-        return result
+    async with httpx.AsyncClient() as client:
+        # Step 1: Get top Pokemon list
+        pokemon_list = await fetch_pokemon_list(client)
+        if not pokemon_list:
+            result.warnings.append("Failed to fetch Pokemon list from Pikalytics")
+            result.duration_ms = int((time.monotonic() - started) * 1000)
+            return result
 
-    if dry_run:
-        # Count how many are Champions-eligible without scraping detail pages
-        eligible = 0
+        if dry_run:
+            # Count how many are Champions-eligible without scraping detail pages
+            eligible = 0
+            for entry in pokemon_list:
+                raw_name = str(entry["name"])
+                clean = raw_name.lower().replace("-", "").replace(" ", "")
+                if roster.get(clean) or roster.get(raw_name.lower()):
+                    eligible += 1
+            result.rows_staged = eligible
+            result.rows_skipped = len(pokemon_list) - eligible
+            result.duration_ms = int((time.monotonic() - started) * 1000)
+            print(
+                f"[dry-run] {eligible}/{len(pokemon_list)} Champions-eligible on list page"
+            )
+            return result
+
+        today_date = date.today().isoformat()
+        total_staged = 0
+        skipped = 0
+        # Track all item names seen in Pikalytics (before legality filter)
+        all_seen_items: set[str] = set()
+
         for entry in pokemon_list:
             raw_name = str(entry["name"])
+            usage_pct = float(entry["usage_percent"])
+            slug = str(entry.get("slug", raw_name))
+
+            # Check Champions eligibility
             clean = raw_name.lower().replace("-", "").replace(" ", "")
-            if roster.get(clean) or roster.get(raw_name.lower()):
-                eligible += 1
-        result.rows_inserted = eligible
-        result.rows_skipped = len(pokemon_list) - eligible
-        result.duration_ms = int((time.monotonic() - started) * 1000)
-        print(f"[dry-run] {eligible}/{len(pokemon_list)} Champions-eligible on list page")
-        return result
+            display_name = roster.get(clean) or roster.get(raw_name.lower())
+            if not display_name:
+                print(f"  Skipping {raw_name}: not Champions-eligible")
+                skipped += 1
+                continue
 
-    today_date = date.today().isoformat()
-    upsert_batch: list[dict] = []
-    scraped = 0
-    skipped = 0
-    # Track all item names seen in Pikalytics (before legality filter)
-    all_seen_items: set[str] = set()
+            # Step 2: Fetch detail page using the slug from the list
+            detail = await fetch_pokemon_detail(client, slug)
 
-    for entry in pokemon_list:
-        raw_name = str(entry["name"])
-        usage_pct = float(entry["usage_percent"])
-        slug = str(entry.get("slug", raw_name))
-
-        # Check Champions eligibility
-        clean = raw_name.lower().replace("-", "").replace(" ", "")
-        display_name = roster.get(clean) or roster.get(raw_name.lower())
-        if not display_name:
-            print(f"  Skipping {raw_name}: not Champions-eligible")
-            skipped += 1
-            continue
-
-        # Step 2: Fetch detail page using the slug from the list
-        detail = fetch_pokemon_detail(slug)
-
-        if detail:
-            # Pikalytics serves random localizations -- filter to English only.
-            moves, moves_dropped = _filter_english(detail["moves"], moves_map)
-            items, items_dropped = _filter_english(detail["items"], items_map)
-            abilities, abilities_dropped = _filter_english(detail["abilities"], abilities_map)
-            if moves_dropped or items_dropped or abilities_dropped:
-                msg = (
-                    f"{display_name}: dropped non-English "
-                    f"{moves_dropped}m/{items_dropped}i/{abilities_dropped}a "
-                    f"(Pikalytics i18n leak)"
+            if detail:
+                # Pikalytics serves random localizations -- filter to English only.
+                moves, moves_dropped = _filter_english(detail["moves"], moves_map)
+                items, items_dropped = _filter_english(detail["items"], items_map)
+                abilities, abilities_dropped = _filter_english(
+                    detail["abilities"], abilities_map
                 )
-                result.warnings.append(msg)
-                print(f"  {msg}")
+                if moves_dropped or items_dropped or abilities_dropped:
+                    msg = (
+                        f"{display_name}: dropped non-English "
+                        f"{moves_dropped}m/{items_dropped}i/{abilities_dropped}a "
+                        f"(Pikalytics i18n leak)"
+                    )
+                    result.warnings.append(msg)
+                    print(f"  {msg}")
 
-            # Collect item names for auto-marking availability
-            for item_entry in items:
-                item_name = str(item_entry.get("name", ""))
-                if item_name:
-                    all_seen_items.add(item_name)
-            teammates = detail["teammates"]
-            spreads = detail["spreads"]
-        else:
-            warning = f"No detail for {display_name}, using list data only"
-            result.warnings.append(warning)
-            print(f"  Warning: {warning}")
-            moves = []
-            items = []
-            abilities = []
-            teammates = []
-            spreads = []
+                # Collect item names for auto-marking availability
+                for item_entry in items:
+                    item_name = str(item_entry.get("name", ""))
+                    if item_name:
+                        all_seen_items.add(item_name)
+                teammates = detail["teammates"]
+                spreads = detail["spreads"]
+            else:
+                warning = f"No detail for {display_name}, using list data only"
+                result.warnings.append(warning)
+                print(f"  Warning: {warning}")
+                moves = []
+                items = []
+                abilities = []
+                teammates = []
+                spreads = []
 
-        # Robustness: if the detail fetch succeeded but moves+items+abilities
-        # are ALL empty, something went wrong in parsing (partial HTML, rate
-        # limit, Pikalytics layout change for this Pokemon). Skip the upsert
-        # instead of overwriting any existing good data with empty arrays.
-        # Discovered 2026-04-18: 5 Pokemon in the 2026-04-16 snapshot had
-        # this pattern (Incineroar, Charizard, Gengar, Aerodactyl, Venusaur).
-        if not moves and not items and not abilities:
-            warning = (
-                f"Skipping {display_name}: all detail sections empty "
-                "(transient scrape failure -- preserving existing row)"
-            )
-            result.warnings.append(warning)
-            print(f"  {warning}")
-            skipped += 1
-            time.sleep(REQUEST_DELAY)
-            continue
+            # Robustness: if the detail fetch succeeded but moves+items+abilities
+            # are ALL empty, something went wrong in parsing (partial HTML, rate
+            # limit, Pikalytics layout change for this Pokemon). Skip the stage
+            # instead of staging empty data.
+            if not moves and not items and not abilities:
+                warning = (
+                    f"Skipping {display_name}: all detail sections empty "
+                    "(transient scrape failure)"
+                )
+                result.warnings.append(warning)
+                print(f"  {warning}")
+                skipped += 1
+                await asyncio.sleep(REQUEST_DELAY)
+                continue
 
-        record = {
-            "pokemon_name": display_name,
-            "format": "doubles",
-            "snapshot_date": today_date,
-            "usage_percent": round(usage_pct, 2),
-            "moves": moves,
-            "items": items,
-            "abilities": abilities,
-            "teammates": teammates,
-            "spreads": spreads,
-            "source": "pikalytics",
-        }
-        upsert_batch.append(record)
-        scraped += 1
-        print(
-            f"  [{scraped}/{len(pokemon_list)}] {display_name}: {usage_pct}% "
-            f"({len(moves)} moves, {len(items)} items)"
-        )
+            record = {
+                "pokemon_name": display_name,
+                "format": "doubles",
+                "snapshot_date": today_date,
+                "usage_percent": round(usage_pct, 2),
+                "moves": moves,
+                "items": items,
+                "abilities": abilities,
+                "teammates": teammates,
+                "spreads": spreads,
+                "source": "pikalytics",
+            }
 
-        time.sleep(REQUEST_DELAY)
+            try:
+                # Stage for review instead of direct upsert
+                await ReviewService.stage_item(
+                    source="pikalytics",
+                    payload=record,
+                    external_id=f"{display_name}-{today_date}",
+                )
+                total_staged += 1
+                print(
+                    f"  [{total_staged}] Staged {display_name}: {usage_pct}% "
+                    f"({len(moves)} moves, {len(items)} items)"
+                )
+            except Exception as e:
+                result.warnings.append(f"Staging failed for {display_name}: {e}")
 
-    # Step 3: Delete OLD Pikalytics snapshots -- but ONLY for Pokemon we
-    # successfully re-scraped this run. Pokemon we skipped due to empty
-    # scrape keep their previous row intact (better than having no data at
-    # all). Without this guard, a bad scrape run would wipe the meta tab.
-    fresh_names = [rec["pokemon_name"] for rec in upsert_batch]
-    if fresh_names:
-        try:
-            sb.table("pokemon_usage").delete().eq("source", "pikalytics").eq(
-                "format", "doubles"
-            ).neq("snapshot_date", today_date).in_("pokemon_name", fresh_names).execute()
-            print(
-                f"  Cleaned old pikalytics snapshots for {len(fresh_names)} freshly-scraped Pokemon"
-            )
-        except Exception as e:
-            result.warnings.append(f"Failed to clean old snapshots: {e}")
+            await asyncio.sleep(REQUEST_DELAY)
 
-    upserted = 0
-    print(f"\nUpserting {len(upsert_batch)} records...")
-    batch_size = 50
-    for i in range(0, len(upsert_batch), batch_size):
-        chunk = upsert_batch[i : i + batch_size]
-        try:
-            sb.table("pokemon_usage").upsert(
-                chunk, on_conflict="pokemon_name,format,snapshot_date"
-            ).execute()
-            upserted += len(chunk)
-        except Exception as e:
-            result.warnings.append(f"Upsert chunk failed: {e}")
+        # Step 3: Auto-mark items seen in tournament data as available
+        await _auto_mark_used_items(sb, all_seen_items)
 
-    # Step 4: Auto-mark items seen in tournament data as available
-    _auto_mark_used_items(sb, all_seen_items)
-
-    result.rows_updated = upserted
+    result.rows_staged = total_staged
     result.rows_skipped = skipped
     result.duration_ms = int((time.monotonic() - started) * 1000)
-    print(f"Pikalytics ingest complete: {scraped} Pokemon.")
+    print(f"Pikalytics ingest complete: {total_staged} Pokemon staged.")
     return result
 
 
 def run(dry_run: bool = False) -> IngestResult:
     """Entrypoint for HTTP/cron invocation. Returns an IngestResult."""
     db = create_client(settings.supabase_url, settings.supabase_service_key)
-    return ingest_pikalytics(db, dry_run=dry_run)
+    return asyncio.run(ingest_pikalytics(db, dry_run=dry_run))
 
 
-def main() -> None:
+async def amain() -> None:
     dry_run = "--dry-run" in sys.argv
-    run(dry_run=dry_run)
+    db = create_client(settings.supabase_url, settings.supabase_service_key)
+    await ingest_pikalytics(db, dry_run=dry_run)
 
 
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(amain())
     except KeyboardInterrupt:
         print("\nInterrupted.")
         sys.exit(1)
