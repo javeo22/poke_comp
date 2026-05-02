@@ -26,9 +26,14 @@ export default function DraftPage() {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
+  const [roster, setRoster] = useState<UserPokemon[]>([]);
   const [rosterLookup, setRosterLookup] = useState<Map<string, UserPokemon>>(new Map());
   const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+
+  // Selection Mode
+  const [selectionMode, setSelectionMode] = useState<"team" | "quick">("team");
+  const [quickSelection, setQuickSelection] = useState<string[]>([]);
 
   // Form state. Hydrate selectedTeamId from URL param first, then
   // localStorage ("last team used") so mid-ladder users don't re-pick
@@ -60,13 +65,11 @@ export default function DraftPage() {
     try {
       const [teamsResult, pokemonResult, rosterResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
-        fetchPokemon({ limit: 500, champions_only: true }),
-        fetchUserPokemon({ limit: 200 }),
+        fetchPokemon({ limit: 1000, champions_only: true }),
+        fetchUserPokemon({ limit: 500 }),
       ]);
       if (teamsResult.status === "fulfilled") {
         setTeams(teamsResult.value.data);
-      } else {
-        console.error("Failed to load teams:", teamsResult.reason);
       }
       if (pokemonResult.status === "fulfilled") {
         const pMap = new Map<number, Pokemon>();
@@ -81,17 +84,14 @@ export default function DraftPage() {
             sublabel: p.types.join("/"),
           }))
         );
-      } else {
-        console.error("Failed to load Pokemon list:", pokemonResult.reason);
       }
       if (rosterResult.status === "fulfilled") {
+        setRoster(rosterResult.value.data);
         const rMap = new Map<string, UserPokemon>();
         for (const entry of rosterResult.value.data) {
           rMap.set(entry.id, entry);
         }
         setRosterLookup(rMap);
-      } else {
-        console.error("Failed to load roster:", rosterResult.reason);
       }
       // Load AI quota (non-blocking)
       fetchAiUsage()
@@ -178,7 +178,7 @@ export default function DraftPage() {
   };
 
   const filledOpponents = opponentSlots.filter((s) => s.trim() !== "");
-  const canAnalyze = selectedTeamId && filledOpponents.length >= 1;
+  const canAnalyze = (selectionMode === "team" ? !!selectedTeamId : quickSelection.length > 0) && filledOpponents.length >= 1;
 
   // Filter out already-selected Pokemon from each slot's dropdown options
   const getSlotOptions = (slotIndex: number) => {
@@ -211,7 +211,8 @@ export default function DraftPage() {
       const response = await analyzeDraft(
         {
           opponent_team: filledOpponents,
-          my_team_id: selectedTeamId,
+          my_team_id: selectionMode === "team" ? selectedTeamId : undefined,
+          my_selection: selectionMode === "quick" ? quickSelection : undefined,
         },
         deepMode ? "claude-sonnet-4-6" : undefined, // default (undefined) -> Haiku
       );
@@ -305,60 +306,138 @@ export default function DraftPage() {
             Drop in any opponent&apos;s six. Get your bring-4, lead pair, key rolls, and a plain-English plan.
           </p>
         </div>
+
+        {/* Selection Mode Toggle */}
+        <div className="flex rounded-xl bg-surface-low p-1">
+          <button
+            onClick={() => setSelectionMode("team")}
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.7rem] uppercase tracking-wider transition-colors ${
+              selectionMode === "team"
+                ? "bg-primary text-surface shadow-sm"
+                : "text-on-surface-muted hover:bg-surface-mid"
+            }`}
+          >
+            Saved Team
+          </button>
+          <button
+            onClick={() => setSelectionMode("quick")}
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.7rem] uppercase tracking-wider transition-colors ${
+              selectionMode === "quick"
+                ? "bg-primary text-surface shadow-sm"
+                : "text-on-surface-muted hover:bg-surface-mid"
+            }`}
+          >
+            Quick Pick
+          </button>
+        </div>
       </div>
 
       {/* Input section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* My team selector */}
-        <div className="rounded-xl bg-surface-low p-6">
-          <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            My Team
-          </h2>
-          <SearchableDropdown
-            placeholder="Select a team..."
-            value={selectedTeamId}
-            onChange={setSelectedTeamId}
-            options={teamOptions}
-          />
-          {selectedTeamId && (
-            <div className="mt-3">
-              {(() => {
-                const team = teams.find((t) => t.id === selectedTeamId);
-                if (!team) return null;
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    {team.pokemon_ids.map((pid, i) => {
-                      const entry = rosterLookup.get(pid);
-                      const poke = entry ? pokemonMap.get(entry.pokemon_id) : null;
-                      return (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
-                        >
-                          {poke?.sprite_url && (
-                            <Image
-                              src={poke.sprite_url}
-                              alt={poke.name}
-                              width={20}
-                              height={20}
-                              className="pixelated"
-                            />
-                          )}
-                          {poke?.name ?? `#${pid.slice(0, 6)}`}
+        {selectionMode === "team" ? (
+          <div className="rounded-xl bg-surface-low p-6">
+            <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              My Team
+            </h2>
+            <SearchableDropdown
+              placeholder="Select a team..."
+              value={selectedTeamId}
+              onChange={setSelectedTeamId}
+              options={teamOptions}
+            />
+            {selectedTeamId && (
+              <div className="mt-3">
+                {(() => {
+                  const team = teams.find((t) => t.id === selectedTeamId);
+                  if (!team) return null;
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {team.pokemon_ids.map((pid, i) => {
+                        const entry = rosterLookup.get(pid);
+                        const poke = entry ? pokemonMap.get(entry.pokemon_id) : null;
+                        return (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-surface-mid px-3 py-1 font-display text-xs text-on-surface"
+                          >
+                            {poke?.sprite_url && (
+                              <Image
+                                src={poke.sprite_url}
+                                alt={poke.name}
+                                width={20}
+                                height={20}
+                                className="pixelated"
+                                unoptimized
+                              />
+                            )}
+                            {poke?.name ?? `#${pid.slice(0, 6)}`}
+                          </span>
+                        );
+                      })}
+                      {team.archetype_tag && (
+                        <span className="rounded-lg bg-primary/20 px-3 py-1 font-display text-xs text-primary">
+                          {team.archetype_tag}
                         </span>
-                      );
-                    })}
-                    {team.archetype_tag && (
-                      <span className="rounded-lg bg-primary/20 px-3 py-1 font-display text-xs text-primary">
-                        {team.archetype_tag}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl bg-surface-low p-6 flex flex-col max-h-[400px]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+                Quick Selection ({quickSelection.length}/6)
+              </h2>
+              {quickSelection.length > 0 && (
+                <button onClick={() => setQuickSelection([])} className="font-display text-[0.6rem] uppercase text-tertiary hover:underline">Clear All</button>
+              )}
             </div>
-          )}
-        </div>
+            <div className="overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
+              {roster.map((rp) => {
+                const p = pokemonMap.get(rp.pokemon_id);
+                const active = quickSelection.includes(rp.id);
+                return (
+                  <button
+                    key={rp.id}
+                    onClick={() => {
+                      setQuickSelection(prev => 
+                        prev.includes(rp.id) 
+                          ? prev.filter(id => id !== rp.id) 
+                          : prev.length < 6 ? [...prev, rp.id] : prev
+                      );
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-all ${
+                      active 
+                        ? "border-primary bg-primary/10" 
+                        : "border-outline-variant hover:bg-surface-mid bg-surface-lowest"
+                    }`}
+                  >
+                    {p?.sprite_url ? (
+                      <Image src={p.sprite_url} alt="" width={32} height={32} className="image-rendering-pixelated" unoptimized />
+                    ) : (
+                      <div className="h-8 w-8 rounded bg-surface-high flex items-center justify-center text-[0.5rem] uppercase">PKMN</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`truncate font-display text-xs font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>{p?.name || "Unknown"}</p>
+                      <p className="text-[0.55rem] text-on-surface-muted uppercase">{rp.ability || "--"} {rp.nature ? `· ${rp.nature}` : ""}</p>
+                    </div>
+                    {active && (
+                       <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-surface" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                          </svg>
+                       </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Opponent team input */}
         <div className="rounded-xl bg-surface-low p-6">

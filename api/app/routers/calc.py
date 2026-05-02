@@ -33,14 +33,12 @@ class CalcRequest(BaseModel):
     attacker_id: int = Field(..., description="pokemon.id of the attacker")
     defender_id: int = Field(..., description="pokemon.id of the defender")
     move_id: int = Field(..., description="moves.id")
-    # Optional EV overrides. Keys: hp, attack, defense, sp_attack, sp_defense, speed.
-    # Values: 0-252 each, total <= 510 (not enforced server-side; UI guards it).
-    attacker_evs: dict[str, int] | None = None
-    defender_evs: dict[str, int] | None = None
-    # +X / -X stat names (e.g. {"plus": "attack", "minus": "speed"}).
-    # Either side optional. Skip both for neutral nature.
-    attacker_nature: dict[str, str] | None = None
-    defender_nature: dict[str, str] | None = None
+    # Stat points: 0-32 each, total <= 66.
+    attacker_stat_points: dict[str, int] | None = None
+    defender_stat_points: dict[str, int] | None = None
+    # Nature name (e.g. "Adamant", "Timid").
+    attacker_nature: str | None = None
+    defender_nature: str | None = None
     weather: Literal["none", "sun", "rain", "snow", "sand"] = "none"
     is_doubles: bool = True
     extra_modifier: float = Field(1.0, ge=0.1, le=10.0)
@@ -70,70 +68,10 @@ class CalcResponseShape(BaseModel):
     move_power: int
 
 
-_STAT_KEYS = ("hp", "attack", "defense", "sp_attack", "sp_defense", "speed")
-
-
-def _final_stat(
-    base: int,
-    stat_key: str,
-    evs: dict[str, int] | None,
-    nature: dict[str, str] | None,
-    *,
-    is_hp: bool = False,
-    level: int = 50,
-) -> int:
-    """Standard mainline stat formula at level 50 with IV 31, optional EV
-    investment (default 0), and optional nature multiplier."""
-    ev = (evs or {}).get(stat_key, 0)
-    if is_hp:
-        # HP formula has no nature multiplier and a different shape.
-        return floor((2 * base + 31 + ev // 4) * level / 100) + level + 10
-    raw = floor((2 * base + 31 + ev // 4) * level / 100) + 5
-    if nature:
-        if nature.get("plus") == stat_key:
-            raw = floor(raw * _PLUS_STAT_MULT)
-        elif nature.get("minus") == stat_key:
-            raw = floor(raw * _MINUS_STAT_MULT)
-    return raw
-
-
-def _build_calc_pokemon(
-    row: dict[str, Any],
-    evs: dict[str, int] | None,
-    nature: dict[str, str] | None,
-) -> CalcPokemon:
-    base_stats: dict[str, int] = row.get("base_stats") or {}
-    return CalcPokemon(
-        name=row["name"],
-        types=[t.lower() for t in (row.get("types") or [])],
-        hp=_final_stat(base_stats.get("hp", 0), "hp", evs, nature, is_hp=True),
-        attack=_final_stat(base_stats.get("attack", 0), "attack", evs, nature),
-        sp_attack=_final_stat(base_stats.get("sp_attack", 0), "sp_attack", evs, nature),
-        defense=_final_stat(base_stats.get("defense", 0), "defense", evs, nature),
-        sp_defense=_final_stat(base_stats.get("sp_defense", 0), "sp_defense", evs, nature),
-        speed=_final_stat(base_stats.get("speed", 0), "speed", evs, nature),
-    )
-
-
-def _validate_nature(nature: dict[str, str] | None) -> None:
-    if not nature:
-        return
-    for key in ("plus", "minus"):
-        v = nature.get(key)
-        if v is not None and v not in _STAT_KEYS[1:]:  # exclude HP — natures don't affect it
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid nature {key} stat: {v}",
-            )
-
-
 # NOTE: This endpoint is intentionally public (no auth required) as it
 # provides reference calculation services.
 @router.post("", response_model=CalcResponseShape)
 def run_calc(req: CalcRequest) -> CalcResponseShape:
-    _validate_nature(req.attacker_nature)
-    _validate_nature(req.defender_nature)
-
     # Fetch all three rows in parallel-ish (Supabase client is sync).
     try:
         atk_res = (
@@ -170,8 +108,20 @@ def run_calc(req: CalcRequest) -> CalcResponseShape:
     def_row: dict[str, Any] = def_res.data  # type: ignore[assignment]
     move_row: dict[str, Any] = move_res.data  # type: ignore[assignment]
 
-    attacker = _build_calc_pokemon(atk_row, req.attacker_evs, req.attacker_nature)
-    defender = _build_calc_pokemon(def_row, req.defender_evs, req.defender_nature)
+    attacker = from_base_stats(
+        atk_row["name"],
+        atk_row.get("types") or [],
+        atk_row.get("base_stats") or {},
+        stat_points=req.attacker_stat_points,
+        nature=req.attacker_nature,
+    )
+    defender = from_base_stats(
+        def_row["name"],
+        def_row.get("types") or [],
+        def_row.get("base_stats") or {},
+        stat_points=req.defender_stat_points,
+        nature=req.defender_nature,
+    )
     move = CalcMove(
         name=move_row["name"],
         type=(move_row.get("type") or "").lower(),

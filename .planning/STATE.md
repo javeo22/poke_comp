@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MVP
 status: active
-last_updated: "2026-04-30"
+last_updated: "2026-05-02"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
-  total_plans: 10
+  total_plans: 11
   completed_plans: 10
-  percent: 100
+  percent: 87.5
 ---
 
 # State
@@ -22,18 +22,18 @@ progress:
 
 **Name:** Pokemon Champions Companion
 **Core value:** Personal companion app for the competitive Pokemon Champions player — roster + team builder + Champions-aware reference + AI draft helper + matchup log, in one tool.
-**Current focus:** Post-MVP optimization and stretch features.
+**Current focus:** Competitive tools overhaul (Teambuilder & Damage Calculator).
 
 ---
 
 ## Current Position
 
-**Milestone:** MVP Complete (Target June 5, achieved May 2).
+**Milestone:** MVP Post-Launch Evolution.
 
 **Position prose:**
-Phase 7 is complete. The homepage has been transformed into a professional "Regulation M-A Dashboard" with a high-polish esports aesthetic. Data resiliency is ensured via baseline fallbacks for meta trends. The app is now fully data-driven, visually dense, and resilient.
+Phase 7 is complete. The application has been evolved with a professional "Lab Dashboard" aesthetic and resilient data fallbacks. We are now moving into Phase 8 to overhaul the core competitive toolset (Teambuilder and Damage Calculator) based on user feedback regarding teambuilding friction and calculation depth.
 
-**Active phase:** None (Phase 7 Complete).
+**Active phase:** Phase 8: Competitive Tools Overhaul.
 
 ---
 
@@ -47,6 +47,7 @@ Phase 7 is complete. The homepage has been transformed into a professional "Regu
 | 4 | Cron alerting + freshness telemetry | **Completed** |
 | 5 | Data Truth + HITL Review | **Completed** |
 | 7 | Homepage Polish | **Completed** |
+| 8 | Competitive Tools Overhaul | **Active** |
 | 6+ | Stretch backlog (F9–F15) | Backlog |
 
 ---

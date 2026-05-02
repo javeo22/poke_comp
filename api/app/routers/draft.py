@@ -338,15 +338,23 @@ def _compute_damage_calcs(
             # Verifier will surface the missing reference as a warning.
             continue
 
+        # Use build-specific stats if available (typical for my_pokemon).
+        atk_build = attacker_row.get("build") or {}
+        def_build = defender_row.get("build") or {}
+
         atk = from_base_stats(
             attacker_row["name"],
             attacker_row.get("types", []),
             attacker_row.get("base_stats", {}),
+            stat_points=atk_build.get("stat_points"),
+            nature=atk_build.get("nature"),
         )
         defn = from_base_stats(
             defender_row["name"],
             defender_row.get("types", []),
             defender_row.get("base_stats", {}),
+            stat_points=def_build.get("stat_points"),
+            nature=def_build.get("nature"),
         )
         move = CalcMove(
             name=move_row["name"],
@@ -581,6 +589,58 @@ Return ONLY the JSON object, no markdown fences or explanation."""
     return f"{header}\n\n{my_team_section}\n\n{opp_section}{strategy_section}\n\n{task_section}"
 
 
+def _fetch_selection_pokemon(roster_ids: list[str], user_id: str) -> dict:
+    """Fetch species + build details for a session selection of roster IDs."""
+    # Resolve user_pokemon UUIDs to builds + species IDs
+    user_builds = (
+        supabase.table("user_pokemon")
+        .select("id, pokemon_id, ability, moves, item_id, stat_points, nature")
+        .eq("user_id", user_id)
+        .in_("id", roster_ids)
+        .execute()
+    )
+    build_rows: list[dict] = user_builds.data  # type: ignore[assignment]
+    builds_by_species = {b["pokemon_id"]: b for b in build_rows}
+    species_ids = list({b["pokemon_id"] for b in build_rows})
+
+    # Fetch base Pokemon data by species IDs
+    pokemon_rows = (
+        supabase.table("pokemon")
+        .select("id, name, types, base_stats, abilities, movepool, sprite_url")
+        .in_("id", species_ids)
+        .execute()
+    )
+
+    pokemon_list = []
+    poke_rows: list[dict] = pokemon_rows.data  # type: ignore[assignment]
+    for p in poke_rows:
+        build = builds_by_species.get(p["id"], {})
+        pokemon_list.append(
+            {
+                "name": p["name"],
+                "types": p["types"],
+                "base_stats": p["base_stats"],
+                "abilities": p["abilities"],
+                "movepool": p["movepool"][:20],  # trim for token budget
+                "build": {
+                    "ability": build.get("ability"),
+                    "moves": build.get("moves"),
+                    "item": build.get("item_id"),
+                    "nature": build.get("nature"),
+                    "stat_points": build.get("stat_points"),
+                }
+                if build
+                else None,
+            }
+        )
+
+    return {
+        "team_name": "Session Selection",
+        "format": "doubles",
+        "pokemon": pokemon_list,
+    }
+
+
 @router.post("/analyze", response_model=DraftResponse)
 @limiter.limit("5/minute")
 def analyze_draft(
@@ -593,18 +653,23 @@ def analyze_draft(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
+    if not body.my_team_id and not body.my_selection:
+        raise HTTPException(status_code=400, detail="Must provide either my_team_id or my_selection")
+
     # Validate model choice
     available = get_available_models(user_id)
     if model not in available:
         model = HAIKU_MODEL  # fallback to Haiku if Sonnet quota exhausted
 
     # Fetch my team data
-    my_team = _fetch_team_pokemon(body.my_team_id, user_id)
+    if body.my_team_id:
+        my_team = _fetch_team_pokemon(body.my_team_id, user_id)
+    else:
+        my_team = _fetch_selection_pokemon(body.my_selection or [], user_id)
+
     team_format = my_team.get("format", "doubles")
 
-    # Hard-block on stale usage data. The opponent_usage block below feeds
-    # the bring-4 / lead recommendation -- on stale data we'd rather refuse
-    # than recommend off an old metagame.
+    # Hard-block on stale usage data.
     snapshot_date, age_days = snapshot_age_days(team_format)
     if is_stale(age_days):
         raise HTTPException(
@@ -626,8 +691,6 @@ def analyze_draft(
     my_pokemon_ids = [str(p["name"]) for p in my_team["pokemon"]]
 
     # Check cache (tries v2 first, falls back to v1 during grace window).
-    # The snapshot date acts as a cache floor: any analysis cached before
-    # the latest pokemon_usage refresh is evicted.
     cached = _check_cache(body.opponent_team, my_pokemon_ids, snapshot_floor=snapshot_date)
     if cached:
         log_ai_usage(user_id, "draft", model, 0, 0, cached=True)
@@ -686,14 +749,10 @@ def analyze_draft(
         )
 
     # Replace AI-guessed `estimated_damage` strings with deterministic engine
-    # output. Runs before the verifier so any unresolvable scenario is flagged
-    # consistently as a warning.
+    # output.
     _compute_damage_calcs(analysis, my_team["pokemon"], opponent_pokemon)
 
-    # Cross-check AI claims against the DB. Annotates each threat/calc/bring
-    # with `verified` + `verification_note`, and populates `analysis.warnings`.
-    # Runs before caching so the stored analysis carries the same warnings on
-    # future cache hits (no need to re-verify).
+    # Cross-check AI claims against the DB.
     my_team_names = [p["name"] for p in my_team["pokemon"]]
     analysis = verify_draft_analysis(
         analysis,
@@ -706,7 +765,7 @@ def analyze_draft(
         body.opponent_team,
         my_pokemon_ids,
         body.opponent_team,
-        {"team_id": body.my_team_id, "pokemon": my_pokemon_ids},
+        {"team_id": body.my_team_id, "selection": body.my_selection, "pokemon": my_pokemon_ids},
         analysis,
     )
 

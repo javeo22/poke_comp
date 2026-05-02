@@ -9,7 +9,10 @@ class DraftRequest(BaseModel):
         max_length=6,
         description="Opponent's 6 Pokemon names (Title Case)",
     )
-    my_team_id: str = Field(description="UUID of user's saved team")
+    my_team_id: str | None = Field(None, description="UUID of user's saved team")
+    my_selection: list[str] | None = Field(
+        None, description="List of user_pokemon UUIDs for quick session selection"
+    )
 
 
 class ThreatInfo(BaseModel):

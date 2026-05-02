@@ -44,8 +44,8 @@ VALID_NATURES = frozenset(
 )
 
 STAT_KEYS = frozenset(["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"])
-MAX_PER_STAT = 252
-MAX_TOTAL = 510
+MAX_PER_STAT = 32
+MAX_TOTAL = 66
 
 
 # ── Pure Python validators (no DB) ──────────────────────────────────────────
@@ -61,7 +61,7 @@ def validate_nature(nature: str) -> None:
 
 
 def validate_stat_points(stat_points: dict) -> None:
-    """Validate stat point allocation: 0-252 per stat, 510 total, valid keys."""
+    """Validate stat point allocation: 0-32 per stat, 66 total, valid keys."""
     invalid_keys = set(stat_points.keys()) - STAT_KEYS
     if invalid_keys:
         raise HTTPException(

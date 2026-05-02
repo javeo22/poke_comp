@@ -223,10 +223,10 @@ export interface CalcRequest {
   attacker_id: number;
   defender_id: number;
   move_id: number;
-  attacker_evs?: Record<string, number>;
-  defender_evs?: Record<string, number>;
-  attacker_nature?: { plus?: string; minus?: string };
-  defender_nature?: { plus?: string; minus?: string };
+  attacker_stat_points?: Record<string, number>;
+  defender_stat_points?: Record<string, number>;
+  attacker_nature?: string;
+  defender_nature?: string;
   weather?: "none" | "sun" | "rain" | "snow" | "sand";
   is_doubles?: boolean;
   extra_modifier?: number;

@@ -2,9 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import type { Team } from "@/types/team";
+import type { Pokemon } from "@/features/pokemon/types";
+import type { UserPokemon } from "@/types/user-pokemon";
 import {
   fetchTeams,
+  fetchPokemon,
+  fetchUserPokemon,
   generateCheatsheet,
   fetchAllCheatsheets,
   fetchAiUsage,
@@ -36,8 +41,15 @@ export default function CheatsheetPage() {
   const preselectedTeamId = searchParams.get("team") ?? "";
 
   const [teams, setTeams] = useState<Team[]>([]);
+  const [roster, setRoster] = useState<UserPokemon[]>([]);
+  const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [savedCheatsheets, setSavedCheatsheets] = useState<SavedCheatsheet[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(preselectedTeamId || null);
+  
+  // Selection Mode
+  const [selectionMode, setSelectionMode] = useState<"team" | "quick">("team");
+  const [quickSelection, setQuickSelection] = useState<string[]>([]);
+  
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
@@ -52,12 +64,20 @@ export default function CheatsheetPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [teamsResult, cheatsheetsResult] = await Promise.allSettled([
+      const [teamsResult, cheatsheetsResult, rosterResult, pokemonResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchAllCheatsheets(),
+        fetchUserPokemon({ limit: 500 }),
+        fetchPokemon({ limit: 1000, champions_only: true }),
       ]);
       if (teamsResult.status === "fulfilled") setTeams(teamsResult.value.data);
       if (cheatsheetsResult.status === "fulfilled") setSavedCheatsheets(cheatsheetsResult.value);
+      if (rosterResult.status === "fulfilled") setRoster(rosterResult.value.data);
+      if (pokemonResult.status === "fulfilled") {
+        const pMap = new Map<number, Pokemon>();
+        for (const p of pokemonResult.value.data) pMap.set(p.id, p);
+        setPokemonMap(pMap);
+      }
       fetchAiUsage()
         .then((usage) => {
           setQuota(usage.today);
@@ -75,22 +95,6 @@ export default function CheatsheetPage() {
     loadData();
   }, [loadData]);
 
-  // Teams that don't have a cheatsheet yet
-  const teamsWithoutCheatsheet = useMemo(() => {
-    const hasSheet = new Set(savedCheatsheets.map((s) => s.team_id));
-    return teams.filter((t) => !hasSheet.has(t.id));
-  }, [teams, savedCheatsheets]);
-
-  const teamOptions: DropdownOption[] = useMemo(
-    () =>
-      teamsWithoutCheatsheet.map((t) => ({
-        value: t.id,
-        label: t.name,
-        sublabel: `${t.format}${t.archetype_tag ? ` / ${t.archetype_tag}` : ""}`,
-      })),
-    [teamsWithoutCheatsheet]
-  );
-
   // Also allow regenerating for teams that already have one
   const allTeamOptions: DropdownOption[] = useMemo(
     () =>
@@ -103,28 +107,29 @@ export default function CheatsheetPage() {
   );
 
   const handleGenerate = async () => {
-    if (!selectedTeamId || isGenerating) return;
-    setIsGenerating(true);
-    setError(null);
-    try {
-      await generateCheatsheet(selectedTeamId);
-      // Reload all cheatsheets to get the new one
-      const updated = await fetchAllCheatsheets();
-      setSavedCheatsheets(updated);
-      setExpandedId(selectedTeamId);
-      setSelectedTeamId("");
-      fetchAiUsage()
-        .then((usage) => {
-          setQuota(usage.today);
-          setQuotaMonth(usage.month);
-          setIsSupporter(usage.supporter);
-          setIsUnlimited(usage.unlimited);
-        })
-        .catch(() => {});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate cheatsheet");
-    } finally {
-      setIsGenerating(false);
+    if (selectionMode === "team") {
+      if (!selectedTeamId || isGenerating) return;
+      setIsGenerating(true);
+      setError(null);
+      try {
+        await generateCheatsheet(selectedTeamId);
+        // Reload all cheatsheets to get the new one
+        const updated = await fetchAllCheatsheets();
+        setSavedCheatsheets(updated);
+        setExpandedId(selectedTeamId);
+        setSelectedTeamId("");
+        refreshUsage();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to generate cheatsheet");
+      } finally {
+        setIsGenerating(false);
+      }
+    } else {
+      if (quickSelection.length === 0) {
+        setError("Please select at least one Pokemon from your roster.");
+        return;
+      }
+      setError("Generating cheatsheets from custom selections is coming in the next sub-phase. Please use a saved team for now.");
     }
   };
 
@@ -207,53 +212,121 @@ export default function CheatsheetPage() {
   return (
     <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
       {/* Header */}
-      <div className="mb-7">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-1.5">
-          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent">
-            ◆ CHEATSHEET
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-1.5">
+            <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent">
+              ◆ CHEATSHEET
+            </div>
+            <DataFreshness format="doubles" />
           </div>
-          <DataFreshness format="doubles" />
+          <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
+            Print it. <span className="text-gradient">Or read it.</span>
+          </h1>
+          <p className="mt-2 max-w-xl text-on-surface-muted text-base">
+            AI-generated game plans, one A4 page per team. Bring it on a tablet or print it in a sleeve.
+          </p>
         </div>
-        <h1 className="m-0 font-display text-4xl sm:text-5xl font-bold tracking-[-0.03em] text-on-surface">
-          Print it. <span className="text-gradient">Or read it.</span>
-        </h1>
-        <p className="mt-2 max-w-xl text-on-surface-muted text-base">
-          AI-generated game plans, one A4 page per team. Bring it on a tablet or print it in a sleeve.
-        </p>
+
+        {/* Selection Mode Toggle */}
+        <div className="flex rounded-xl bg-surface-low p-1">
+          <button
+            onClick={() => setSelectionMode("team")}
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.7rem] uppercase tracking-wider transition-colors ${
+              selectionMode === "team"
+                ? "bg-primary text-surface shadow-sm"
+                : "text-on-surface-muted hover:bg-surface-mid"
+            }`}
+          >
+            Saved Team
+          </button>
+          <button
+            onClick={() => setSelectionMode("quick")}
+            className={`rounded-lg px-4 py-1.5 font-display text-[0.7rem] uppercase tracking-wider transition-colors ${
+              selectionMode === "quick"
+                ? "bg-primary text-surface shadow-sm"
+                : "text-on-surface-muted hover:bg-surface-mid"
+            }`}
+          >
+            Quick Pick
+          </button>
+        </div>
       </div>
 
       {/* Generate new */}
       <div className="rounded-[1rem] bg-surface-low p-6 mb-8">
         <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-          Generate Cheatsheet
+          Generate {selectionMode === "team" ? "Team Cheatsheet" : `Quick Cheatsheet (${quickSelection.length}/6)`}
         </h2>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="w-full max-w-sm">
-            <SearchableDropdown
-              placeholder={
-                allTeamOptions.length === 0 ? "No teams yet" : "Select a team..."
-              }
-              value={selectedTeamId}
-              onChange={setSelectedTeamId}
-              options={allTeamOptions}
-            />
+        
+        {selectionMode === "team" ? (
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-full max-w-sm">
+              <SearchableDropdown
+                placeholder={
+                  allTeamOptions.length === 0 ? "No teams yet" : "Select a team..."
+                }
+                value={selectedTeamId}
+                onChange={setSelectedTeamId}
+                options={allTeamOptions}
+              />
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={!selectedTeamId || isGenerating || (quota !== null && quota.remaining <= 0)}
+              className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? "Generating..." : "Generate"}
+            </button>
+            {quota !== null && (
+              <QuotaIndicator
+                today={quota}
+                month={quotaMonth}
+                supporter={isSupporter}
+                unlimited={isUnlimited}
+              />
+            )}
           </div>
-          <button
-            onClick={handleGenerate}
-            disabled={!selectedTeamId || isGenerating || (quota !== null && quota.remaining <= 0)}
-            className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? "Generating..." : "Generate"}
-          </button>
-          {quota !== null && (
-            <QuotaIndicator
-              today={quota}
-              month={quotaMonth}
-              supporter={isSupporter}
-              unlimited={isUnlimited}
-            />
-          )}
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+               {roster.map(rp => {
+                 const p = pokemonMap.get(rp.pokemon_id);
+                 const active = quickSelection.includes(rp.id);
+                 return (
+                   <button
+                    key={rp.id}
+                    onClick={() => setQuickSelection(prev => prev.includes(rp.id) ? prev.filter(id => id !== rp.id) : prev.length < 6 ? [...prev, rp.id] : prev)}
+                    className={`flex items-center gap-3 rounded-lg border p-2 text-left transition-all ${active ? "border-primary bg-primary/10" : "border-outline-variant bg-surface-lowest hover:bg-surface-mid"}`}
+                   >
+                     {p?.sprite_url ? (
+                       <Image src={p.sprite_url} alt="" width={24} height={24} className="image-rendering-pixelated" unoptimized />
+                     ) : (
+                       <div className="h-6 w-6 rounded bg-surface-high flex items-center justify-center text-[0.4rem] uppercase">PKMN</div>
+                     )}
+                     <div className="flex-1 min-w-0">
+                       <p className={`truncate font-display text-[0.65rem] font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>{p?.name || "Unknown"}</p>
+                       <p className="text-[0.5rem] text-on-surface-muted uppercase truncate">{rp.ability || "--"}</p>
+                     </div>
+                   </button>
+                 );
+               })}
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleGenerate}
+                disabled={quickSelection.length === 0 || isGenerating}
+                className="btn-primary h-12 px-8 font-display text-sm font-medium uppercase tracking-wider disabled:opacity-40"
+              >
+                Generate Selection
+              </button>
+              {quickSelection.length > 0 && (
+                <button onClick={() => setQuickSelection([])} className="font-display text-xs uppercase tracking-widest text-on-surface-muted hover:text-tertiary">Clear Selection</button>
+              )}
+            </div>
+          </div>
+        )}
+        
         {error && (
           <p className="mt-3 font-body text-sm text-tertiary">{error}</p>
         )}

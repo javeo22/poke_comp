@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   fetchMoves,
   fetchPokemonBasic,
   fetchPokemonDetail,
+  fetchItems,
   runCalc,
   type CalcResponse,
+  type CalcRequest,
 } from "@/lib/api";
 import {
   SearchableDropdown,
@@ -17,7 +19,11 @@ import { ErrorCard } from "@/components/ui/error-card";
 import { TypeBadge } from "@/features/pokemon/components/type-badge";
 import { friendlyError } from "@/lib/errors";
 import type { Move } from "@/types/move";
-import type { PokemonBasic } from "@/features/pokemon/types";
+import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
+import type { Item } from "@/types/item";
+import { NATURES } from "@/types/user-pokemon";
+import Image from "next/image";
+import { SpriteFallback } from "@/components/ui/sprite-fallback";
 
 type Weather = "none" | "sun" | "rain" | "snow" | "sand";
 
@@ -29,86 +35,130 @@ const WEATHERS: { value: Weather; label: string }[] = [
   { value: "snow", label: "Snow" },
 ];
 
+const STAT_KEYS = ["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"] as const;
+const STAT_LABELS: Record<string, string> = {
+  hp: "HP",
+  attack: "ATK",
+  defense: "DEF",
+  sp_attack: "SPA",
+  sp_defense: "SPD",
+  speed: "SPE",
+};
+
+interface SideState {
+  pokemonId: string;
+  pokemon: PokemonDetail | null;
+  statPoints: Record<string, number>;
+  nature: string;
+}
+
+const DEFAULT_STATS = {
+  hp: 0,
+  attack: 0,
+  defense: 0,
+  sp_attack: 0,
+  sp_defense: 0,
+  speed: 0,
+};
+
 export default function CalcPage() {
   const searchParams = useSearchParams();
   const initialAttacker = searchParams.get("attacker") || "";
   const initialDefender = searchParams.get("defender") || "";
 
-  const [pokemon, setPokemon] = useState<PokemonBasic[]>([]);
+  const [allPokemon, setAllPokemon] = useState<PokemonBasic[]>([]);
   const [allMoves, setAllMoves] = useState<Move[]>([]);
-  const [attackerMovepool, setAttackerMovepool] = useState<string[] | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
 
-  const [attackerId, setAttackerId] = useState<string>(initialAttacker);
-  const [defenderId, setDefenderId] = useState<string>(initialDefender);
+  const [attacker, setAttacker] = useState<SideState>({
+    pokemonId: initialAttacker,
+    pokemon: null,
+    statPoints: { ...DEFAULT_STATS },
+    nature: "Hardy",
+  });
+
+  const [defender, setDefender] = useState<SideState>({
+    pokemonId: initialDefender,
+    pokemon: null,
+    statPoints: { ...DEFAULT_STATS },
+    nature: "Hardy",
+  });
+
   const [moveId, setMoveId] = useState<string>("");
   const [weather, setWeather] = useState<Weather>("none");
   const [isDoubles, setIsDoubles] = useState(true);
+  const [allMovesToggle, setAllMovesToggle] = useState(false);
 
   const [result, setResult] = useState<CalcResponse | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Load Pokemon list (Champions only) once.
+  // Initial loads
   useEffect(() => {
-    fetchPokemonBasic({ champions_only: true, limit: 1000 })
-      .then((res) => setPokemon(res.data))
-      .catch((err) => setError(friendlyError(err).message));
+    fetchPokemonBasic({ champions_only: true, limit: 1000 }).then((res) =>
+      setAllPokemon(res.data)
+    );
+    fetchMoves({ champions_only: true, limit: 1500 }).then((res) =>
+      setAllMoves(res.data)
+    );
+    fetchItems({ champions_only: true, limit: 300 }).then((res) =>
+      setItems(res.data)
+    );
   }, []);
 
-  // Load full move list (Champions only).
+  // Fetch details when IDs change
   useEffect(() => {
-    fetchMoves({ champions_only: true, limit: 1000 })
-      .then((res) => setAllMoves(res.data))
-      .catch(() => setAllMoves([]));
-  }, []);
-
-  // When attacker changes, fetch their movepool to filter the move picker.
-  useEffect(() => {
-    if (!attackerId) {
-      setAttackerMovepool(null);
-      return;
+    if (attacker.pokemonId) {
+      fetchPokemonDetail(Number(attacker.pokemonId)).then((res) =>
+        setAttacker((prev) => ({ ...prev, pokemon: res }))
+      );
     }
-    fetchPokemonDetail(Number(attackerId))
-      .then((res) => setAttackerMovepool(res.movepool || []))
-      .catch(() => setAttackerMovepool(null));
-  }, [attackerId]);
+  }, [attacker.pokemonId]);
+
+  useEffect(() => {
+    if (defender.pokemonId) {
+      fetchPokemonDetail(Number(defender.pokemonId)).then((res) =>
+        setDefender((prev) => ({ ...prev, pokemon: res }))
+      );
+    }
+  }, [defender.pokemonId]);
 
   const pokemonOptions: DropdownOption[] = useMemo(
     () =>
-      pokemon.map((p) => ({
+      allPokemon.map((p) => ({
         value: String(p.id),
         label: p.name,
         sublabel: p.types.join(" / "),
       })),
-    [pokemon]
+    [allPokemon]
   );
 
   const moveOptions: DropdownOption[] = useMemo(() => {
-    const set = attackerMovepool ? new Set(attackerMovepool) : null;
+    const movepool = attacker.pokemon?.movepool ? new Set(attacker.pokemon.movepool) : null;
     return allMoves
-      .filter((m) => (set ? set.has(m.name) : true))
+      .filter((m) => (allMovesToggle || !movepool ? true : movepool.has(m.name)))
       .filter((m) => m.category !== "status" && (m.power ?? 0) > 0)
       .map((m) => ({
         value: String(m.id),
         label: m.name,
         sublabel: `${m.type} · ${m.category} · ${m.power}bp`,
       }));
-  }, [allMoves, attackerMovepool]);
-
-  const canRun = attackerId && defenderId && moveId;
+  }, [allMoves, attacker.pokemon, allMovesToggle]);
 
   const handleRun = async () => {
-    if (!canRun) return;
+    if (!attacker.pokemonId || !defender.pokemonId || !moveId) return;
     setRunning(true);
     setError(null);
-    setResult(null);
-    setCopied(false);
     try {
       const res = await runCalc({
-        attacker_id: Number(attackerId),
-        defender_id: Number(defenderId),
+        attacker_id: Number(attacker.pokemonId),
+        defender_id: Number(defender.pokemonId),
         move_id: Number(moveId),
+        attacker_stat_points: attacker.statPoints,
+        defender_stat_points: defender.statPoints,
+        attacker_nature: attacker.nature,
+        defender_nature: defender.nature,
         weather,
         is_doubles: isDoubles,
       });
@@ -120,222 +170,224 @@ export default function CalcPage() {
     }
   };
 
-  const handleCopy = async () => {
-    if (!result) return;
-    const line = `${result.attacker_name} ${result.move_name} vs. ${result.defender_name}: ${result.formatted}`;
-    try {
-      await navigator.clipboard.writeText(line);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
+  const updateStat = (side: "attacker" | "defender", key: string, val: number) => {
+    const setter = side === "attacker" ? setAttacker : setDefender;
+    setter((prev) => {
+      const nextPoints = { ...prev.statPoints, [key]: val };
+      const total = Object.values(nextPoints).reduce((a, b) => a + b, 0);
+      if (total > 66) return prev; // simple block
+      return { ...prev, statPoints: nextPoints };
+    });
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-      {/* Header */}
-      <div className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">
-        ◆ CALC · DAMAGE · L50
+    <div className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+      <div className="mb-6">
+        <div className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">
+          ◆ COMPETITIVE · TOOLS · L50
+        </div>
+        <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
+          Damage Calculator
+        </h1>
+        <p className="mt-1 max-w-2xl font-body text-sm text-on-surface-muted">
+          VGC-grade deterministic engine. Models STAB, type effectiveness, doubles spread, and weather. 
+          Use the 66-point stat sliders to match Champions builds.
+        </p>
       </div>
-      <h1 className="font-display text-3xl font-bold tracking-[-0.035em] text-on-surface">
-        Damage Calculator
-      </h1>
-      <p className="mt-1 font-body text-sm text-on-surface-muted">
-        Deterministic Gen 9+ formula. STAB, type effectiveness, doubles spread, weather.
-        Items, abilities, terrain, and Tera not modeled — sanity tool, not a full sim.
-      </p>
 
-      {/* Two-panel attacker / defender */}
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <div className="card p-5">
-          <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-primary">
-            ◆ ATTACKER
-          </div>
-          <SearchableDropdown
-            label="Pokemon"
-            placeholder="Search Pokemon..."
-            value={attackerId}
-            onChange={(v) => {
-              setAttackerId(v);
-              setMoveId(""); // reset move when attacker changes
-            }}
-            options={pokemonOptions}
-          />
-          <div className="mt-4">
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* LEFT: Attacker */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="card p-5 border-primary/20">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-primary">◆ ATTACKER</span>
+              {attacker.pokemon?.sprite_url && (
+                <Image src={attacker.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+              )}
+            </div>
+            
             <SearchableDropdown
-              label={
-                attackerMovepool
-                  ? "Move (movepool only)"
-                  : "Move (pick attacker first)"
-              }
-              placeholder={
-                attackerMovepool
-                  ? "Search moves..."
-                  : "Pick attacker to see moves"
-              }
+              label="Pokemon"
+              placeholder="Pick attacker..."
+              value={attacker.pokemonId}
+              onChange={(v) => setAttacker(p => ({ ...p, pokemonId: v }))}
+              options={pokemonOptions}
+            />
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">Nature</span>
+                <select 
+                  value={attacker.nature}
+                  onChange={(e) => setAttacker(p => ({ ...p, nature: e.target.value }))}
+                  className="bg-surface-high rounded px-2 py-1 font-body text-xs text-on-surface outline-none"
+                >
+                  {NATURES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                {STAT_KEYS.map(key => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="w-8 font-mono text-[0.6rem] text-on-surface-muted uppercase">{STAT_LABELS[key]}</span>
+                    <input 
+                      type="range" min="0" max="32" step="2"
+                      value={attacker.statPoints[key] || 0}
+                      onChange={(e) => updateStat("attacker", key, parseInt(e.target.value))}
+                      className="flex-1 accent-primary h-1.5 rounded-full bg-surface-high appearance-none cursor-pointer"
+                    />
+                    <span className="w-6 text-right font-mono text-xs font-bold text-primary">{attacker.statPoints[key] || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">◆ MOVE SELECTION</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={allMovesToggle} onChange={e => setAllMovesToggle(e.target.checked)} className="h-3 w-3" />
+                <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">All Moves</span>
+              </label>
+            </div>
+            <SearchableDropdown
+              placeholder="Search moves..."
               value={moveId}
               onChange={setMoveId}
               options={moveOptions}
-              disabled={!attackerId}
+              disabled={!attacker.pokemonId}
             />
           </div>
         </div>
 
-        <div className="card p-5">
-          <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">
-            ◆ DEFENDER
-          </div>
-          <SearchableDropdown
-            label="Pokemon"
-            placeholder="Search Pokemon..."
-            value={defenderId}
-            onChange={setDefenderId}
-            options={pokemonOptions}
-          />
-        </div>
-      </div>
-
-      {/* Field state */}
-      <div className="mt-6 card p-5">
-        <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">
-          ◆ FIELD
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-muted">
-              Weather
-            </span>
-            <div className="flex gap-1">
-              {WEATHERS.map((w) => (
-                <button
-                  key={w.value}
-                  onClick={() => setWeather(w.value)}
-                  className={`h-9 rounded-lg px-3 font-display text-xs uppercase tracking-wider transition-all ${
-                    weather === w.value
-                      ? "bg-primary text-surface"
-                      : "bg-surface-high text-on-surface-muted hover:text-on-surface"
-                  }`}
+        {/* MIDDLE: Results & Field */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="card p-6 bg-surface-lowest border-accent/20 flex flex-col items-center text-center">
+             <div className="mb-6 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">◆ CALCULATION</div>
+             
+             {!result ? (
+               <div className="py-12 flex flex-col items-center gap-4">
+                 <div className="h-16 w-16 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center">
+                   <span className="text-on-surface-muted text-xs">VS</span>
+                 </div>
+                 <p className="text-on-surface-muted font-body text-sm">Select Pokemon and a move<br/>to see damage rolls</p>
+                 <button
+                  onClick={handleRun}
+                  disabled={!attacker.pokemonId || !defender.pokemonId || !moveId || running}
+                  className="mt-4 btn-primary px-8 py-3 font-display text-sm uppercase tracking-widest disabled:opacity-30"
                 >
-                  {w.label}
+                  {running ? "Analyzing..." : "Execute Calc"}
                 </button>
-              ))}
+               </div>
+             ) : (
+               <div className="w-full">
+                 <div className="text-4xl font-display font-bold text-accent mb-2">
+                   {result.formatted}
+                 </div>
+                 <div className="text-xs font-mono text-on-surface-muted mb-6">
+                    {result.min} - {result.max} HP damage
+                 </div>
+
+                 <div className="h-3 w-full bg-surface-high rounded-full overflow-hidden mb-6">
+                    <div 
+                      className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                      style={{ width: `${Math.min(100, result.max_pct)}%` }}
+                    />
+                 </div>
+
+                 <div className="flex flex-col gap-2 mb-8">
+                    {result.is_guaranteed_ohko && (
+                      <div className="bg-primary/10 text-primary text-[0.6rem] font-mono uppercase tracking-widest py-1 rounded border border-primary/20">Guaranteed OHKO</div>
+                    )}
+                    {result.is_ohko_chance && !result.is_guaranteed_ohko && (
+                      <div className="bg-accent/10 text-accent text-[0.6rem] font-mono uppercase tracking-widest py-1 rounded border border-accent/20">OHKO Chance</div>
+                    )}
+                 </div>
+
+                 <button 
+                  onClick={handleRun}
+                  className="btn-ghost w-full py-2 font-display text-[0.65rem] uppercase tracking-widest border border-outline-variant"
+                 >
+                   Re-Run Scenario
+                 </button>
+               </div>
+             )}
+          </div>
+
+          <div className="card p-5">
+            <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">◆ FIELD CONDITIONS</span>
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-1">
+                {WEATHERS.map(w => (
+                  <button 
+                    key={w.value}
+                    onClick={() => setWeather(w.value)}
+                    className={`flex-1 py-1.5 rounded font-display text-[0.6rem] uppercase tracking-wider transition-colors ${weather === w.value ? 'bg-primary text-surface' : 'bg-surface-high text-on-surface-muted hover:bg-surface-mid'}`}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-3 p-3 bg-surface-low rounded-lg cursor-pointer hover:bg-surface-mid transition-colors">
+                <input type="checkbox" checked={isDoubles} onChange={e => setIsDoubles(e.target.checked)} className="h-4 w-4 rounded border-outline-variant" />
+                <div className="flex flex-col">
+                  <span className="font-display text-xs font-bold text-on-surface">Doubles Format</span>
+                  <span className="text-[0.6rem] text-on-surface-muted uppercase tracking-tight">Spread reduction (0.75x) active</span>
+                </div>
+              </label>
             </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isDoubles}
-              onChange={(e) => setIsDoubles(e.target.checked)}
-              className="h-4 w-4"
+        </div>
+
+        {/* RIGHT: Defender */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+           <div className="card p-5 border-accent/20">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">◆ DEFENDER</span>
+              {defender.pokemon?.sprite_url && (
+                <Image src={defender.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+              )}
+            </div>
+            
+            <SearchableDropdown
+              label="Pokemon"
+              placeholder="Pick defender..."
+              value={defender.pokemonId}
+              onChange={(v) => setDefender(p => ({ ...p, pokemonId: v }))}
+              options={pokemonOptions}
             />
-            <span className="font-display text-sm text-on-surface">
-              Doubles (spread move 0.75x)
-            </span>
-          </label>
-        </div>
-      </div>
 
-      {/* Run button */}
-      <div className="mt-6 flex items-center gap-3">
-        <button
-          onClick={handleRun}
-          disabled={!canRun || running}
-          className="btn-primary px-6 py-2.5 font-display text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {running ? "Calculating..." : "Run calc"}
-        </button>
-        {result && (
-          <button
-            onClick={handleCopy}
-            className="btn-ghost px-4 py-2 font-mono text-[0.7rem] uppercase tracking-[0.18em]"
-          >
-            {copied ? "Copied!" : "Copy result"}
-          </button>
-        )}
-      </div>
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">Nature</span>
+                <select 
+                  value={defender.nature}
+                  onChange={(e) => setDefender(p => ({ ...p, nature: e.target.value }))}
+                  className="bg-surface-high rounded px-2 py-1 font-body text-xs text-on-surface outline-none"
+                >
+                  {NATURES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
 
-      {error && (
-        <div className="mt-4">
-          <ErrorCard variant="inline" message={error} onRetry={handleRun} />
-        </div>
-      )}
-
-      {/* Result */}
-      {result && (
-        <div className="mt-6 card p-6">
-          <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">
-            ◆ RESULT
-          </div>
-          <div className="font-display text-lg font-semibold text-on-surface">
-            {result.attacker_name}{" "}
-            <span className="text-on-surface-muted font-normal">·</span>{" "}
-            <span className="text-primary">{result.move_name}</span>{" "}
-            <span className="text-on-surface-muted font-normal">vs.</span>{" "}
-            {result.defender_name}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <TypeBadge type={result.move_type} />
-            <span className="font-mono text-xs text-on-surface-muted">
-              {result.move_category} · {result.move_power}bp
-            </span>
-            {result.stab && (
-              <span className="rounded-full bg-accent/20 px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-accent">
-                STAB
-              </span>
-            )}
-            <span
-              className={`rounded-full px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] ${
-                result.type_effectiveness >= 2
-                  ? "bg-primary/20 text-primary"
-                  : result.type_effectiveness === 0
-                  ? "bg-surface-high text-on-surface-muted"
-                  : result.type_effectiveness < 1
-                  ? "bg-on-surface-muted/20 text-on-surface-muted"
-                  : "bg-accent/20 text-accent"
-              }`}
-            >
-              {result.type_effectiveness}x
-            </span>
-          </div>
-
-          {result.skipped_reason ? (
-            <div className="mt-4 font-body text-sm text-on-surface-muted">
-              {result.skipped_reason}
+              <div className="space-y-3">
+                {STAT_KEYS.map(key => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="w-8 font-mono text-[0.6rem] text-on-surface-muted uppercase">{STAT_LABELS[key]}</span>
+                    <input 
+                      type="range" min="0" max="32" step="2"
+                      value={defender.statPoints[key] || 0}
+                      onChange={(e) => updateStat("defender", key, parseInt(e.target.value))}
+                      className="flex-1 accent-accent h-1.5 rounded-full bg-surface-high appearance-none cursor-pointer"
+                    />
+                    <span className="w-6 text-right font-mono text-xs font-bold text-accent">{defender.statPoints[key] || 0}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="mt-5 font-display text-4xl font-bold text-accent">
-                {result.formatted}
-              </div>
-              <div className="mt-1 font-mono text-xs text-on-surface-muted">
-                {result.min}-{result.max} HP · defender {result.defender_hp} HP
-              </div>
-
-              {/* HP bar */}
-              <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-surface-high">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
-                  style={{
-                    width: `${Math.min(100, result.max_pct).toFixed(1)}%`,
-                  }}
-                />
-              </div>
-
-              {result.is_guaranteed_ohko && (
-                <div className="mt-4 inline-block rounded-full border border-primary/40 bg-primary/10 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-primary">
-                  Guaranteed OHKO
-                </div>
-              )}
-              {!result.is_guaranteed_ohko && result.is_ohko_chance && (
-                <div className="mt-4 inline-block rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-accent">
-                  Chance to OHKO
-                </div>
-              )}
-            </>
-          )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

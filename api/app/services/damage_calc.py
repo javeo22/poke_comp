@@ -85,24 +85,71 @@ class CalcMove:
     target: str = "selected-pokemon"
 
 
-def from_base_stats(name: str, types: list[str], base_stats: dict, level: int = 50) -> CalcPokemon:
-    """Convert base stats from the `pokemon` table to level-50, IV31, EV0,
-    neutral-nature actual stats. Standard "naked" assumption when the user
-    hasn't specified a build."""
-    def stat(base: int) -> int:
-        # Floor((2*base + 31 + 0) * level/100) + 5
-        return floor((2 * base + 31) * level / 100) + 5
+# Nature multipliers — Pokemon Champions uses standard mainline values (1.1x / 0.9x).
+_NATURE_EFFECTS: dict[str, dict[str, float]] = {
+    "Adamant": {"attack": 1.1, "sp_attack": 0.9},
+    "Bold": {"defense": 1.1, "attack": 0.9},
+    "Brave": {"attack": 1.1, "speed": 0.9},
+    "Calm": {"sp_defense": 1.1, "attack": 0.9},
+    "Careful": {"sp_defense": 1.1, "sp_attack": 0.9},
+    "Gentle": {"sp_defense": 1.1, "defense": 0.9},
+    "Hasty": {"speed": 1.1, "defense": 0.9},
+    "Impish": {"defense": 1.1, "sp_attack": 0.9},
+    "Jolly": {"speed": 1.1, "sp_attack": 0.9},
+    "Lax": {"defense": 1.1, "sp_defense": 0.9},
+    "Lonely": {"attack": 1.1, "defense": 0.9},
+    "Mild": {"sp_attack": 1.1, "defense": 0.9},
+    "Modest": {"sp_attack": 1.1, "attack": 0.9},
+    "Naive": {"speed": 1.1, "sp_defense": 0.9},
+    "Naughty": {"attack": 1.1, "sp_defense": 0.9},
+    "Quiet": {"sp_attack": 1.1, "speed": 0.9},
+    "Rash": {"sp_attack": 1.1, "sp_defense": 0.9},
+    "Relaxed": {"defense": 1.1, "speed": 0.9},
+    "Sassy": {"sp_defense": 1.1, "speed": 0.9},
+    "Timid": {"speed": 1.1, "attack": 0.9},
+}
+
+
+def from_base_stats(
+    name: str,
+    types: list[str],
+    base_stats: dict,
+    stat_points: dict | None = None,
+    nature: str | None = None,
+    level: int = 50,
+) -> CalcPokemon:
+    """Convert base stats from the `pokemon` table to Champions-mode actual
+    stats.
+
+    Formula: Floor((2*base + 31) * L/100) + 5 + stat_points.
+    If nature is provided, the final non-HP stat is multiplied by 1.1 or 0.9.
+    """
+    points = stat_points or {}
+    nature_map = _NATURE_EFFECTS.get(nature or "", {})
+
+    def stat(key: str) -> int:
+        base = base_stats.get(key, 0)
+        # Mainline naked base at L50
+        val = floor((2 * base + 31) * level / 100) + 5
+        # Champions investment is added directly to the naked stat
+        val += points.get(key, 0)
+        # Nature multiplier
+        mult = nature_map.get(key, 1.0)
+        return floor(val * mult)
 
     hp_base = base_stats.get("hp", 0)
+    hp_val = floor((2 * hp_base + 31) * level / 100) + level + 10
+    hp_val += points.get("hp", 0)
+
     return CalcPokemon(
         name=name,
         types=[t.lower() for t in types],
-        hp=floor((2 * hp_base + 31) * level / 100) + level + 10,
-        attack=stat(base_stats.get("attack", 0)),
-        sp_attack=stat(base_stats.get("sp_attack", 0)),
-        defense=stat(base_stats.get("defense", 0)),
-        sp_defense=stat(base_stats.get("sp_defense", 0)),
-        speed=stat(base_stats.get("speed", 0)),
+        hp=hp_val,
+        attack=stat("attack"),
+        sp_attack=stat("sp_attack"),
+        defense=stat("defense"),
+        sp_defense=stat("sp_defense"),
+        speed=stat("speed"),
     )
 
 
