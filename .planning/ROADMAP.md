@@ -99,6 +99,18 @@
 - [ ] 05-03-PLAN.md — Admin UI: build the HITL review dashboard.
 - [ ] 05-04-PLAN.md — Dynamic Meta: build trends API and unify UI design.
 
+### Phase 7: Homepage Resilience & "Regulation M-A" Dashboard
+**Goal:** Fix the "empty" look of the homepage by adopting a professional "Lab Dashboard" aesthetic, implementing accurate baseline fallbacks from the actual Champions Season M-1 data, and increasing information density with real-time Regulation M-A telemetry.
+**Depends on:** Phase 5 (uses the dynamic trends infrastructure).
+**Requirements covered:** REQ-ui-polish, REQ-data-resiliency.
+**Success criteria:**
+  1. Homepage looks "full" and professional even on zero-data local installs.
+  2. NO hallucinations (Metagross, old regs) remain in the UI.
+  3. Every board has "Reference" data fallbacks that look like live data.
+  4. UI density is increased by 30-40% through decorative telemetry and background textures.
+**Plans:**
+- [ ] 07-01-PLAN.md — Foundation: Define baseline data and background visuals.
+
 ### Phase 6+: Stretch backlog (F9–F10, F12–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
 **Depends on:** Phases 1–5 (and a successful MVP launch checkpoint).
@@ -121,6 +133,7 @@
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
 | 5. Data Truth + HITL Review | 4/4 | Completed | 2026-05-02 |
+| 7. Homepage Polish | 0/1 | Active (current) | - |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
 ---

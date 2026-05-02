@@ -33,7 +33,7 @@ progress:
 **Position prose:**
 Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input passing through an AI-powered classification and manual HITL review queue. The homepage and cheatsheets are fully unified under the high-polish "esports broadcast" aesthetic. Build and tests are passing.
 
-**Active phase:** Phase 6+ — Stretch backlog (F9–F15).
+**Active phase:** Phase 7 — Homepage Resilience & "Regulation M-A" Dashboard.
 
 ---
 
@@ -46,7 +46,8 @@ Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input
 | 3 | REQ-rag-augmentation (Dual RAG) | **Completed** |
 | 4 | Cron alerting + freshness telemetry | **Completed** |
 | 5 | Data Truth + HITL Review | **Completed** |
-| 6+ | Stretch backlog (F9–F15) | **Active** |
+| 7 | Homepage Polish | **Active** |
+| 6+ | Stretch backlog (F9–F15) | Backlog |
 
 ---
 
