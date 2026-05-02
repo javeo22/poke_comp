@@ -55,9 +55,15 @@ const TYPE_HEX: Record<string, string> = {
 
 export default function HomePage() {
   const [stats, setStats] = useState<PublicStats | null>(null);
+  const [trends, setTrends] = useState<MetaTrend[]>([]);
+  const [loadingTrends, setLoadingTrends] = useState(true);
 
   useEffect(() => {
     fetchPublicStats().then(setStats).catch(() => {});
+    fetchMetaTrends("doubles", 6)
+      .then(setTrends)
+      .catch((err) => console.error("Failed to fetch trends:", err))
+      .finally(() => setLoadingTrends(false));
   }, []);
 
   const lobbiesAnalyzed = stats?.matches_count ?? 12481;
@@ -599,6 +605,18 @@ function TypePill({ t, sm = false }: { t: string; sm?: boolean }) {
   );
 }
 
+function StatItem({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="text-center">
+      <div className="font-display text-3xl font-bold text-accent">
+        {value.toLocaleString()}
+      </div>
+      <div className="mt-1 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-muted">
+        {label}
+      </div>
+    </div>
+  );
+}
 function StatItem({ value, label }: { value: number; label: string }) {
   return (
     <div className="text-center">

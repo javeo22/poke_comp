@@ -1,30 +1,32 @@
+import Image from "next/image";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
+import { pokeArt, pokeSprite } from "@/lib/sprites";
 
 const TYPE_COLORS: Record<string, string> = {
-  fire: "bg-[#EE8130]/15 text-[#EE8130]",
-  water: "bg-[#6390F0]/15 text-[#6390F0]",
-  grass: "bg-[#7AC74C]/15 text-[#7AC74C]",
-  electric: "bg-[#F7D02C]/15 text-[#F7D02C]",
-  ice: "bg-[#96D9D6]/15 text-[#96D9D6]",
-  fighting: "bg-[#C22E28]/15 text-[#C22E28]",
-  poison: "bg-[#A33EA1]/15 text-[#A33EA1]",
-  ground: "bg-[#E2BF65]/15 text-[#E2BF65]",
-  flying: "bg-[#A98FF3]/15 text-[#A98FF3]",
-  psychic: "bg-[#F95587]/15 text-[#F95587]",
-  bug: "bg-[#A6B91A]/15 text-[#A6B91A]",
-  rock: "bg-[#B6A136]/15 text-[#B6A136]",
-  ghost: "bg-[#735797]/15 text-[#735797]",
-  dragon: "bg-[#6F35FC]/15 text-[#6F35FC]",
-  dark: "bg-[#705746]/15 text-[#705746]",
-  steel: "bg-[#B7B7CE]/15 text-[#B7B7CE]",
-  fairy: "bg-[#D685AD]/15 text-[#D685AD]",
-  normal: "bg-[#A8A77A]/15 text-[#A8A77A]",
+  fire: "#EE8130",
+  water: "#6390F0",
+  grass: "#7AC74C",
+  electric: "#F7D02C",
+  ice: "#96D9D6",
+  fighting: "#C22E28",
+  poison: "#A33EA1",
+  ground: "#E2BF65",
+  flying: "#A98FF3",
+  psychic: "#F95587",
+  bug: "#A6B91A",
+  rock: "#B6A136",
+  ghost: "#735797",
+  dragon: "#6F35FC",
+  dark: "#705746",
+  steel: "#B7B7CE",
+  fairy: "#D685AD",
+  normal: "#A8A77A",
 };
 
 const MOVE_CATEGORY_CLASSES: Record<string, string> = {
-  stab: "bg-primary-container/30 text-primary",
-  priority: "bg-tertiary-container/30 text-tertiary",
-  utility: "bg-[#FBBF24]/10 text-[#FBBF24]",
+  stab: "border-primary/40 text-primary",
+  priority: "border-tertiary/40 text-tertiary",
+  utility: "border-accent/40 text-accent",
 };
 
 function renderNoteWithBold(text: string) {
@@ -32,7 +34,7 @@ function renderNoteWithBold(text: string) {
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <span key={i} className="font-bold text-primary">
+        <span key={i} className="font-bold text-accent">
           {part.slice(2, -2)}
         </span>
       );
@@ -45,128 +47,95 @@ export function CheatsheetContent({ data }: { data: CheatsheetResponse }) {
   const maxSpeed = Math.max(...data.speed_tiers.map((t) => t.speed), 1);
 
   return (
-    <div className="flex flex-col gap-6 pt-2">
-      {/* Roster table */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[700px]">
-          <thead>
-            <tr className="text-left">
-              <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                Pokemon
-              </th>
-              <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                Item
-              </th>
-              <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                Ability
-              </th>
-              <th className="pb-3 pr-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                Nature / SP
-              </th>
-              <th className="pb-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-                Moves
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.roster.map((mon, i) => (
-              <tr key={i} className="group transition-colors hover:bg-surface-mid/40">
-                <td className="py-3 pr-4 align-top">
-                  <div className="flex items-center gap-2">
-                    <span className="font-body text-sm font-bold text-on-surface">
-                      {mon.name}
-                    </span>
-                    {mon.is_mega && (
-                      <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
-                        Mega
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {mon.types.map((type) => (
-                      <span
-                        key={type}
-                        className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
-                          TYPE_COLORS[type.toLowerCase()] ?? "bg-surface-mid text-on-surface-muted"
-                        }`}
-                      >
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  <span className="font-body text-xs text-[#FBBF24]">{mon.item ?? "--"}</span>
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  <span className="font-body text-xs text-secondary">{mon.ability ?? "--"}</span>
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  <span className="font-body text-xs text-on-surface-muted">
-                    {mon.nature ?? "--"}
+    <div className="flex flex-col gap-8 pt-4">
+      {/* Roster Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data.roster.map((mon, i) => (
+          <div
+            key={i}
+            className="card relative overflow-hidden p-4 border border-outline-variant"
+            style={{
+              background: "linear-gradient(180deg, rgba(20,12,28,0.7), rgba(15,9,22,0.9))",
+            }}
+          >
+            <Image
+              src={pokeArt(mon.id || 0)}
+              alt={mon.name}
+              width={100}
+              height={100}
+              unoptimized
+              className="absolute -right-2 -top-2 h-[100px] w-[100px] opacity-20 pointer-events-none"
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-base font-bold text-on-surface">
+                  {mon.name}
+                </span>
+                {mon.is_mega && (
+                  <span className="rounded-full border border-primary/40 px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-wider text-primary">
+                    Mega
                   </span>
-                  {mon.stat_points && (
-                    <p className="mt-0.5 font-body text-[0.6rem] text-on-surface-muted/60">
-                      {mon.stat_points}
-                    </p>
-                  )}
-                </td>
-                <td className="py-3 align-top">
-                  <div className="flex flex-wrap gap-1.5">
-                    {mon.moves.map((move, j) => (
-                      <span
-                        key={j}
-                        className={`rounded-full px-2.5 py-0.5 font-display text-[0.6rem] tracking-wide ${
-                          MOVE_CATEGORY_CLASSES[move.category] ??
-                          "bg-surface-mid text-on-surface-muted"
-                        }`}
-                      >
-                        {move.name}
-                      </span>
-                    ))}
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1 mb-3">
+                {mon.types.map((type) => (
+                  <span
+                    key={type}
+                    className="px-2 py-px rounded-full font-mono text-[0.55rem] font-bold uppercase tracking-wider text-surface"
+                    style={{ background: TYPE_COLORS[type.toLowerCase()] ?? "var(--color-on-surface-muted)" }}
+                  >
+                    {type}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                <div>
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Item</div>
+                  <div className="font-display text-xs font-semibold text-accent">{mon.item ?? "--"}</div>
+                </div>
+                <div>
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Ability</div>
+                  <div className="font-display text-xs font-semibold text-secondary">{mon.ability ?? "--"}</div>
+                </div>
+                <div>
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Nature / SP</div>
+                  <div className="font-display text-[0.65rem] text-on-surface-muted">
+                    {mon.nature ?? "--"} · {mon.stat_points ?? "0 SP"}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 flex items-center gap-5 pt-3">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              STAB
-            </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-outline-variant/30">
+                {mon.moves.map((move, j) => (
+                  <span
+                    key={j}
+                    className={`rounded-md border px-2 py-0.5 font-mono text-[0.6rem] tracking-tight ${
+                      MOVE_CATEGORY_CLASSES[move.category] ?? "border-outline-variant text-on-surface-muted"
+                    }`}
+                  >
+                    {move.name}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#FBBF24]" />
-            <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              Utility
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-tertiary" />
-            <span className="font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
-              Priority
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* 3-column grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Game Plan */}
-        <div className="rounded-[1rem] bg-surface-mid/30 p-5">
-          <h4 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Game Plan
-          </h4>
-          <div className="flex flex-col gap-5">
+        <div className="card p-5 border border-primary/20 bg-primary/5">
+          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-primary mb-4 uppercase">
+            ◆ Game Plan
+          </div>
+          <div className="flex flex-col gap-6">
             {data.game_plan.map((step) => (
-              <div key={step.step} className="flex gap-3">
-                <span className="font-display text-3xl leading-none text-primary/70">
-                  {step.step}
+              <div key={step.step} className="flex gap-4">
+                <span className="font-display text-4xl font-bold leading-none text-primary/40 italic">
+                  {step.step.toString().padStart(2, '0')}
                 </span>
                 <div className="min-w-0">
-                  <p className="font-body text-sm font-bold text-primary">{step.title}</p>
+                  <p className="font-display text-[0.9rem] font-bold text-on-surface">{step.title}</p>
                   <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
                     {step.description}
                   </p>
@@ -177,31 +146,31 @@ export function CheatsheetContent({ data }: { data: CheatsheetResponse }) {
         </div>
 
         {/* Speed Tiers */}
-        <div className="rounded-[1rem] bg-surface-mid/30 p-5">
-          <h4 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Speed Tiers
-          </h4>
-          <div className="flex flex-col gap-3">
+        <div className="card p-5 border border-accent/20 bg-accent/5">
+          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent mb-4 uppercase">
+            ◆ Speed Tiers
+          </div>
+          <div className="flex flex-col gap-3.5">
             {data.speed_tiers.map((tier, i) => (
-              <div key={i} className="flex flex-col gap-1">
+              <div key={i} className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between gap-2">
                   <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="font-body text-xs font-semibold text-on-surface truncate">
+                    <span className="font-display text-xs font-bold text-on-surface truncate">
                       {tier.pokemon}
                     </span>
                     {tier.note && (
-                      <span className="font-body text-[0.6rem] text-secondary shrink-0">
-                        {tier.note}
+                      <span className="font-mono text-[0.55rem] text-on-surface-dim uppercase truncate">
+                        · {tier.note}
                       </span>
                     )}
                   </div>
-                  <span className="font-display text-xs font-bold text-on-surface-muted shrink-0">
+                  <span className="font-mono text-xs font-bold text-accent shrink-0">
                     {tier.speed}
                   </span>
                 </div>
-                <div className="h-1 w-full rounded-full bg-surface-mid overflow-hidden">
+                <div className="h-1 w-full rounded-full bg-surface-lowest overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary to-primary/50 transition-all duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent/30 transition-all duration-500 shadow-[0_0_8px_var(--color-accent)]"
                     style={{ width: `${(tier.speed / maxSpeed) * 100}%` }}
                   />
                 </div>
@@ -211,21 +180,18 @@ export function CheatsheetContent({ data }: { data: CheatsheetResponse }) {
         </div>
 
         {/* Key Rules */}
-        <div className="rounded-[1rem] bg-surface-mid/30 p-5">
-          <h4 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Key Rules
-          </h4>
-          <div className="flex flex-col gap-4">
+        <div className="card p-5 border border-secondary/20 bg-secondary/5">
+          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-secondary mb-4 uppercase">
+            ◆ Key Rules
+          </div>
+          <div className="flex flex-col gap-5">
             {data.key_rules.map((rule, i) => (
               <div
                 key={i}
-                className="pl-4"
-                style={{
-                  borderLeft:
-                    "2px solid color-mix(in srgb, var(--color-primary) 40%, transparent)",
-                }}
+                className="relative pl-5 py-0.5"
               >
-                <p className="font-body text-sm font-bold text-primary">{rule.title}</p>
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-secondary to-transparent" />
+                <p className="font-display text-[0.85rem] font-bold text-on-surface">{rule.title}</p>
                 <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
                   {rule.description}
                 </p>
@@ -235,91 +201,62 @@ export function CheatsheetContent({ data }: { data: CheatsheetResponse }) {
         </div>
       </div>
 
-      {/* Lead Matchups + Weaknesses */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-[1rem] bg-surface-mid/30 p-5">
-          <h4 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Lead Matchups
-          </h4>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {data.lead_matchups.map((matchup, i) => (
-              <div key={i} className="rounded-[1rem] bg-surface-low/60 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="font-mono text-xs font-medium text-[#FBBF24]">
-                    {matchup.archetype}
-                  </span>
-                  <span className="rounded-full bg-tertiary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-tertiary">
-                    {matchup.threat_tier}
-                  </span>
-                </div>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
-                    Lead
-                  </span>
+      {/* Lead Matchups */}
+      <div className="card p-5 border border-outline-variant bg-[rgba(10,5,16,0.4)]">
+        <div className="font-mono text-[0.7rem] tracking-[0.22em] text-on-surface-dim mb-6 uppercase">
+          ◆ Lead Matchups
+        </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {data.lead_matchups.map((matchup, i) => (
+            <div key={i} className="rounded-xl border border-outline-variant p-4 bg-surface-low/40">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="font-mono text-[0.65rem] font-bold text-accent tracking-[0.15em] uppercase">
+                  {matchup.archetype}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[0.55rem] font-bold font-mono tracking-widest ${
+                  matchup.threat_tier === "HIGH" ? "bg-primary/20 text-primary border border-primary/30" : 
+                  matchup.threat_tier === "MEDIUM" ? "bg-accent/20 text-accent border border-accent/30" : 
+                  "bg-success/20 text-success border border-success/30"
+                }`}>
+                  {matchup.threat_tier} THREAT
+                </span>
+              </div>
+              <div className="grid grid-cols-[1fr_1fr] gap-4 mb-4">
+                <div>
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-[0.2em] mb-2">Lead</div>
                   <div className="flex flex-wrap gap-1.5">
                     {matchup.lead.map((name, j) => (
-                      <span
-                        key={j}
-                        className="rounded-full bg-primary-container/30 px-2.5 py-0.5 font-display text-[0.6rem] text-primary"
-                      >
+                      <span key={j} className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-display text-[0.7rem] font-bold">
                         {name}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="font-display text-[0.55rem] uppercase tracking-widest text-on-surface-muted w-10 shrink-0">
-                    Back
-                  </span>
+                <div>
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-[0.2em] mb-2">Back</div>
                   <div className="flex flex-wrap gap-1.5">
                     {matchup.back.map((name, j) => (
-                      <span
-                        key={j}
-                        className="rounded-full bg-surface-high px-2.5 py-0.5 font-display text-[0.6rem] text-on-surface-muted"
-                      >
+                      <span key={j} className="px-2 py-0.5 rounded bg-on-surface/5 text-on-surface-muted border border-outline-variant font-display text-[0.7rem] font-bold">
                         {name}
                       </span>
                     ))}
                   </div>
                 </div>
-                {matchup.note && (
-                  <p className="font-body text-[0.65rem] leading-relaxed text-on-surface-muted">
-                    {renderNoteWithBold(matchup.note)}
-                  </p>
-                )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[1rem] bg-surface-mid/30 p-5">
-          <h4 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Weaknesses
-          </h4>
-          <div className="flex flex-col gap-4">
-            {data.weaknesses.map((weakness, i) => (
-              <div
-                key={i}
-                className="pl-4"
-                style={{
-                  borderLeft:
-                    "2px solid color-mix(in srgb, var(--color-tertiary) 50%, transparent)",
-                }}
-              >
-                <p className="font-body text-sm font-bold text-[#FBBF24]">{weakness.title}</p>
-                <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
-                  {weakness.description}
-                </p>
-              </div>
-            ))}
-          </div>
+              {matchup.note && (
+                <div className="pt-3 border-t border-outline-variant/30 font-body text-[0.7rem] leading-relaxed text-on-surface-muted italic">
+                  {renderNoteWithBold(matchup.note)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* AI Disclaimer */}
       {data.ai_disclaimer && (
-        <div className="rounded-xl border border-outline-variant bg-surface-lowest px-5 py-3">
-          <p className="font-body text-xs leading-relaxed text-on-surface-muted">
+        <div className="rounded-xl border border-outline-variant bg-surface-lowest px-5 py-3 text-center">
+          <p className="font-mono text-[0.6rem] tracking-[0.1em] text-on-surface-dim">
             {data.ai_disclaimer}
           </p>
         </div>
