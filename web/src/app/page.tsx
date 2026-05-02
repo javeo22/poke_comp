@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { fetchPublicStats } from "@/lib/api";
+import { fetchPublicStats, fetchMetaTrends } from "@/lib/api";
 import type { PublicStats } from "@/lib/api";
+import type { MetaTrend } from "@/types/meta";
 import { pokeArt, pokeSprite } from "@/lib/sprites";
 
 const OPP_PREVIEW = [
@@ -605,18 +606,6 @@ function TypePill({ t, sm = false }: { t: string; sm?: boolean }) {
   );
 }
 
-function StatItem({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="text-center">
-      <div className="font-display text-3xl font-bold text-accent">
-        {value.toLocaleString()}
-      </div>
-      <div className="mt-1 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-muted">
-        {label}
-      </div>
-    </div>
-  );
-}
 function StatItem({ value, label }: { value: number; label: string }) {
   return (
     <div className="text-center">

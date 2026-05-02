@@ -9,6 +9,7 @@ class CheatsheetMove(BaseModel):
 
 
 class RosterEntry(BaseModel):
+    id: int | None = None
     name: str
     types: list[str]
     item: str | None = None

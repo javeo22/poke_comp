@@ -4,6 +4,7 @@ export interface CheatsheetMove {
 }
 
 export interface RosterEntry {
+  id?: number;
   name: string;
   types: string[];
   item: string | null;

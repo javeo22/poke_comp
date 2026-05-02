@@ -291,6 +291,7 @@ def _build_roster(
 
         roster.append(
             RosterEntry(
+                id=pid,
                 name=poke["name"],
                 types=types,
                 item=item_name,

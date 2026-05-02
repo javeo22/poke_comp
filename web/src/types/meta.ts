@@ -8,11 +8,14 @@ export interface MetaSnapshot {
 }
 
 export interface MetaTrend {
+  id: number;
   pokemon_name: string;
   usage_percent: number;
   previous_usage: number;
   swing: number;
-  up: bool;
+  up: boolean;
+  win_rate: number;
+  role: string;
 }
 
 export interface MetaSnapshotListResponse {
