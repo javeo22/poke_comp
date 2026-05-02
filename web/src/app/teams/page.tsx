@@ -65,9 +65,9 @@ export default function TeamsPage() {
     setError(null);
     try {
       const [teamsResult, rosterResult, pokemonResult] = await Promise.all([
-        fetchTeams({ format: format || undefined, limit: 200 }),
-        fetchUserPokemon({ limit: 200 }),
-        fetchPokemon({ limit: 200, champions_only: true }),
+        fetchTeams({ format: format || undefined, limit: 500 }),
+        fetchUserPokemon({ limit: 500 }),
+        fetchPokemon({ limit: 1000, champions_only: true }),
       ]);
 
       setTeams(teamsResult.data);

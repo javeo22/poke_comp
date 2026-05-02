@@ -5,11 +5,11 @@ milestone_name: MVP
 status: active
 last_updated: "2026-04-30"
 progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 9
-  percent: 90
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 10
+  completed_plans: 10
+  percent: 100
 ---
 
 # State
@@ -31,9 +31,9 @@ progress:
 **Milestone:** MVP Complete (Target June 5, achieved May 2).
 
 **Position prose:**
-Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input passing through an AI-powered classification and manual HITL review queue. The homepage and cheatsheets are fully unified under the high-polish "esports broadcast" aesthetic. Build and tests are passing.
+Phase 7 is complete. The homepage has been transformed into a professional "Regulation M-A Dashboard" with a high-polish esports aesthetic. Data resiliency is ensured via baseline fallbacks for meta trends. The app is now fully data-driven, visually dense, and resilient.
 
-**Active phase:** Phase 7 — Homepage Resilience & "Regulation M-A" Dashboard.
+**Active phase:** None (Phase 7 Complete).
 
 ---
 
@@ -46,7 +46,7 @@ Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input
 | 3 | REQ-rag-augmentation (Dual RAG) | **Completed** |
 | 4 | Cron alerting + freshness telemetry | **Completed** |
 | 5 | Data Truth + HITL Review | **Completed** |
-| 7 | Homepage Polish | **Active** |
+| 7 | Homepage Polish | **Completed** |
 | 6+ | Stretch backlog (F9–F15) | Backlog |
 
 ---
@@ -56,17 +56,17 @@ Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input
 ### Decisions (locked)
 - D010 — Vercel Python Functions + Vercel Cron is production runtime.
 - D011 — Outbound operational alerting via Slack/Discord webhooks.
+- D012 — Lab Dashboard aesthetic (dot-grid, scan-lines, background mascots) is the standard for high-density UI.
 
-### Open Todos (Phase 5 entry)
-- Implement AI Classifier for Limitless tournament format filtering.
-- Create `/admin/review` queue for "Suspect" scraper data.
-- Refactor Homepage `META_PREVIEW` to use dynamic API data.
-- Adopt Homepage esports design for Cheatsheet components.
+### Open Todos (Phase 7 exit)
+- Add "S-TIER" / "A-TIER" badges to trending Pokemon cards.
+- Implement OCR for team importing (F12).
+- Build the "Counter-Team Builder" (F10).
 
 ---
 
 ## Session Continuity
 
-**Where to resume next session:** Start Phase 5. Begin by researching the AI classification prompt for filtering Limitless VGC tournaments into "Champions" vs "Other".
+**Where to resume next session:** Phase 7 is complete. The MVP is ready for launch. Future work should focus on the Stretch Backlog (F9–F15), starting with F9 (VP-cost calculator) or F10 (counter-team builder).
 
-**Last session intent:** Finalize Phase 4 and transition to Phase 5. Alerting verified and docs updated.
+**Last session intent:** Finalize Phase 7 Homepage Polish. Aesthetic foundation and data fallbacks implemented.

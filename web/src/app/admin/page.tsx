@@ -17,19 +17,24 @@ import {
   createStrategyNote,
   updateStrategyNote,
   deleteStrategyNote,
+  fetchPendingReviews,
+  approveReview,
+  rejectReview,
 } from "@/lib/api";
-import type { StrategyNote } from "@/lib/api";
+import type { StrategyNote, ReviewQueueItem } from "@/lib/api";
 import type {
   AdminStats,
   AdminAiCosts,
   DataHealthReport,
   DataFreshness,
 } from "@/lib/api";
+import { ChevronDown, ChevronUp, Check, X, Zap } from "lucide-react";
 
 // ── Tabs ──
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "review", label: "Review" },
   { id: "pokemon", label: "Pokemon" },
   { id: "moves", label: "Moves" },
   { id: "items", label: "Items" },
@@ -81,12 +86,12 @@ export default function AdminPage() {
       )}
 
       {/* Tab bar */}
-      <div className="mb-6 flex gap-1 rounded-[1rem] bg-surface-low p-1">
+      <div className="mb-6 flex gap-1 rounded-[1rem] bg-surface-low p-1 overflow-x-auto no-scrollbar">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 rounded-xl px-4 py-2.5 font-display text-xs uppercase tracking-wider transition-colors ${
+            className={`flex-1 min-w-[100px] rounded-xl px-4 py-2.5 font-display text-xs uppercase tracking-wider transition-colors ${
               activeTab === tab.id
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-muted hover:bg-surface-mid"
@@ -100,6 +105,7 @@ export default function AdminPage() {
       {activeTab === "dashboard" && (
         <DashboardTab onAccessDenied={() => setAccessDenied(true)} onError={setError} />
       )}
+      {activeTab === "review" && <ReviewTab onError={setError} />}
       {activeTab === "pokemon" && <PokemonTab onError={setError} />}
       {activeTab === "moves" && <MovesTab onError={setError} />}
       {activeTab === "items" && <ItemsTab onError={setError} />}
@@ -192,7 +198,7 @@ function DashboardTab({
               }
             />
           </div>
-          {Object.keys(costs.by_endpoint).length > 0 && (
+          {costs.by_endpoint && Object.keys(costs.by_endpoint).length > 0 && (
             <div className="flex flex-wrap gap-3">
               {Object.entries(costs.by_endpoint).map(([ep, cost]) => (
                 <div key={ep} className="rounded-lg bg-surface-mid px-3 py-2">
@@ -235,9 +241,9 @@ function DashboardTab({
                   }`}
                 />
                 <span className="font-body text-xs text-on-surface">{check.name}</span>
-                {check.issues.length > 0 && (
+                {check.details && check.details.length > 0 && (
                   <span className="font-body text-[0.6rem] text-tertiary">
-                    {check.issues.length} issue{check.issues.length !== 1 ? "s" : ""}
+                    {check.details.length} issue{check.details.length !== 1 ? "s" : ""}
                   </span>
                 )}
               </div>
@@ -497,6 +503,214 @@ function CellRenderer({ value }: { value: unknown }) {
     );
   }
   return <span className="font-body text-xs text-on-surface">{String(value)}</span>;
+}
+
+// ── Review Tab ──
+
+function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
+  const [items, setItems] = useState<ReviewQueueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchPendingReviews();
+      setItems(data);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to load pending reviews");
+    } finally {
+      setLoading(false);
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  const handleApprove = async (id: string) => {
+    if (processingId) return;
+    setProcessingId(id);
+    try {
+      await approveReview(id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to approve item");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (processingId) return;
+    setProcessingId(id);
+    try {
+      await rejectReview(id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to reject item");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    const highConfidenceItems = items.filter(
+      (item) => (item.metadata?.confidence ?? 0) > 0.9
+    );
+    if (highConfidenceItems.length === 0) return;
+
+    if (!confirm(`Approve ${highConfidenceItems.length} items with >90% confidence?`)) return;
+
+    setLoading(true);
+    try {
+      for (const item of highConfidenceItems) {
+        await approveReview(item.id);
+      }
+      setItems((prev) =>
+        prev.filter((item) => !highConfidenceItems.some((h) => h.id === item.id))
+      );
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to bulk approve items");
+      loadItems();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const highConfidenceCount = items.filter(
+    (item) => (item.metadata?.confidence ?? 0) > 0.9
+  ).length;
+
+  if (loading && items.length === 0) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-24 animate-pulse rounded-[1rem] bg-surface-low" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+          Pending Reviews ({items.length})
+        </h3>
+        {highConfidenceCount > 0 && (
+          <button
+            onClick={handleBulkApprove}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-display text-[0.65rem] font-bold uppercase tracking-wider text-on-primary transition-all hover:brightness-110 disabled:opacity-50"
+          >
+            <Zap size={12} className="fill-current" />
+            Bulk Approve ({highConfidenceCount})
+          </button>
+        )}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-[1rem] bg-surface-low p-12 text-center border border-outline-variant">
+          <Check className="mx-auto h-12 w-12 text-secondary mb-4" />
+          <h3 className="font-display text-lg font-bold text-on-surface">Queue Clear</h3>
+          <p className="mt-1 font-body text-sm text-on-surface-muted">
+            All data has been reviewed.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={`rounded-[1rem] border bg-surface-low transition-colors ${
+                expandedId === item.id ? "border-primary/40" : "border-outline-variant"
+              }`}
+            >
+              <div className="flex items-center justify-between p-4">
+                <div className="flex flex-1 items-center gap-6">
+                  <div className="flex flex-col">
+                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Source</span>
+                    <span className="font-display text-sm font-bold text-on-surface">
+                      {item.source}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-col">
+                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Category</span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
+                        {item.metadata?.category || "Unknown"}
+                      </span>
+                      {item.metadata?.confidence !== undefined && (
+                        <span className={`font-display text-[0.65rem] font-bold ${
+                          item.metadata.confidence > 0.9 ? "text-secondary" : "text-on-surface-muted"
+                        }`}>
+                          {Math.round(item.metadata.confidence * 100)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:flex flex-col flex-1">
+                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Reason</span>
+                    <span className="font-body text-xs text-on-surface-muted truncate max-w-xs">
+                      {item.metadata?.reason || "--"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleApprove(item.id)}
+                    disabled={!!processingId}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary transition-colors hover:bg-secondary hover:text-on-secondary disabled:opacity-30"
+                    title="Approve"
+                  >
+                    <Check size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleReject(item.id)}
+                    disabled={!!processingId}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-tertiary/10 text-tertiary transition-colors hover:bg-tertiary hover:text-on-tertiary disabled:opacity-30"
+                    title="Reject"
+                  >
+                    <X size={18} />
+                  </button>
+                  <button
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-mid text-on-surface-muted transition-colors hover:text-on-surface"
+                  >
+                    {expandedId === item.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {expandedId === item.id && (
+                <div className="border-t border-outline-variant p-4 bg-surface-mid/20">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-display text-[0.6rem] uppercase tracking-wider text-primary mb-2">Payload Data</h4>
+                      <pre className="overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted max-h-96">
+                        {JSON.stringify(item.payload, null, 2)}
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-display text-[0.6rem] uppercase tracking-wider text-secondary mb-2">Full Metadata</h4>
+                      <pre className="overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted max-h-96">
+                        {JSON.stringify(item.metadata, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Pokemon Tab ──

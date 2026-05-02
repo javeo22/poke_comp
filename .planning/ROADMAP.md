@@ -13,7 +13,8 @@
 - [x] **Phase 2: Tech-debt cleanup** — Resolve `CONCERNS.md` items that are operationally risky (stale Game8 strings, deprecated `refresh_meta.py`, stale design docs, hardcoded password, pyright noise).
 - [x] **Phase 3: REQ-rag-augmentation (Dual RAG)** — Implement `matchup_log` retrieval + `tournament_teams` retrieval + Super-Prompt augmentation per `rag-architecture.md`.
 - [x] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
-- [ ] **Phase 5: Data Truth & HITL Review** — Ensure 100% data accuracy by staging suspect scraper results and replacing hardcoded Meta trends.
+- [x] **Phase 5: Data Truth & HITL Review** — Ensure 100% data accuracy by staging suspect scraper results and replacing hardcoded Meta trends.
+- [x] **Phase 7: Homepage Resilience & "Regulation M-A" Dashboard** — Fix the "empty" look of the homepage by adopting a professional "Lab Dashboard" aesthetic, implementing accurate baseline fallbacks from the actual Champions Season M-1 data, and increasing information density with real-time Regulation M-A telemetry.
 - [ ] **Phase 6+: Stretch backlog (F9–F10, F12–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
 
 ---
@@ -77,7 +78,7 @@
   1. When `_record_cron_run` writes a `fail` row to `cron_runs`, an out-of-band notification reaches the operator (Vercel webhook → Slack, email, or push) within 5 minutes of the failure.
   2. `/admin/data-health` surfaces the most recent `cron_runs` status per schedule (`cron_daily`, `cron_weekly`) plus age of the oldest active source's last successful refresh.
   3. The privacy ledger / Privacy Policy section 3 is updated if a new third-party recipient (Slack workspace, etc.) is introduced.
-  4. The alert is verified end-to-end by a deliberate failure injection (e.g., temporarily expired `CRON_SECRET` or a forced `raise` in a stub run).
+  4. The alert is verified end-to-end by a deliberate failure injection (e.g., temporarily expired `CRON_SECRET` or a forced `raise` in a_stub run).
 **Plans:**
 - [x] 04-01-PLAN.md — Implement alerting service and admin health dashboard.
 - [x] 04-02-PLAN.md — Integration, compliance, and end-to-end verification.
@@ -94,22 +95,22 @@
   4. Homepage meta trends fetch from `/api/meta/trends` and display real-time usage swings.
   5. Cheatsheet design matches the homepage esports broadcast aesthetic.
 **Plans:**
-- [ ] 05-01-PLAN.md — Foundation: DB staging, AI classifier, and review logic.
-- [ ] 05-02-PLAN.md — Scraper refactor: adopt staging-first ingestion.
-- [ ] 05-03-PLAN.md — Admin UI: build the HITL review dashboard.
-- [ ] 05-04-PLAN.md — Dynamic Meta: build trends API and unify UI design.
+- [x] 05-01-PLAN.md — Foundation: DB staging, AI classifier, and review logic.
+- [x] 05-02-PLAN.md — Scraper refactor: adopt staging-first ingestion.
+- [x] 05-03-PLAN.md — Admin UI: build the HITL review dashboard.
+- [x] 05-04-PLAN.md — Dynamic Meta: build trends API and unify UI design.
 
 ### Phase 7: Homepage Resilience & "Regulation M-A" Dashboard
 **Goal:** Fix the "empty" look of the homepage by adopting a professional "Lab Dashboard" aesthetic, implementing accurate baseline fallbacks from the actual Champions Season M-1 data, and increasing information density with real-time Regulation M-A telemetry.
 **Depends on:** Phase 5 (uses the dynamic trends infrastructure).
 **Requirements covered:** REQ-ui-polish, REQ-data-resiliency.
-**Success criteria:**
+**Success criteria** (what must be TRUE when this phase closes):
   1. Homepage looks "full" and professional even on zero-data local installs.
   2. NO hallucinations (Metagross, old regs) remain in the UI.
   3. Every board has "Reference" data fallbacks that look like live data.
   4. UI density is increased by 30-40% through decorative telemetry and background textures.
 **Plans:**
-- [ ] 07-01-PLAN.md — Foundation: Define baseline data and background visuals.
+- [x] 07-01-PLAN.md — Foundation: Define baseline data and background visuals.
 
 ### Phase 6+: Stretch backlog (F9–F10, F12–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
@@ -133,7 +134,7 @@
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
 | 5. Data Truth + HITL Review | 4/4 | Completed | 2026-05-02 |
-| 7. Homepage Polish | 0/1 | Active (current) | - |
+| 7. Homepage Polish | 1/1 | Completed | 2026-05-02 |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
 ---
