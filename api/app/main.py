@@ -9,6 +9,7 @@ from app.routers import (
     abilities,
     admin,
     admin_cron,
+    admin_review,
     ai_usage,
     calc,
     cheatsheet,
@@ -76,6 +77,7 @@ app.include_router(ai_usage.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
 app.include_router(admin_cron.router)
+app.include_router(admin_review.router)
 app.include_router(public.router)
 app.include_router(strategy.router)
 app.include_router(calc.router)

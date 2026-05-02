@@ -1,6 +1,9 @@
 import sys
+
 import httpx
+
 from ..config import settings
+
 
 def send_alert(message: str) -> None:
     """

@@ -1,8 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from postgrest.types import CountMethod
 
 from app.database import supabase
-from app.models.meta import MetaSnapshotCreate, MetaSnapshotList, MetaSnapshotResponse
+from app.limiter import limiter
+from app.models.meta import (
+    MetaSnapshotCreate,
+    MetaSnapshotList,
+    MetaSnapshotResponse,
+    MetaTrendResponse,
+)
 
 router = APIRouter(prefix="/meta", tags=["meta"])
 
@@ -67,3 +73,16 @@ def delete_snapshot(snapshot_id: int):
     result = supabase.table("meta_snapshots").delete().eq("id", snapshot_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Meta snapshot not found")
+
+
+@router.get("/trends", response_model=list[MetaTrendResponse])
+@limiter.limit("30/minute")
+def get_trends(
+    request: Request,
+    format: str = Query("doubles", pattern=r"^(singles|doubles)$"),
+    limit: int = Query(6, ge=1, le=20),
+):
+    """Fetch top Pokemon trends with usage swings."""
+    result = supabase.rpc("get_meta_trends", {"p_format": format, "p_limit": limit}).execute()
+
+    return [MetaTrendResponse.model_validate(row) for row in result.data or []]

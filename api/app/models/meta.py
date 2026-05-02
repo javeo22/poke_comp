@@ -32,3 +32,11 @@ class TierEntry(BaseModel):
     tier: str
     format: str
     snapshot_date: date
+
+
+class MetaTrendResponse(BaseModel):
+    pokemon_name: str
+    usage_percent: float
+    previous_usage: float
+    swing: float
+    up: bool

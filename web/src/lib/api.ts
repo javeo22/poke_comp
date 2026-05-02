@@ -9,7 +9,7 @@ import type {
   MatchupStats,
   MatchupUpdate,
 } from "@/types/matchup";
-import type { MetaSnapshot } from "@/types/meta";
+import type { MetaSnapshot, MetaTrend } from "@/types/meta";
 import type { MoveListResponse } from "@/types/move";
 import type {
   PokemonBasicListResponse,
@@ -401,6 +401,15 @@ export interface MetaFilters {
 export async function fetchMetaSnapshots(filters: MetaFilters = {}) {
   return apiFetch<{ data: MetaSnapshot[]; count: number }>("/meta", {
     params: filters as Record<string, string | number | boolean | undefined>,
+  });
+}
+
+export async function fetchMetaTrends(
+  format: string = "doubles",
+  limit: number = 6
+): Promise<MetaTrend[]> {
+  return apiFetch<MetaTrend[]>("/meta/trends", {
+    params: { format, limit },
   });
 }
 
@@ -889,6 +898,42 @@ export async function updateAdminMetaSnapshot(id: string, updates: any) {
   return apiFetch(`/admin/meta-snapshots/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
+  });
+}
+
+// ── Admin Review (HITL) ──
+
+export interface ReviewQueueItem {
+  id: string;
+  source: string;
+  external_id: string | null;
+  payload: any;
+  metadata: {
+    category?: string;
+    reason?: string;
+    confidence?: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+  } | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+export async function fetchPendingReviews(): Promise<ReviewQueueItem[]> {
+  return apiFetch<ReviewQueueItem[]>("/admin/review/pending");
+}
+
+export async function approveReview(id: string): Promise<ReviewQueueItem> {
+  return apiFetch<ReviewQueueItem>(`/admin/review/${id}/approve`, {
+    method: "POST",
+  });
+}
+
+export async function rejectReview(id: string): Promise<ReviewQueueItem> {
+  return apiFetch<ReviewQueueItem>(`/admin/review/${id}/reject`, {
+    method: "POST",
   });
 }
 

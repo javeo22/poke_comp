@@ -7,6 +7,14 @@ export interface MetaSnapshot {
   source: string | null;
 }
 
+export interface MetaTrend {
+  pokemon_name: string;
+  usage_percent: number;
+  previous_usage: number;
+  swing: number;
+  up: bool;
+}
+
 export interface MetaSnapshotListResponse {
   data: MetaSnapshot[];
   count: number;
