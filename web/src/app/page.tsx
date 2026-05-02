@@ -25,11 +25,13 @@ import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { TypeBadge } from "@/features/pokemon/components/type-badge";
 import { ChevronRight, Play, Trophy, Users, Zap, Shield } from "lucide-react";
+import { LabDashboard } from "@/components/ui/lab-dashboard";
+import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
 
 export default function HomePage() {
   const router = useRouter();
   const [stats, setStats] = useState<PublicStats | null>(null);
-  const [trends, setTrends] = useState<MetaTrend[]>([]);
+  const [trends, setTrends] = useState<MetaTrend[]>(BASELINE_TRENDS);
   const [loadingTrends, setLoadingTrends] = useState(true);
   const [userPokemon, setUserPokemon] = useState<UserPokemon[]>([]);
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
@@ -43,7 +45,11 @@ export default function HomePage() {
     // 1. Static stats & Meta
     fetchPublicStats().then(setStats).catch(() => {});
     fetchMetaTrends("doubles", 6)
-      .then(setTrends)
+      .then(res => {
+        if (res && res.length > 0) {
+          setTrends(res);
+        }
+      })
       .catch((err) => console.error("Failed to fetch trends:", err))
       .finally(() => setLoadingTrends(false));
 
@@ -87,15 +93,21 @@ export default function HomePage() {
   const lobbiesAnalyzed = stats?.matches_count ?? 12481;
 
   return (
-    <div className="relative z-10 w-full">
-      {/* HERO SECTION */}
-      <section className="mx-auto max-w-[82rem] px-6 pt-16 pb-12 sm:px-9">
+    <LabDashboard>
+      <div className="relative z-10 w-full">
+        {/* HERO SECTION */}
+        <section className="mx-auto max-w-[82rem] px-6 pt-16 pb-12 sm:px-9">
         <div className="flex flex-col lg:flex-row lg:items-center gap-12">
           <div className="flex-1">
-            <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 mb-6 bg-surface-low/50">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--color-accent)] animate-pulse" />
-              <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-muted">
-                Season 1 Active · {lobbiesAnalyzed.toLocaleString()} Matches Tracked
+            <div className="inline-flex flex-col gap-1 mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 bg-surface-low/50 w-fit">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)] animate-pulse" />
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-muted">
+                  REGULATION M-A DASHBOARD
+                </span>
+              </div>
+              <span className="px-3 font-mono text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-dim">
+                LIVE TELEMETRY FROM SEASON M-1 CHAMPIONS
               </span>
             </div>
 
@@ -332,7 +344,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-    </div>
+    </LabDashboard>
   );
 }
 
