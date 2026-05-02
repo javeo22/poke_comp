@@ -503,6 +503,25 @@ export async function generateCheatsheet(
   });
 }
 
+export async function generateSelectionCheatsheet(params: {
+  roster_ids: string[];
+  team_name?: string;
+  format?: string;
+  model?: string;
+}): Promise<CheatsheetResponse> {
+  const { model, ...body } = params;
+  const searchParams = new URLSearchParams();
+  if (model) searchParams.append("model", model);
+
+  return apiFetch<CheatsheetResponse>(
+    `/cheatsheet/selection${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 export async function fetchSavedCheatsheet(teamId: string): Promise<CheatsheetResponse> {
   return apiFetch<CheatsheetResponse>(`/cheatsheet/${teamId}`);
 }

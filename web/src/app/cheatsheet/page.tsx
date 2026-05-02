@@ -11,12 +11,13 @@ import {
   fetchPokemon,
   fetchUserPokemon,
   generateCheatsheet,
+  generateSelectionCheatsheet,
   fetchAllCheatsheets,
   fetchAiUsage,
   toggleCheatsheetVisibility,
   deleteCheatsheet,
 } from "@/lib/api";
-import type { AiUsageMonth, AiUsageToday, SavedCheatsheet } from "@/lib/api";
+import type { AiUsageMonth, AiUsageToday, SavedCheatsheet, CheatsheetResponse } from "@/lib/api";
 import { QuotaIndicator } from "@/components/quota-indicator";
 import { exportCheatsheetPDF } from "@/lib/pdf-export";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
@@ -52,6 +53,7 @@ export default function CheatsheetPage() {
   
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [tempSheet, setTempSheet] = useState<CheatsheetResponse | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,12 @@ export default function CheatsheetPage() {
     loadData();
   }, [loadData]);
 
+  // Teams that don't have a cheatsheet yet
+  const teamsWithoutCheatsheet = useMemo(() => {
+    const hasSheet = new Set(savedCheatsheets.map((s) => s.team_id));
+    return teams.filter((t) => !hasSheet.has(t.id));
+  }, [teams, savedCheatsheets]);
+
   // Also allow regenerating for teams that already have one
   const allTeamOptions: DropdownOption[] = useMemo(
     () =>
@@ -106,11 +114,23 @@ export default function CheatsheetPage() {
     [teams]
   );
 
+  const refreshUsage = () => {
+    fetchAiUsage()
+      .then((usage) => {
+        setQuota(usage.today);
+        setQuotaMonth(usage.month);
+        setIsSupporter(usage.supporter);
+        setIsUnlimited(usage.unlimited);
+      })
+      .catch(() => {});
+  };
+
   const handleGenerate = async () => {
     if (selectionMode === "team") {
       if (!selectedTeamId || isGenerating) return;
       setIsGenerating(true);
       setError(null);
+      setTempSheet(null);
       try {
         await generateCheatsheet(selectedTeamId);
         // Reload all cheatsheets to get the new one
@@ -129,23 +149,27 @@ export default function CheatsheetPage() {
         setError("Please select at least one Pokemon from your roster.");
         return;
       }
-      setError("Generating cheatsheets from custom selections is coming in the next sub-phase. Please use a saved team for now.");
+      setIsGenerating(true);
+      setError(null);
+      setTempSheet(null);
+      try {
+        const res = await generateSelectionCheatsheet({
+          roster_ids: quickSelection,
+          team_name: "Quick Selection",
+          format: "doubles",
+        });
+        setTempSheet(res);
+        refreshUsage();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to generate quick cheatsheet");
+      } finally {
+        setIsGenerating(false);
+      }
     }
   };
 
   const toggleExpand = (teamId: string) => {
     setExpandedId((prev) => (prev === teamId ? null : teamId));
-  };
-
-  const refreshUsage = () => {
-    fetchAiUsage()
-      .then((usage) => {
-        setQuota(usage.today);
-        setQuotaMonth(usage.month);
-        setIsSupporter(usage.supporter);
-        setIsUnlimited(usage.unlimited);
-      })
-      .catch(() => {});
   };
 
   const handleRegenerate = async (teamId: string) => {
@@ -333,7 +357,7 @@ export default function CheatsheetPage() {
       </div>
 
       {/* Saved cheatsheets */}
-      {savedCheatsheets.length === 0 && !isGenerating ? (
+      {(savedCheatsheets.length === 0 && !isGenerating && !tempSheet) ? (
         <div className="rounded-[1rem] bg-surface-low p-12 text-center">
           <p className="font-display text-sm text-on-surface-muted">
             No cheatsheets yet. Select a team above to generate one.
@@ -344,6 +368,32 @@ export default function CheatsheetPage() {
           {isGenerating && (
             <div className="h-20 animate-pulse rounded-[1rem] bg-surface-low" />
           )}
+
+          {/* Ephemeral selection sheet */}
+          {tempSheet && (
+             <div className="rounded-[1rem] bg-surface-lowest overflow-hidden border-2 border-primary/40 shadow-xl">
+                <div className="flex w-full items-center justify-between p-5 bg-primary/5">
+                   <div className="flex items-center gap-4">
+                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-surface">
+                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      </div>
+                      <div>
+                         <h3 className="font-display text-lg font-bold uppercase tracking-tight text-on-surface">
+                           {tempSheet.team_title} (Session)
+                         </h3>
+                         <p className="font-display text-xs text-on-surface-muted">
+                           Generated from selection &middot; {tempSheet.archetype}
+                         </p>
+                      </div>
+                   </div>
+                   <button onClick={() => setTempSheet(null)} className="btn-ghost h-9 px-4 font-display text-xs uppercase tracking-wider">Close</button>
+                </div>
+                <div className="p-5">
+                   <CheatsheetContent data={tempSheet} />
+                </div>
+             </div>
+          )}
+
           {savedCheatsheets.map((saved) => {
             const data = saved.cheatsheet_json;
             const team = teamNameMap.get(saved.team_id);

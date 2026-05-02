@@ -5,7 +5,7 @@ import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team, TeamCreate, TeamUpdate } from "@/types/team";
 import { FORMATS } from "@/types/team";
-import type { UserPokemonCreate } from "@/types/user-pokemon";
+import type { UserPokemonCreate, UserPokemonUpdate } from "@/types/user-pokemon";
 import {
   fetchTeams,
   fetchUserPokemon,
@@ -14,6 +14,7 @@ import {
   updateTeam,
   deleteTeam,
   createUserPokemon,
+  updateUserPokemon,
   previewShowdownImport,
   importTeamFromShowdown,
   exportTeamToShowdown,
@@ -46,6 +47,7 @@ export default function TeamsPage() {
 
   // Inline roster form (from team builder)
   const [showRosterForm, setShowRosterForm] = useState(false);
+  const [editingRosterEntry, setEditingRosterEntry] = useState<UserPokemon | null>(null);
 
   // Showdown import modal
   const [showImport, setShowImport] = useState(false);
@@ -175,14 +177,20 @@ export default function TeamsPage() {
     }
   };
 
-  const handleRosterSubmit = async (data: UserPokemonCreate) => {
+  const handleRosterSubmit = async (data: UserPokemonCreate | (UserPokemonUpdate & { id: string })) => {
     try {
-      await createUserPokemon(data);
+      if ("id" in data) {
+        const { id, ...body } = data;
+        await updateUserPokemon(id, body);
+      } else {
+        await createUserPokemon(data);
+      }
       setShowRosterForm(false);
-      // Refresh data so the new roster entry appears in the team picker
+      setEditingRosterEntry(null);
+      // Refresh data so the changes appear in the teambuilder
       await loadData(formatFilter);
     } catch (err) {
-      console.error("Failed to add to roster:", err);
+      console.error("Failed to save to roster:", err);
     }
   };
 
@@ -359,7 +367,14 @@ export default function TeamsPage() {
             setShowForm(false);
             setEditing(null);
           }}
-          onAddToRoster={() => setShowRosterForm(true)}
+          onAddToRoster={() => {
+             setEditingRosterEntry(null);
+             setShowRosterForm(true);
+          }}
+          onEditRosterEntry={(entry) => {
+             setEditingRosterEntry(entry);
+             setShowRosterForm(true);
+          }}
         />
       )}
 
@@ -367,19 +382,20 @@ export default function TeamsPage() {
       {showRosterForm && (
         <div className="fixed inset-0 z-[60]">
           <RosterForm
-            editing={null}
+            editing={editingRosterEntry}
             pokemonLookup={pokemonMap}
             onSubmit={(data) => {
-              if (!("id" in data)) {
-                handleRosterSubmit(data);
-              }
+              handleRosterSubmit(data);
             }}
-            onClose={() => setShowRosterForm(false)}
+            onClose={() => {
+               setShowRosterForm(false);
+               setEditingRosterEntry(null);
+            }}
           />
         </div>
       )}
 
-      {/* Showdown import modal */}
+      {/* Showdown import modal ... */}
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-2xl rounded-[1rem] bg-surface-low p-6">

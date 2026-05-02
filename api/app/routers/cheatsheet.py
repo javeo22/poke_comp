@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 
 from app.ai_quota import (
     DEFAULT_MODEL,
@@ -711,6 +712,170 @@ def delete_cheatsheet(
     rows: list[dict] = result.data or []  # type: ignore[assignment]
     if not rows:
         raise HTTPException(status_code=404, detail="No saved cheatsheet for this team")
+
+
+class SelectionRequest(BaseModel):
+    roster_ids: list[str]
+    team_name: str = "Custom Selection"
+    format: str = "doubles"
+
+
+@router.post("/selection", response_model=CheatsheetResponse)
+@limiter.limit("5/minute")
+def generate_selection_cheatsheet(
+    request: Request,
+    body: SelectionRequest,
+    model: str = Query(DEFAULT_MODEL, pattern=r"^claude-"),
+    user_id: str = Depends(get_current_user),
+):
+    """Generate a cheatsheet from a custom selection of Pokemon roster IDs."""
+    if not settings.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
+
+    # Validate model choice
+    available = get_available_models(user_id)
+    if model not in available:
+        model = HAIKU_MODEL
+
+    # 1. Resolve user_pokemon UUIDs to species IDs
+    roster_result = (
+        supabase.table("user_pokemon")
+        .select("id, pokemon_id")
+        .eq("user_id", user_id)
+        .in_("id", body.roster_ids)
+        .execute()
+    )
+    roster_rows: list[dict] = roster_result.data  # type: ignore[assignment]
+    uuid_to_species = {r["id"]: r["pokemon_id"] for r in roster_rows}
+    # Maintain the order from the request
+    pokemon_ids = [uuid_to_species[rid] for rid in body.roster_ids if rid in uuid_to_species]
+
+    if not pokemon_ids:
+        raise HTTPException(status_code=400, detail="No valid Pokemon selected")
+
+    # 2. Fetch base data + builds
+    pokemon_data = _fetch_pokemon_data(pokemon_ids)
+    user_builds = _fetch_user_builds(pokemon_ids, user_id)
+
+    # 3. Resolve item names
+    item_ids = [b["item_id"] for b in user_builds.values() if b.get("item_id")]
+    item_names = _fetch_item_names(item_ids)
+
+    # 4. Resolve move types for STAB classification
+    all_move_names: list[str] = []
+    for b in user_builds.values():
+        all_move_names.extend(b.get("moves") or [])
+    move_types = _fetch_move_types(list(set(all_move_names)))
+
+    # 5. Pre-calculate roster + speed tiers
+    roster = _build_roster(
+        pokemon_ids,
+        pokemon_data,
+        user_builds,
+        item_names,
+        move_types,
+        mega_pokemon_id=None,
+    )
+    speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
+
+    # 5b. Hard-block on stale usage data.
+    snapshot_date, age_days = snapshot_age_days(body.format)
+    if is_stale(age_days):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "stale_data",
+                "format": body.format,
+                "snapshot_date": snapshot_date,
+                "age_days": age_days,
+                "threshold_days": STALE_USAGE_THRESHOLD_DAYS,
+                "message": "Pokemon usage data is stale. Cheatsheet generation is paused.",
+            },
+        )
+
+    # 6. Check cache (selection is ephemeral, but we hash the roster config)
+    cached = _check_cache(roster, snapshot_floor=snapshot_date)
+    if cached:
+        cached["roster"] = [r.model_dump(mode="json") for r in roster]
+        cached["speed_tiers"] = [s.model_dump(mode="json") for s in speed_tiers]
+        cached["cached"] = True
+        cached["estimated_cost_usd"] = 0.0
+        log_ai_usage(user_id, "cheatsheet", model, 0, 0, cached=True)
+        return CheatsheetResponse.model_validate(cached)
+
+    # 6b. Check daily quota
+    if model != HAIKU_MODEL:
+        check_ai_quota(user_id)
+
+    # 7. Fetch meta context
+    tier_data, usage_data = _fetch_meta_context(body.format)
+
+    # 8. Build prompt and call Claude
+    prompt = _build_prompt(
+        body.team_name,
+        body.format,
+        roster,
+        speed_tiers,
+        tier_data,
+        usage_data,
+        usage_snapshot_date=snapshot_date,
+        usage_age_days=age_days,
+    )
+
+    ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    message = ai.messages.create(
+        model=model,
+        max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    block = message.content[0]
+    if block.type != "text":
+        raise HTTPException(status_code=500, detail="Unexpected Claude response type")
+
+    text = block.text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[1:-1])
+
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse Claude response: {e}",
+        )
+
+    # 9. Assemble response (Selection sheets are NOT saved to team_cheatsheets table)
+    response = CheatsheetResponse(
+        team_id="selection",
+        team_name=body.team_name,
+        team_title=raw.get("team_title", body.team_name),
+        archetype=raw.get("archetype", ""),
+        format=body.format,
+        roster=roster,
+        speed_tiers=speed_tiers,
+        game_plan=[GamePlanStep.model_validate(s) for s in raw.get("game_plan", [])],
+        key_rules=[KeyRule.model_validate(r) for r in raw.get("key_rules", [])],
+        lead_matchups=[LeadMatchup.model_validate(m) for m in raw.get("lead_matchups", [])],
+        weaknesses=[Weakness.model_validate(w) for w in raw.get("weaknesses", [])],
+        cached=False,
+        estimated_cost_usd=estimate_cost(
+            message.usage.input_tokens, message.usage.output_tokens, model
+        ),
+    )
+
+    # 10. Cache + log usage
+    _save_cache(roster, response)
+    log_ai_usage(
+        user_id,
+        "cheatsheet",
+        model,
+        message.usage.input_tokens,
+        message.usage.output_tokens,
+    )
+
+    return response
 
 
 @router.post("/{team_id}", response_model=CheatsheetResponse)

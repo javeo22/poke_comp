@@ -16,6 +16,7 @@ interface TeamFormProps {
   onSubmit: (data: TeamCreate | (TeamUpdate & { id: string })) => void;
   onClose: () => void;
   onAddToRoster?: () => void;
+  onEditRosterEntry?: (entry: UserPokemon) => void;
 }
 
 export function TeamForm({
@@ -26,6 +27,7 @@ export function TeamForm({
   onSubmit,
   onClose,
   onAddToRoster,
+  onEditRosterEntry,
 }: TeamFormProps) {
   const [name, setName] = useState(editing?.name ?? "");
   const [format, setFormat] = useState<string>(editing?.format ?? "doubles");
@@ -150,7 +152,7 @@ export function TeamForm({
               const entry = entryId ? rosterLookup.get(entryId) : undefined;
               const poke = entry ? pokemonMap.get(entry.pokemon_id) : undefined;
 
-              if (!entryId || !poke) {
+              if (!entryId || !poke || !entry) {
                 return (
                   <div
                     key={i}
@@ -167,9 +169,11 @@ export function TeamForm({
               return (
                 <div
                   key={i}
-                  className={`relative flex flex-col items-center justify-center rounded-lg p-1.5 transition-colors ${
-                    isMega ? "bg-primary-container/40" : "bg-surface-low"
+                  className={`group relative flex flex-col items-center justify-center rounded-lg p-1.5 transition-colors cursor-pointer ${
+                    isMega ? "bg-primary-container/40" : "bg-surface-low hover:bg-surface-mid"
                   }`}
+                  onClick={() => onEditRosterEntry?.(entry)}
+                  title="Click to edit set"
                 >
                   {poke.sprite_url && (
                     <Image
@@ -189,10 +193,15 @@ export function TeamForm({
                       Mega
                     </span>
                   )}
+                  <div className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <svg className="w-2.5 h-2.5 text-on-surface-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                     </svg>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => toggleSlot(entryId)}
-                    className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-tertiary-container text-[0.55rem] text-on-surface hover:bg-tertiary"
+                    onClick={(e) => { e.stopPropagation(); toggleSlot(entryId); }}
+                    className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-tertiary-container text-[0.55rem] text-on-surface hover:bg-tertiary opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     x
                   </button>

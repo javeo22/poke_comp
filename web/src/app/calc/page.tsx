@@ -94,6 +94,14 @@ export default function CalcPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const handleReset = () => {
+    setAttacker({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
+    setDefender({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
+    setMoveId("");
+    setWeather("none");
+    setResult(null);
+  };
+
   // Initial loads
   useEffect(() => {
     fetchPokemonBasic({ champions_only: true, limit: 1000 }).then((res) =>
@@ -189,10 +197,18 @@ export default function CalcPage() {
         <h1 className="font-display text-4xl font-bold tracking-tight text-on-surface">
           Damage Calculator
         </h1>
-        <p className="mt-1 max-w-2xl font-body text-sm text-on-surface-muted">
-          VGC-grade deterministic engine. Models STAB, type effectiveness, doubles spread, and weather. 
-          Use the 66-point stat sliders to match Champions builds.
-        </p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-2xl font-body text-sm text-on-surface-muted">
+            VGC-grade deterministic engine. Models STAB, type effectiveness, doubles spread, and weather. 
+            Use the 66-point stat sliders to match Champions builds.
+          </p>
+          <button 
+            onClick={handleReset}
+            className="btn-ghost h-9 px-4 font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted hover:text-tertiary transition-colors"
+          >
+            Reset All
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
