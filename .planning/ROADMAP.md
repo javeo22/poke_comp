@@ -120,7 +120,7 @@
 | 2. Tech-debt cleanup | 1/1 | Completed | 2026-04-29 |
 | 3. REQ-rag-augmentation | 3/3 | Completed | 2026-04-30 |
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
-| 5. Data Truth + HITL Review | 0/4 | Active (current) | - |
+| 5. Data Truth + HITL Review | 4/4 | Completed | 2026-05-02 |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
 ---

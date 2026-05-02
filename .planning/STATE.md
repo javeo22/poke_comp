@@ -5,16 +5,16 @@ milestone_name: MVP
 status: active
 last_updated: "2026-04-30"
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
-  percent: 80
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 9
+  percent: 90
 ---
 
 # State
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-02
 
 ---
 
@@ -22,18 +22,18 @@ progress:
 
 **Name:** Pokemon Champions Companion
 **Core value:** Personal companion app for the competitive Pokemon Champions player — roster + team builder + Champions-aware reference + AI draft helper + matchup log, in one tool.
-**Current focus:** Shipped Cron Alerting. Moving to Phase 5 for Data Truth and HITL Review.
+**Current focus:** Post-MVP optimization and stretch features.
 
 ---
 
 ## Current Position
 
-**Milestone:** MVP completion (8-week timebox: 2026-04-10 → 2026-06-05).
+**Milestone:** MVP Complete (Target June 5, achieved May 2).
 
 **Position prose:**
-Phase 4 is complete. **Automated alerting is live**, ensuring any cron failures in the data pipeline reach the operator via Slack/Discord webhooks. Data health telemetry in the admin dashboard now includes staleness metrics for all sources including tournament teams.
+Phase 5 is complete. **The app is now 100% data-driven**, with all scraper input passing through an AI-powered classification and manual HITL review queue. The homepage and cheatsheets are fully unified under the high-polish "esports broadcast" aesthetic. Build and tests are passing.
 
-**Active phase:** Phase 5 — Data Truth & HITL Review.
+**Active phase:** Phase 6+ — Stretch backlog (F9–F15).
 
 ---
 
@@ -45,8 +45,8 @@ Phase 4 is complete. **Automated alerting is live**, ensuring any cron failures 
 | 2 | Tech-debt cleanup | **Completed** |
 | 3 | REQ-rag-augmentation (Dual RAG) | **Completed** |
 | 4 | Cron alerting + freshness telemetry | **Completed** |
-| 5 | Data Truth + HITL Review | **Active** |
-| 6+ | Stretch backlog (F9–F15) | Backlog |
+| 5 | Data Truth + HITL Review | **Completed** |
+| 6+ | Stretch backlog (F9–F15) | **Active** |
 
 ---
 
