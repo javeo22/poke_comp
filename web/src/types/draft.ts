@@ -45,5 +45,6 @@ export interface DraftResponse {
 
 export interface DraftRequest {
   opponent_team: string[];
-  my_team_id: string;
+  my_team_id?: string;
+  my_selection?: string[];
 }

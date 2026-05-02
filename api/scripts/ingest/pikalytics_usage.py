@@ -33,9 +33,7 @@ from app.services.review_service import ReviewService
 # foreign-language names (German/French/Japanese/etc.) back to canonical
 # English. Needed because Pikalytics serves localized content for a subset
 # of Pokemon URLs regardless of Accept-Language.
-_TRANSLATIONS_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "pikalytics_translations.json"
-)
+_TRANSLATIONS_PATH = Path(__file__).resolve().parent.parent.parent / "pikalytics_translations.json"
 
 # Champions tournament format -- NOT the generic VGC page
 PIKALYTICS_BASE = "https://pikalytics.com/pokedex/championstournaments"
@@ -65,9 +63,7 @@ TOP_N_POKEMON = 50
 async def _fetch_page(client: httpx.AsyncClient, url: str) -> str | None:
     """Fetch an HTML page with error handling."""
     try:
-        resp = await client.get(
-            url, headers=REQUEST_HEADERS, timeout=30, follow_redirects=True
-        )
+        resp = await client.get(url, headers=REQUEST_HEADERS, timeout=30, follow_redirects=True)
         resp.raise_for_status()
         return resp.text
     except httpx.HTTPStatusError as e:
@@ -161,9 +157,7 @@ async def fetch_pokemon_list(client: httpx.AsyncClient) -> list[dict[str, str | 
 # =============================================================================
 
 
-def _parse_section_by_id(
-    soup: BeautifulSoup, wrapper_id: str
-) -> list[dict[str, str | float]]:
+def _parse_section_by_id(soup: BeautifulSoup, wrapper_id: str) -> list[dict[str, str | float]]:
     """Parse a section identified by a wrapper div ID.
 
     Pikalytics detail pages use wrapper IDs like 'moves_wrapper',
@@ -428,9 +422,7 @@ async def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
             result.rows_staged = eligible
             result.rows_skipped = len(pokemon_list) - eligible
             result.duration_ms = int((time.monotonic() - started) * 1000)
-            print(
-                f"[dry-run] {eligible}/{len(pokemon_list)} Champions-eligible on list page"
-            )
+            print(f"[dry-run] {eligible}/{len(pokemon_list)} Champions-eligible on list page")
             return result
 
         today_date = date.today().isoformat()
@@ -459,9 +451,7 @@ async def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
                 # Pikalytics serves random localizations -- filter to English only.
                 moves, moves_dropped = _filter_english(detail["moves"], moves_map)
                 items, items_dropped = _filter_english(detail["items"], items_map)
-                abilities, abilities_dropped = _filter_english(
-                    detail["abilities"], abilities_map
-                )
+                abilities, abilities_dropped = _filter_english(detail["abilities"], abilities_map)
                 if moves_dropped or items_dropped or abilities_dropped:
                     msg = (
                         f"{display_name}: dropped non-English "
@@ -494,8 +484,7 @@ async def ingest_pikalytics(sb: Client, dry_run: bool = False) -> IngestResult:
             # instead of staging empty data.
             if not moves and not items and not abilities:
                 warning = (
-                    f"Skipping {display_name}: all detail sections empty "
-                    "(transient scrape failure)"
+                    f"Skipping {display_name}: all detail sections empty (transient scrape failure)"
                 )
                 result.warnings.append(warning)
                 print(f"  {warning}")

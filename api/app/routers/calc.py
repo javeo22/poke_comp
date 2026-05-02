@@ -5,7 +5,6 @@ post-processor. This router exposes it directly so users can run their own
 calcs from the `/calc` page without involving Claude.
 """
 
-from math import floor
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -14,10 +13,10 @@ from pydantic import BaseModel, Field
 from app.database import supabase
 from app.services.damage_calc import (
     CalcMove,
-    CalcPokemon,
     Weather,
     calculate_damage,
     format_damage_string,
+    from_base_stats,
 )
 
 router = APIRouter(prefix="/calc", tags=["calc"])

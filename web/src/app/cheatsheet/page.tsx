@@ -97,12 +97,6 @@ export default function CheatsheetPage() {
     loadData();
   }, [loadData]);
 
-  // Teams that don't have a cheatsheet yet
-  const teamsWithoutCheatsheet = useMemo(() => {
-    const hasSheet = new Set(savedCheatsheets.map((s) => s.team_id));
-    return teams.filter((t) => !hasSheet.has(t.id));
-  }, [teams, savedCheatsheets]);
-
   // Also allow regenerating for teams that already have one
   const allTeamOptions: DropdownOption[] = useMemo(
     () =>

@@ -654,7 +654,9 @@ def analyze_draft(
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not configured")
 
     if not body.my_team_id and not body.my_selection:
-        raise HTTPException(status_code=400, detail="Must provide either my_team_id or my_selection")
+        raise HTTPException(
+            status_code=400, detail="Must provide either my_team_id or my_selection"
+        )
 
     # Validate model choice
     available = get_available_models(user_id)

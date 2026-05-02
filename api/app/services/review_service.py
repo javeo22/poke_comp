@@ -32,12 +32,7 @@ class ReviewService:
         Approves an item in the queue and moves it to the appropriate production table.
         """
         # 1. Fetch the record
-        response = (
-            supabase.table("scraper_review_queue")
-            .select("*")
-            .eq("id", review_id)
-            .execute()
-        )
+        response = supabase.table("scraper_review_queue").select("*").eq("id", review_id).execute()
         if not response.data:
             raise ValueError(f"Review item {review_id} not found.")
 
@@ -51,12 +46,15 @@ class ReviewService:
         # 2. Move to production table
         if source == "limitless":
             # Map payload to tournament_teams
-            # Expected payload: { "tournament_name": "...", "placement": 1, "pokemon_ids": [...], "archetype": "..." }
+            # Expected payload: { "tournament_name": "...", "placement": 1,
+            # "pokemon_ids": [...], "archetype": "..." }
             supabase.table("tournament_teams").insert(payload).execute()
         elif source == "pikalytics":
             # Map payload to pokemon_usage
-            # Expected payload: { "pokemon_name": "...", "format": "...", "usage_percent": ..., ... }
+            # Expected payload: { "pokemon_name": "...", "format": "...",
+            # "usage_percent": ..., ... }
             supabase.table("pokemon_usage").upsert(payload).execute()
+
         else:
             raise ValueError(f"Unknown source for review approval: {source}")
 
@@ -67,10 +65,7 @@ class ReviewService:
             "reviewed_by": admin_user_id,
         }
         update_response = (
-            supabase.table("scraper_review_queue")
-            .update(update_data)
-            .eq("id", review_id)
-            .execute()
+            supabase.table("scraper_review_queue").update(update_data).eq("id", review_id).execute()
         )
         return update_response.data[0]
 
@@ -85,10 +80,7 @@ class ReviewService:
             "reviewed_by": admin_user_id,
         }
         update_response = (
-            supabase.table("scraper_review_queue")
-            .update(update_data)
-            .eq("id", review_id)
-            .execute()
+            supabase.table("scraper_review_queue").update(update_data).eq("id", review_id).execute()
         )
         if not update_response.data:
             raise ValueError(f"Review item {review_id} not found.")

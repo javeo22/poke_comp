@@ -1,29 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   fetchMoves,
   fetchPokemonBasic,
   fetchPokemonDetail,
-  fetchItems,
   runCalc,
   type CalcResponse,
-  type CalcRequest,
 } from "@/lib/api";
 import {
   SearchableDropdown,
   type DropdownOption,
 } from "@/components/ui/searchable-dropdown";
-import { ErrorCard } from "@/components/ui/error-card";
-import { TypeBadge } from "@/features/pokemon/components/type-badge";
 import { friendlyError } from "@/lib/errors";
 import type { Move } from "@/types/move";
 import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
-import type { Item } from "@/types/item";
 import { NATURES } from "@/types/user-pokemon";
 import Image from "next/image";
-import { SpriteFallback } from "@/components/ui/sprite-fallback";
 
 type Weather = "none" | "sun" | "rain" | "snow" | "sand";
 
@@ -68,7 +62,6 @@ export default function CalcPage() {
 
   const [allPokemon, setAllPokemon] = useState<PokemonBasic[]>([]);
   const [allMoves, setAllMoves] = useState<Move[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
 
   const [attacker, setAttacker] = useState<SideState>({
     pokemonId: initialAttacker,
@@ -92,7 +85,6 @@ export default function CalcPage() {
   const [result, setResult] = useState<CalcResponse | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const handleReset = () => {
     setAttacker({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
@@ -109,9 +101,6 @@ export default function CalcPage() {
     );
     fetchMoves({ champions_only: true, limit: 1500 }).then((res) =>
       setAllMoves(res.data)
-    );
-    fetchItems({ champions_only: true, limit: 300 }).then((res) =>
-      setItems(res.data)
     );
   }, []);
 
@@ -210,6 +199,12 @@ export default function CalcPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 rounded-xl bg-tertiary/10 p-4">
+          <p className="font-body text-sm text-tertiary">{error}</p>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* LEFT: Attacker */}

@@ -1,4 +1,5 @@
 import type { CheatsheetResponse } from "@/types/cheatsheet";
+export type { CheatsheetResponse };
 import type { FullProfile, ProfileData, ProfileUpdate } from "@/types/profile";
 import type { DraftRequest, DraftResponse } from "@/types/draft";
 import type { ItemListResponse } from "@/types/item";
@@ -820,7 +821,7 @@ export interface AdminAiCosts {
 export interface DataHealthReport {
   overall: string;
   total_issues: number;
-  checks: { name: string; status: string; issues: string[] }[];
+  checks: { name: string; status: string; details: string[] }[];
 }
 
 export interface DataFreshness {
@@ -859,8 +860,7 @@ export async function fetchAdminPokemon(params: {
   return apiFetch("/admin/pokemon", { params });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateAdminPokemon(id: number, updates: any) {
+export async function updateAdminPokemon(id: number, updates: Record<string, unknown>) {
   return apiFetch(`/admin/pokemon/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -873,13 +873,11 @@ export async function fetchAdminMoves(params: {
   type_filter?: string;
   limit?: number;
   offset?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<any[]> {
+}): Promise<Record<string, unknown>[]> {
   return apiFetch("/admin/moves", { params });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateAdminMove(id: number, updates: any) {
+export async function updateAdminMove(id: number, updates: Record<string, unknown>) {
   return apiFetch(`/admin/moves/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -891,13 +889,11 @@ export async function fetchAdminItems(params: {
   search?: string;
   limit?: number;
   offset?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<any[]> {
+}): Promise<Record<string, unknown>[]> {
   return apiFetch("/admin/items", { params });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateAdminItem(id: number, updates: any) {
+export async function updateAdminItem(id: number, updates: Record<string, unknown>) {
   return apiFetch(`/admin/items/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -907,13 +903,11 @@ export async function updateAdminItem(id: number, updates: any) {
 export async function fetchAdminMetaSnapshots(params: {
   format_filter?: string;
   limit?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<any[]> {
+}): Promise<Record<string, unknown>[]> {
   return apiFetch("/admin/meta-snapshots", { params });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateAdminMetaSnapshot(id: string, updates: any) {
+export async function updateAdminMetaSnapshot(id: string, updates: Record<string, unknown>) {
   return apiFetch(`/admin/meta-snapshots/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
@@ -926,13 +920,12 @@ export interface ReviewQueueItem {
   id: string;
   source: string;
   external_id: string | null;
-  payload: any;
+  payload: Record<string, unknown>;
   metadata: {
     category?: string;
     reason?: string;
     confidence?: number;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;

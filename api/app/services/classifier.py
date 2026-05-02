@@ -32,7 +32,8 @@ Rules for VGC_STANDARD:
 - No Mega Evolutions.
 
 Rules for OTHER:
-- Non-competitive, unrelated games (TCG, Unite), or generic VGC without enough info to confirm it's Champions.
+- Non-competitive, unrelated games (TCG, Unite), or generic VGC without enough info to
+  confirm it's Champions.
 
 Tournament Name: {name}
 Description: {description}

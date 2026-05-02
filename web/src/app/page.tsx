@@ -10,20 +10,15 @@ import {
   fetchUserPokemon,
   fetchMatchups,
   fetchPokemonBasic,
-  fetchTeams,
   fetchItems
 } from "@/lib/api";
-import type { PublicStats, ReviewQueueItem } from "@/lib/api";
+import type { PublicStats } from "@/lib/api";
 import type { MetaTrend } from "@/types/meta";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Matchup } from "@/types/matchup";
-import type { PokemonBasic } from "@/features/pokemon/types";
-import type { Item } from "@/types/item";
 import { pokeArt, pokeSprite } from "@/lib/sprites";
 import { createClient } from "@/utils/supabase/client";
-import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
-import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { TypeBadge } from "@/features/pokemon/components/type-badge";
+import { SearchableDropdown, type DropdownOption } from "@/components/ui/searchable-dropdown";
 import { ChevronRight, Play, Trophy, Users, Zap, Shield } from "lucide-react";
 import { LabDashboard } from "@/components/ui/lab-dashboard";
 import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
@@ -35,11 +30,8 @@ export default function HomePage() {
   const [loadingTrends, setLoadingTrends] = useState(true);
   const [userPokemon, setUserPokemon] = useState<UserPokemon[]>([]);
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
-  const [pokemonOptions, setPokemonOptions] = useState<any[]>([]);
-  const [searchVal, setSearchVal] = useState("");
+  const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
   const [isLogged, setIsLogged] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
 
   useEffect(() => {
     // 1. Static stats & Meta
@@ -72,16 +64,12 @@ export default function HomePage() {
             fetchUserPokemon({ limit: 14 }),
             fetchMatchups({ limit: 1 }),
             fetchItems({ limit: 1000 })
-          ]).then(([up, m, items]) => {
+          ]).then(([up, m]) => {
             setUserPokemon(up.data);
             if (m.data.length > 0) setMatch(m.data[0]);
-            setItemsMap(new Map(items.data.map(i => [i.id, i])));
           }).catch(() => {});
         }
-        setLoadingUser(false);
       });
-    } else {
-      setLoadingUser(false);
     }
   }, []);
 
@@ -89,8 +77,6 @@ export default function HomePage() {
     if (!id) return;
     router.push(`/draft?opp=${id}`);
   };
-
-  const lobbiesAnalyzed = stats?.matches_count ?? 12481;
 
   return (
     <LabDashboard>
@@ -128,7 +114,7 @@ export default function HomePage() {
                 <div className="relative flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-lowest/80 p-2 backdrop-blur-xl shadow-2xl">
                   <div className="flex-1 px-2">
                     <SearchableDropdown
-                      value={searchVal}
+                      value={""}
                       onChange={(v) => handleQuickDraft(v)}
                       options={pokemonOptions}
                       placeholder="Enter opponent's Pokemon to start draft..."
@@ -209,9 +195,9 @@ export default function HomePage() {
               <div className="mb-8">
                 <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-widest text-primary">◆ The Opposition</div>
                 <div className="grid grid-cols-6 gap-3">
-                  {(isLogged && lastMatch?.opponent_team_data ? lastMatch.opponent_team_data : trends.slice(0, 6)).map((p: any, idx: number) => {
+                  {(isLogged && lastMatch?.opponent_team_data ? lastMatch.opponent_team_data : trends.slice(0, 6)).map((p: { id?: number; name?: string; pokemon_name?: string }, idx: number) => {
                     const id = p.id || 0; // If from trends it has id, if from lastMatch it's a name list
-                    const name = p.name || p.pokemon_name;
+                    const name = p.name || p.pokemon_name || "Unknown";
                     return (
                       <div key={idx} className="group relative aspect-square rounded-xl border border-primary/20 bg-primary/5 p-1 transition-all hover:border-primary/50">
                         <Image
@@ -279,10 +265,11 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
-                  {(isLogged && userPokemon.length > 0 ? userPokemon.slice(0, 4) : trends.slice(0, 4)).map((p: any, idx) => (
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(isLogged && userPokemon.length > 0 ? userPokemon.slice(0, 4) : trends.slice(0, 4) as any[]).map((p: any, idx) => (
                     <div key={idx} className="aspect-[4/5] rounded-xl border border-outline-variant bg-surface-lowest/30 p-2 flex flex-col items-center justify-center text-center">
                        <Image 
-                        src={p.pokemon_id ? pokeSprite(p.pokemon_id) : pokeSprite(p.id)} 
+                        src={p.pokemon_id ? pokeSprite(p.pokemon_id) : pokeSprite(p.id || 1)} 
                         alt="" 
                         width={40} 
                         height={40} 
@@ -311,7 +298,7 @@ export default function HomePage() {
         </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {loadingTrends ? <LoadingSkeleton count={6} /> : trends.map(t => (
+          {loadingTrends ? <div className="col-span-full h-40 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> : trends.map(t => (
             <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive relative overflow-hidden p-4 group">
                <Image src={pokeArt(t.id)} alt="" width={80} height={80} unoptimized className="absolute -right-3 -top-2 opacity-15 group-hover:opacity-30 transition-opacity" />
                <div className="relative">

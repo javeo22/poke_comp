@@ -249,7 +249,9 @@ async def ingest_limitless_tournaments(
             # Classify the tournament
             # Limitless API doesn't always provide a description, so we use name
             classification = await classifier.classify(tname)
-            print(f"    Classification: {classification['category']} ({classification['confidence']})")
+            print(
+                f"    Classification: {classification['category']} ({classification['confidence']})"
+            )
 
             standings = await fetch_tournament_standings(client, tid)
             if not standings:
@@ -304,7 +306,9 @@ async def ingest_limitless_tournaments(
                         },
                     )
                     total_staged += 1
-                    print(f"    Staged Placing {placing}: {', '.join(team_names[:6])} [{archetype}]")
+                    print(
+                        f"    Staged Placing {placing}: {', '.join(team_names[:6])} [{archetype}]"
+                    )
                 except Exception as e:
                     result.warnings.append(f"Staging failed for {tname} placing {placing}: {e}")
 
