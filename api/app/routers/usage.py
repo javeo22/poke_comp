@@ -23,18 +23,27 @@ def list_usage(
     )
 
     result = query.order("usage_percent", desc=True).range(offset, offset + limit - 1).execute()
-    usage_rows = result.data
+    usage_rows: list[dict] = result.data  # type: ignore[assignment]
 
     sprite_map: dict[str, str | None] = {}
     if usage_rows:
-        names = [row["pokemon_name"] for row in usage_rows]
+        names = [
+            str(row["pokemon_name"])
+            for row in usage_rows
+            if isinstance(row, dict) and row.get("pokemon_name")
+        ]
         sprite_result = (
             supabase.table("pokemon").select("name, sprite_url").in_("name", names).execute()
         )
-        sprite_map = {row["name"]: row.get("sprite_url") for row in sprite_result.data}
+        sprite_map = {
+            str(row["name"]): str(row.get("sprite_url")) if row.get("sprite_url") else None
+            for row in (sprite_result.data or [])
+            if isinstance(row, dict) and row.get("name")
+        }
 
     for row in usage_rows:
-        row["sprite_url"] = sprite_map.get(row["pokemon_name"])
+        if isinstance(row, dict) and row.get("pokemon_name"):
+            row["sprite_url"] = sprite_map.get(str(row["pokemon_name"]))
 
     response.headers["Cache-Control"] = _USAGE_CACHE_HEADER
     return PokemonUsageList(

@@ -380,7 +380,18 @@ export default function CheatsheetPage() {
                          </p>
                       </div>
                    </div>
-                   <button onClick={() => setTempSheet(null)} className="btn-ghost h-9 px-4 font-display text-xs uppercase tracking-wider">Close</button>
+                   <div className="flex items-center gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportCheatsheetPDF(tempSheet.team_title);
+                        }}
+                        className="btn-ghost h-9 px-4 font-display text-xs font-medium uppercase tracking-wider"
+                      >
+                        Export PDF
+                      </button>
+                      <button onClick={() => setTempSheet(null)} className="btn-ghost h-9 px-4 font-display text-xs uppercase tracking-wider">Close</button>
+                   </div>
                 </div>
                 <div className="p-5">
                    <CheatsheetContent data={tempSheet} />

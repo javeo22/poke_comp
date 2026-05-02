@@ -83,7 +83,9 @@ def _get_sprite_url(pokemon_id: int | None) -> str | None:
         return None
     result = supabase.table("pokemon").select("sprite_url").eq("id", pokemon_id).execute()
     rows: list[dict] = result.data  # type: ignore[assignment]
-    return rows[0]["sprite_url"] if rows else None
+    if rows and isinstance(rows[0], dict):
+        return str(rows[0].get("sprite_url")) if rows[0].get("sprite_url") else None
+    return None
 
 
 class PublicProfile(BaseModel):
@@ -187,18 +189,25 @@ def list_public_cheatsheets(username: str):
         return []
 
     # Resolve team names
-    team_ids = [c["team_id"] for c in cheatsheets]
+    team_ids = [
+        str(c["team_id"]) for c in cheatsheets if isinstance(c, dict) and c.get("team_id")
+    ]
     teams_result = supabase.table("teams").select("id, name, format").in_("id", team_ids).execute()
-    team_map = {t["id"]: t for t in (teams_result.data or [])}
+    team_map: dict[str, dict] = {
+        str(t["id"]): t
+        for t in (teams_result.data or [])
+        if isinstance(t, dict) and t.get("id")
+    }
 
     return [
         PublicCheatsheetSummary(
-            id=c["id"],
-            team_name=team_map.get(c["team_id"], {}).get("name"),
-            team_format=team_map.get(c["team_id"], {}).get("format"),
-            updated_at=c["updated_at"],
+            id=str(c["id"]),
+            team_name=team_map.get(str(c["team_id"]), {}).get("name"),
+            team_format=team_map.get(str(c["team_id"]), {}).get("format"),
+            updated_at=str(c["updated_at"]),
         )
         for c in cheatsheets
+        if isinstance(c, dict)
     ]
 
 
@@ -213,7 +222,7 @@ def get_public_cheatsheet(cheatsheet_id: str):
         .execute()
     )
     rows: list[dict] = result.data  # type: ignore[assignment]
-    if not rows:
+    if not rows or not isinstance(rows[0], dict):
         raise HTTPException(status_code=404, detail="Cheatsheet not found or not public")
 
     cs = rows[0]
@@ -221,34 +230,40 @@ def get_public_cheatsheet(cheatsheet_id: str):
     # Resolve team info
     team_name = None
     team_format = None
-    team_result = supabase.table("teams").select("name, format").eq("id", cs["team_id"]).execute()
-    if team_result.data:
-        team_name = team_result.data[0].get("name")
-        team_format = team_result.data[0].get("format")
+    team_id = cs.get("team_id")
+    if team_id:
+        team_result = supabase.table("teams").select("name, format").eq("id", team_id).execute()
+        if team_result.data and isinstance(team_result.data[0], dict):
+            team_name = team_result.data[0].get("name")
+            team_format = team_result.data[0].get("format")
 
     # Resolve owner info
     owner_username = None
     owner_display_name = None
     owner_avatar_sprite_url = None
-    profile_result = (
-        supabase.table("user_profiles")
-        .select("username, display_name, avatar_pokemon_id")
-        .eq("user_id", cs["user_id"])
-        .execute()
-    )
-    if profile_result.data:
-        p = profile_result.data[0]
-        owner_username = p.get("username")
-        owner_display_name = p.get("display_name")
-        owner_avatar_sprite_url = _get_sprite_url(p.get("avatar_pokemon_id"))
+    owner_id = cs.get("user_id")
+    if owner_id:
+        profile_result = (
+            supabase.table("user_profiles")
+            .select("username, display_name, avatar_pokemon_id")
+            .eq("user_id", owner_id)
+            .execute()
+        )
+        if profile_result.data and isinstance(profile_result.data[0], dict):
+            p = profile_result.data[0]
+            owner_username = p.get("username")
+            owner_display_name = p.get("display_name")
+            avatar_id = p.get("avatar_pokemon_id")
+            if isinstance(avatar_id, int):
+                owner_avatar_sprite_url = _get_sprite_url(avatar_id)
 
     return PublicCheatsheetDetail(
-        id=cs["id"],
+        id=str(cs.get("id", "")),
         team_name=team_name,
         team_format=team_format,
-        cheatsheet_json=cs["cheatsheet_json"],
+        cheatsheet_json=cs.get("cheatsheet_json") or {},
         owner_username=owner_username,
         owner_display_name=owner_display_name,
         owner_avatar_sprite_url=owner_avatar_sprite_url,
-        updated_at=cs["updated_at"],
+        updated_at=str(cs.get("updated_at", "")),
     )

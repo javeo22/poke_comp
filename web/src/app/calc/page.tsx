@@ -170,10 +170,12 @@ export default function CalcPage() {
   const updateStat = (side: "attacker" | "defender", key: string, val: number) => {
     const setter = side === "attacker" ? setAttacker : setDefender;
     setter((prev) => {
-      const nextPoints = { ...prev.statPoints, [key]: val };
-      const total = Object.values(nextPoints).reduce((a, b) => a + b, 0);
-      if (total > 66) return prev; // simple block
-      return { ...prev, statPoints: nextPoints };
+      const otherTotal = Object.entries(prev.statPoints)
+        .filter(([k]) => k !== key)
+        .reduce((a, [_, b]) => a + b, 0);
+      const clamped = Math.max(0, Math.min(32, val));
+      const maxAllowed = Math.min(clamped, 66 - otherTotal);
+      return { ...prev, statPoints: { ...prev.statPoints, [key]: maxAllowed } };
     });
   };
 
@@ -212,9 +214,14 @@ export default function CalcPage() {
           <div className="card p-5 border-primary/20">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-primary">◆ ATTACKER</span>
-              {attacker.pokemon?.sprite_url && (
-                <Image src={attacker.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
-              )}
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[0.6rem] text-on-surface-muted">
+                  {Object.values(attacker.statPoints).reduce((a, b) => a + b, 0)} / 66
+                </span>
+                {attacker.pokemon?.sprite_url && (
+                  <Image src={attacker.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+                )}
+              </div>
             </div>
             
             <SearchableDropdown
@@ -356,9 +363,14 @@ export default function CalcPage() {
            <div className="card p-5 border-accent/20">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">◆ DEFENDER</span>
-              {defender.pokemon?.sprite_url && (
-                <Image src={defender.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
-              )}
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[0.6rem] text-on-surface-muted">
+                  {Object.values(defender.statPoints).reduce((a, b) => a + b, 0)} / 66
+                </span>
+                {defender.pokemon?.sprite_url && (
+                  <Image src={defender.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+                )}
+              </div>
             </div>
             
             <SearchableDropdown
