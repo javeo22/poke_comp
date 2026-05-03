@@ -62,8 +62,8 @@ export default function TeamsPage() {
   const [previewPokemon, setPreviewPokemon] = useState<ShowdownPreviewPokemon[]>([]);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
 
-  const loadData = useCallback(async (format?: string) => {
-    setIsLoading(true);
+  const loadData = useCallback(async (format?: string, isInitial = false) => {
+    if (isInitial) setIsLoading(true);
     setError(null);
     try {
       const [teamsResult, rosterResult, pokemonResult] = await Promise.all([
@@ -100,12 +100,12 @@ export default function TeamsPage() {
       setTeams([]);
       setCount(0);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData(formatFilter);
+    loadData(formatFilter, true);
   }, [formatFilter, loadData]);
 
   const handleCreate = () => {

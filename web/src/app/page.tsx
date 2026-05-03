@@ -9,8 +9,7 @@ import {
   fetchMetaTrends,
   fetchUserPokemon,
   fetchMatchups,
-  fetchPokemonBasic,
-  fetchItems
+  fetchPokemonBasic
 } from "@/lib/api";
 import type { PublicStats } from "@/lib/api";
 import type { MetaTrend } from "@/types/meta";
@@ -32,6 +31,7 @@ export default function HomePage() {
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
   const [isLogged, setIsLogged] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
 
   useEffect(() => {
     // 1. Static stats & Meta
@@ -60,14 +60,15 @@ export default function HomePage() {
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
           setIsLogged(true);
+          setLoadingUser(true);
           Promise.all([
             fetchUserPokemon({ limit: 14 }),
-            fetchMatchups({ limit: 1 }),
-            fetchItems({ limit: 1000 })
+            fetchMatchups({ limit: 1 })
           ]).then(([up, m]) => {
             setUserPokemon(up.data);
             if (m.data.length > 0) setMatch(m.data[0]);
-          }).catch(() => {});
+          }).catch(() => {})
+          .finally(() => setLoadingUser(false));
         }
       });
     }
@@ -195,13 +196,17 @@ export default function HomePage() {
               <div className="mb-8">
                 <div className="mb-3 font-mono text-[0.65rem] uppercase tracking-widest text-primary">◆ The Opposition</div>
                 <div className="grid grid-cols-6 gap-3">
-                  {(isLogged && lastMatch?.opponent_team_data ? lastMatch.opponent_team_data : trends.slice(0, 6)).map((p: { id?: number; name?: string; pokemon_name?: string }, idx: number) => {
-                    const id = p.id || 0; // If from trends it has id, if from lastMatch it's a name list
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(isLogged && lastMatch?.opponent_team_data ? lastMatch.opponent_team_data : trends.slice(0, 6)).map((p: any, idx: number) => {
                     const name = p.name || p.pokemon_name || "Unknown";
+                    // Attempt to find ID for matchup opponents to show correct art
+                    const found = pokemonOptions.find(o => o.label.toLowerCase() === name.toLowerCase());
+                    const id = p.id || (found ? Number(found.value) : 0);
+                    
                     return (
                       <div key={idx} className="group relative aspect-square rounded-xl border border-primary/20 bg-primary/5 p-1 transition-all hover:border-primary/50">
                         <Image
-                          src={id ? pokeArt(id) : pokeArt(1)} // Fallback if no ID available in matchup data
+                          src={id ? pokeArt(id) : pokeArt(1)} 
                           alt={name}
                           fill
                           unoptimized
@@ -265,20 +270,26 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(isLogged && userPokemon.length > 0 ? userPokemon.slice(0, 4) : trends.slice(0, 4) as any[]).map((p: any, idx) => (
-                    <div key={idx} className="aspect-[4/5] rounded-xl border border-outline-variant bg-surface-lowest/30 p-2 flex flex-col items-center justify-center text-center">
-                       <Image 
-                        src={p.pokemon_id ? pokeSprite(p.pokemon_id) : pokeSprite(p.id || 1)} 
-                        alt="" 
-                        width={40} 
-                        height={40} 
-                        unoptimized 
-                        className="image-rendering-pixelated mb-2"
-                      />
-                       <span className="text-[0.6rem] font-display font-bold text-on-surface truncate w-full">{p.pokemon_name || pokemonOptions.find(o => o.value === String(p.pokemon_id))?.label || "Pokemon"}</span>
-                    </div>
-                  ))}
+                  {loadingUser ? (
+                     Array.from({ length: 4 }).map((_, i) => (
+                       <div key={i} className="aspect-[4/5] rounded-xl bg-surface-low animate-pulse" />
+                     ))
+                  ) : (
+                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                    (isLogged && userPokemon.length > 0 ? userPokemon.slice(0, 4) : trends.slice(0, 4) as any[]).map((p: any, idx) => (
+                      <div key={idx} className="aspect-[4/5] rounded-xl border border-outline-variant bg-surface-lowest/30 p-2 flex flex-col items-center justify-center text-center">
+                         <Image 
+                          src={p.pokemon_id ? pokeSprite(p.pokemon_id) : pokeSprite(p.id || 1)} 
+                          alt="" 
+                          width={40} 
+                          height={40} 
+                          unoptimized 
+                          className="image-rendering-pixelated mb-2"
+                        />
+                         <span className="text-[0.6rem] font-display font-bold text-on-surface truncate w-full">{p.pokemon_name || pokemonOptions.find(o => o.value === String(p.pokemon_id))?.label || "Pokemon"}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
