@@ -7,9 +7,9 @@ last_updated: "2026-05-02"
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 11
+  total_plans: 14
   completed_plans: 10
-  percent: 87.5
+  percent: 71.4
 ---
 
 # State
@@ -47,7 +47,7 @@ Phase 7 is complete. The application has been evolved with a professional "Lab D
 | 4 | Cron alerting + freshness telemetry | **Completed** |
 | 5 | Data Truth + HITL Review | **Completed** |
 | 7 | Homepage Polish | **Completed** |
-| 8 | Competitive Tools Overhaul | **Active** |
+| 8 | Competitive Tools Overhaul | **Active (0/4 Plans)** |
 | 6+ | Stretch backlog (F9–F15) | Backlog |
 
 ---

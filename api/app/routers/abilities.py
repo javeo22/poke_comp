@@ -10,7 +10,7 @@ router = APIRouter(prefix="/abilities", tags=["abilities"])
 @router.get("", response_model=AbilityList)
 def list_abilities(
     name: str | None = Query(None, description="Filter by name (case-insensitive contains)"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     query = supabase.table("abilities").select("*", count=CountMethod.exact)

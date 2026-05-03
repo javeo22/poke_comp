@@ -14,7 +14,7 @@ def list_items(
     name: str | None = Query(None, description="Filter by name (case-insensitive contains)"),
     category: str | None = Query(None, description="Filter by item category"),
     champions_only: bool = Query(False, description="Only Champions shop items"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     query = supabase.table("items").select("*", count=CountMethod.exact)

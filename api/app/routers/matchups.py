@@ -29,7 +29,7 @@ def list_matchups(
         description="Filter by format: ladder | bo1 | bo3 | tournament | friendly",
     ),
     tag: str | None = Query(None, description="Filter by a single archetype tag"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     user_id: str = Depends(get_current_user),
 ):

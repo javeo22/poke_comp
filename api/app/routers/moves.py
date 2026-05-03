@@ -15,7 +15,7 @@ def list_moves(
     type: str | None = Query(None, description="Filter by move type"),
     category: str | None = Query(None, description="Filter by category: physical, special, status"),
     champions_only: bool = Query(False, description="Only Champions-available moves"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1500),
     offset: int = Query(0, ge=0),
 ):
     query = supabase.table("moves").select("*", count=CountMethod.exact)

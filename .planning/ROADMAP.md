@@ -116,15 +116,19 @@
 ### Phase 8: Competitive Tools Overhaul (Teambuilder & Calc)
 **Goal:** Transform the teambuilding and damage calculation experience into a VGC-grade toolset by enabling deep stat customization, flexible move selection, and a streamlined "Roster-first" draft flow.
 **Depends on:** Phase 7 (uses the established Lab Dashboard aesthetic).
-**Requirements covered:** F7 (Damage Calculator), F10 (Teambuilding flow improvements).
+**Requirements covered:** F7 (Damage Calculator), F10 (Teambuilder flow improvements).
 **Success criteria:**
   1. "Teams" is a primary link in the main navigation.
   2. Users can pick 6 Pokemon directly from their Roster in Draft/Cheatsheet pages (Quick Selection).
   3. Damage Calculator supports EV sliders (0-252) and Nature selectors for all stats.
   4. Teambuilder allows editing Pokemon sets (moves/stats) in-place without navigating away.
-  5. Calculator move search includes an "All Moves" toggle.
+  5. Meta Tracker shows deep data (moves/items) and "Megas" format is removed.
 **Plans:**
-- [ ] 08-01-PLAN.md — Implementation: Nav improvements, Quick Selection, and Stat/Move editors.
+- [ ] 08-01-PLAN.md — Database Fix & Format Consolidation.
+- [ ] 08-02-PLAN.md — High-Resolution Meta Tracker.
+- [ ] 08-03-PLAN.md — Speed Benchmark Integration.
+- [ ] 08-04-PLAN.md — Admin Triggers & Personal History RAG.
+
 
 ### Phase 6+: Stretch backlog (F9–F10, F12–F15)
 **Goal:** Prioritize post-MVP enhancements after the timebox closes. **No item ships without explicit user direction.**
@@ -149,7 +153,7 @@
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
 | 5. Data Truth + HITL Review | 4/4 | Completed | 2026-05-02 |
 | 7. Homepage Polish | 1/1 | Completed | 2026-05-02 |
-| 8. Competitive Tools | 0/1 | Active | - |
+| 8. Competitive Tools | 0/4 | Active | - |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
 ---

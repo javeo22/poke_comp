@@ -16,7 +16,7 @@ router = APIRouter(prefix="/meta", tags=["meta"])
 @router.get("", response_model=MetaSnapshotList)
 def list_snapshots(
     format: str | None = Query(None, description="Filter by format (singles, doubles, megas)"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     query = supabase.table("meta_snapshots").select("*", count=CountMethod.exact)
@@ -70,3 +70,20 @@ def get_trends(
 def get_snapshot(snapshot_id: int):
     result = supabase.table("meta_snapshots").select("*").eq("id", snapshot_id).single().execute()
     return MetaSnapshotResponse.model_validate(result.data)
+
+
+@router.post("", response_model=MetaSnapshotResponse, status_code=201)
+def create_snapshot(body: MetaSnapshotCreate):
+    data = body.model_dump(exclude_none=True, mode="json")
+
+    result = supabase.table("meta_snapshots").insert(data).execute()
+    if not result.data:
+        raise HTTPException(status_code=400, detail="Failed to create meta snapshot")
+    return MetaSnapshotResponse.model_validate(result.data[0])
+
+
+@router.delete("/{snapshot_id}", status_code=204)
+def delete_snapshot(snapshot_id: int):
+    result = supabase.table("meta_snapshots").delete().eq("id", snapshot_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Meta snapshot not found")
