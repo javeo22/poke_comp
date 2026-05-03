@@ -16,18 +16,26 @@ def test_get_meta_trends_endpoint_exists(mock_supabase):
     mock_rpc_result = MagicMock()
     mock_rpc_result.data = [
         {
+            "id": 445,
             "pokemon_name": "Garchomp",
             "usage_percent": 25.5,
             "previous_usage": 20.0,
             "swing": 5.5,
-            "up": True
+            "up": True,
+            "top_moves": [{"name": "Earthquake", "percent": 90}],
+            "top_items": [{"name": "Life Orb", "percent": 40}],
+            "top_abilities": [{"name": "Rough Skin", "percent": 100}]
         },
         {
+            "id": 959,
             "pokemon_name": "Tinkaton",
             "usage_percent": 15.0,
             "previous_usage": 18.0,
             "swing": -3.0,
-            "up": False
+            "up": False,
+            "top_moves": [{"name": "Gigaton Hammer", "percent": 100}],
+            "top_items": [{"name": "Leftovers", "percent": 50}],
+            "top_abilities": [{"name": "Mold Breaker", "percent": 80}]
         }
     ]
     mock_supabase.rpc.return_value.execute.return_value = mock_rpc_result
@@ -42,6 +50,8 @@ def test_get_meta_trends_endpoint_exists(mock_supabase):
     assert data[0]["usage_percent"] == 25.5
     assert data[0]["swing"] == 5.5
     assert data[0]["up"] is True
+    assert len(data[0]["top_moves"]) == 1
+    assert data[0]["top_moves"][0]["name"] == "Earthquake"
     
     assert data[1]["pokemon_name"] == "Tinkaton"
     assert data[1]["up"] is False
