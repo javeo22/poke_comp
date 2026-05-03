@@ -52,29 +52,6 @@ def get_latest_snapshots():
     return results
 
 
-@router.get("/{snapshot_id}", response_model=MetaSnapshotResponse)
-def get_snapshot(snapshot_id: int):
-    result = supabase.table("meta_snapshots").select("*").eq("id", snapshot_id).single().execute()
-    return MetaSnapshotResponse.model_validate(result.data)
-
-
-@router.post("", response_model=MetaSnapshotResponse, status_code=201)
-def create_snapshot(body: MetaSnapshotCreate):
-    data = body.model_dump(exclude_none=True, mode="json")
-
-    result = supabase.table("meta_snapshots").insert(data).execute()
-    if not result.data:
-        raise HTTPException(status_code=400, detail="Failed to create meta snapshot")
-    return MetaSnapshotResponse.model_validate(result.data[0])
-
-
-@router.delete("/{snapshot_id}", status_code=204)
-def delete_snapshot(snapshot_id: int):
-    result = supabase.table("meta_snapshots").delete().eq("id", snapshot_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Meta snapshot not found")
-
-
 @router.get("/trends", response_model=list[MetaTrendResponse])
 @limiter.limit("30/minute")
 def get_trends(
@@ -87,3 +64,9 @@ def get_trends(
     rows: list[dict] = result.data or []  # type: ignore[assignment]
 
     return [MetaTrendResponse.model_validate(row) for row in rows]
+
+
+@router.get("/{snapshot_id}", response_model=MetaSnapshotResponse)
+def get_snapshot(snapshot_id: int):
+    result = supabase.table("meta_snapshots").select("*").eq("id", snapshot_id).single().execute()
+    return MetaSnapshotResponse.model_validate(result.data)

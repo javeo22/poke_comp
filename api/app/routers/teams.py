@@ -22,7 +22,7 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 def list_teams(
     format: str | None = Query(None, description="Filter by format (singles, doubles, megas)"),
     archetype_tag: str | None = Query(None, description="Filter by archetype tag"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     user_id: str = Depends(get_current_user),
 ):
