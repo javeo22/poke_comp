@@ -1,9 +1,14 @@
-# Phase 8-01 Summary: Nav, Quick Select, and Calc Overhaul
+# Phase 8-01 Summary: Database Fix & Format Consolidation
 
-I have added Phase 8 to the roadmap and initialized the first plan (08-01). This phase is dedicated to improving the competitive utility of the app by:
-1.  **Exposing Teams:** Adding "Teams" to the main navigation for better discoverability.
-2.  **Streamlining Drafts:** Allowing users to pick Pokemon directly from their Roster in the Draft and Cheatsheet tools (bypassing the need to save a team first).
-3.  **VGC-Grade Calculator:** Adding deep stat/move controls (EVs/Natures) to the damage calculator.
-4.  **Integrated Teambuilding:** Enabling in-place set editing within the Teambuilder.
+I have resolved the critical blockers in the Admin Review queue and streamlined the platform by consolidating competitive formats.
 
-The roadmap and project state have been updated to reflect this new focus area.
+## Key Changes
+- **Admin Fix:** Granted `is_admin` privileges to the developer user in the `user_profiles` table, resolving the "missing table" RLS policy block for the scraper review queue.
+- **Format Consolidation:** Removed the redundant 'Megas' format from all backend Pydantic models (MetaSnapshot, Team, DraftRequest) and frontend TypeScript types. Megas are now treated as build options within standard formats rather than a separate competitive ladder.
+- **API Cleanup:** Updated the meta, teams, and cheatsheet routers to remove stale 'megas' logic and documentation.
+- **UI Alignment:** Cleaned up the `TeamCard` and dropdown selectors to focus exclusively on Singles and Doubles.
+
+## Verification
+- Verified that the `/admin/review` page now loads successfully and displays the review queue.
+- Confirmed that the "Format" dropdowns across the site no longer list "Megas".
+- Ran frontend type checks (`tsc`) to ensure no broken references remain.

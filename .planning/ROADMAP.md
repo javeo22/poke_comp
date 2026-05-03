@@ -124,10 +124,10 @@
   4. Teambuilder allows editing Pokemon sets (moves/stats) in-place without navigating away.
   5. Meta Tracker shows deep data (moves/items) and "Megas" format is removed.
 **Plans:**
-- [ ] 08-01-PLAN.md — Database Fix & Format Consolidation.
-- [ ] 08-02-PLAN.md — High-Resolution Meta Tracker.
-- [ ] 08-03-PLAN.md — Speed Benchmark Integration.
-- [ ] 08-04-PLAN.md — Admin Triggers & Personal History RAG.
+- [x] 08-01-PLAN.md — Database Fix & Format Consolidation.
+- [x] 08-02-PLAN.md — High-Resolution Meta Tracker.
+- [x] 08-03-PLAN.md — Speed Benchmark Integration.
+- [x] 08-04-PLAN.md — Admin Triggers & Personal History RAG.
 
 
 ### Phase 6+: Stretch backlog (F9–F10, F12–F15)
@@ -153,7 +153,7 @@
 | 4. Cron alerting + freshness telemetry | 2/2 | Completed | 2026-04-30 |
 | 5. Data Truth + HITL Review | 4/4 | Completed | 2026-05-02 |
 | 7. Homepage Polish | 1/1 | Completed | 2026-05-02 |
-| 8. Competitive Tools | 0/4 | Active | - |
+| 8. Competitive Tools | 4/4 | Completed | 2026-05-02 |
 | 6+. Stretch backlog | 0/TBD | Backlog | - |
 
 ---
