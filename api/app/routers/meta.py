@@ -79,7 +79,7 @@ def delete_snapshot(snapshot_id: int):
 @limiter.limit("30/minute")
 def get_trends(
     request: Request,
-    format: str = Query("doubles", pattern=r"^(singles|doubles)$"),
+    format: str = Query("doubles", pattern=r"^(singles|doubles|megas)$"),
     limit: int = Query(6, ge=1, le=20),
 ):
     """Fetch top Pokemon trends with usage swings."""

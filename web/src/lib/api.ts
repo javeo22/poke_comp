@@ -87,7 +87,9 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
     let detail = `API error: ${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
-      if (body.detail) detail = body.detail;
+      if (body.detail) {
+        detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      }
     } catch {
       // Response wasn't JSON -- use the default message
     }

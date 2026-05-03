@@ -37,8 +37,9 @@ class TierEntry(BaseModel):
 class MetaTrendResponse(BaseModel):
     id: int
     pokemon_name: str
-    usage_percent: float
-    swing: float
-    up: bool
-    win_rate: float
-    role: str
+    usage_percent: float | None = None
+    previous_usage: float | None = None
+    swing: float | None = None
+    up: bool = True
+    win_rate: float | None = None
+    role: str | None = None
