@@ -84,5 +84,6 @@ def get_trends(
 ):
     """Fetch top Pokemon trends with usage swings."""
     result = supabase.rpc("get_meta_trends", {"p_format": format, "p_limit": limit}).execute()
+    rows: list[dict] = result.data or []  # type: ignore[assignment]
 
-    return [MetaTrendResponse.model_validate(row) for row in result.data or []]
+    return [MetaTrendResponse.model_validate(row) for row in rows]
