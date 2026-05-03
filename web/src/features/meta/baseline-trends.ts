@@ -14,6 +14,7 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 54.2,
     role: "Intimidate Pivot",
+    top_moves: [{ name: "Fake Out", percent: 99 }, { name: "Flare Blitz", percent: 90 }, { name: "Parting Shot", percent: 85 }]
   },
   {
     id: 983,
@@ -24,6 +25,7 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 51.8,
     role: "Late-game Sweeper",
+    top_moves: [{ name: "Kowtow Cleave", percent: 99 }, { name: "Sucker Punch", percent: 95 }, { name: "Iron Head", percent: 80 }]
   },
   {
     id: 445,
@@ -34,6 +36,7 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 49.2,
     role: "Physical Pressure",
+    top_moves: [{ name: "Earthquake", percent: 90 }, { name: "Dragon Claw", percent: 70 }]
   },
   {
     id: 149,
@@ -44,6 +47,7 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 52.1,
     role: "Multiscale Sweeper",
+    top_moves: [{ name: "Extreme Speed", percent: 95 }, { name: "Stomping Tantrum", percent: 60 }]
   },
   {
     id: 970,
@@ -54,6 +58,7 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 48.7,
     role: "Hazard Setter",
+    top_moves: [{ name: "Mortal Spin", percent: 90 }, { name: "Sludge Bomb", percent: 80 }]
   },
   {
     id: 1013,
@@ -64,5 +69,6 @@ export const BASELINE_TRENDS: MetaTrend[] = [
     up: true,
     win_rate: 53.5,
     role: "Support / Redirect",
+    top_moves: [{ name: "Matcha Gotcha", percent: 95 }, { name: "Rage Powder", percent: 90 }]
   },
 ];

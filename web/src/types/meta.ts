@@ -7,6 +7,11 @@ export interface MetaSnapshot {
   source: string | null;
 }
 
+export interface UsageItem {
+  name: string;
+  percent: number;
+}
+
 export interface MetaTrend {
   id: number;
   pokemon_name: string;
@@ -16,6 +21,9 @@ export interface MetaTrend {
   up: boolean;
   win_rate: number;
   role: string;
+  top_moves?: UsageItem[];
+  top_items?: UsageItem[];
+  top_abilities?: UsageItem[];
 }
 
 export interface MetaSnapshotListResponse {

@@ -310,17 +310,32 @@ export default function HomePage() {
         
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {loadingTrends ? <div className="col-span-full h-40 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> : trends.map(t => (
-            <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive relative overflow-hidden p-4 group">
+            <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive relative overflow-hidden p-4 group min-h-[140px]">
                <Image src={pokeArt(t.id)} alt="" width={80} height={80} unoptimized className="absolute -right-3 -top-2 opacity-15 group-hover:opacity-30 transition-opacity" />
-               <div className="relative">
+               <div className="relative h-full flex flex-col">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-display font-bold text-sm text-on-surface">{t.pokemon_name}</span>
                     <span className={`text-[0.6rem] font-bold ${t.up ? "text-success" : "text-primary"}`}>
                       {t.up ? "▲" : "▼"} {Math.abs(t.swing).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest mb-3">{t.role}</div>
-                  <div className="flex justify-between font-mono text-[0.6rem] text-on-surface-muted">
+                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest mb-2">{t.role}</div>
+                  
+                  {/* High Res Details */}
+                  <div className="flex-1">
+                    {t.top_moves && t.top_moves.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-mono text-[0.5rem] uppercase tracking-tighter text-on-surface-muted mb-0.5">Key Moves</div>
+                        <div className="flex flex-wrap gap-1">
+                          {t.top_moves.slice(0, 2).map(m => (
+                            <span key={m.name} className="text-[0.55rem] text-on-surface-dim bg-surface px-1 rounded border border-outline-variant/50">{m.name}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-2 border-t border-outline-variant/30 flex justify-between font-mono text-[0.6rem] text-on-surface-muted">
                     <span>USG {t.usage_percent.toFixed(1)}%</span>
                     <span>WR {t.win_rate.toFixed(1)}%</span>
                   </div>
