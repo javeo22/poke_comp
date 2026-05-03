@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { fetchSpeedTiers, type SpeedTierEntry } from "@/lib/api";
 
 const STAT_KEYS = ["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"] as const;
 
@@ -16,28 +18,55 @@ const STAT_LABELS: Record<string, string> = {
 const MAX_TOTAL = 66;
 const MAX_PER_STAT = 32;
 
-// Common speed tiers in Champions doubles meta (base speed values)
-const SPEED_TIERS = [
-  { name: "Dragapult", base: 142 },
-  { name: "Sneasler", base: 120 },
-  { name: "Garchomp", base: 102 },
-  { name: "Incineroar", base: 60 },
-  { name: "Torkoal", base: 20 },
-];
+const NATURE_EFFECTS: Record<string, Record<string, number>> = {
+  Adamant: { attack: 1.1, sp_attack: 0.9 },
+  Bold: { defense: 1.1, attack: 0.9 },
+  Brave: { attack: 1.1, speed: 0.9 },
+  Calm: { sp_defense: 1.1, attack: 0.9 },
+  Careful: { sp_defense: 1.1, sp_attack: 0.9 },
+  Gentle: { sp_defense: 1.1, defense: 0.9 },
+  Hasty: { speed: 1.1, defense: 0.9 },
+  Impish: { defense: 1.1, sp_attack: 0.9 },
+  Jolly: { speed: 1.1, sp_attack: 0.9 },
+  Lax: { defense: 1.1, sp_defense: 0.9 },
+  Lonely: { attack: 1.1, defense: 0.9 },
+  Mild: { sp_attack: 1.1, defense: 0.9 },
+  Modest: { sp_attack: 1.1, attack: 0.9 },
+  Naive: { speed: 1.1, sp_defense: 0.9 },
+  Naughty: { attack: 1.1, sp_defense: 0.9 },
+  Quiet: { sp_attack: 1.1, speed: 0.9 },
+  Rash: { sp_attack: 1.1, sp_defense: 0.9 },
+  Relaxed: { defense: 1.1, speed: 0.9 },
+  Sassy: { sp_defense: 1.1, speed: 0.9 },
+  Timid: { speed: 1.1, attack: 0.9 },
+};
 
 interface StatPointEditorProps {
   value: Record<string, number>;
   onChange: (stats: Record<string, number>) => void;
   baseStats?: Record<string, number> | null;
+  nature?: string | null;
 }
 
-function calcFinalSpeed(base: number, investment: number, level: number = 50): number {
-  // Simplified: at Lv50, stat = ((2*base + 31 + investment/4) * 50/100) + 5
-  // Champions uses stat_points directly (not traditional EVs), so simplified:
-  return Math.floor(((2 * base + 31) * level) / 100) + 5 + investment;
+function calcFinalSpeed(base: number, investment: number, nature?: string | null, level: number = 50): number {
+  const naked = Math.floor(((2 * base + 31) * level) / 100) + 5;
+  const withInvestment = naked + investment;
+  const mult = nature && NATURE_EFFECTS[nature]?.speed ? NATURE_EFFECTS[nature].speed : 1.0;
+  return Math.floor(withInvestment * mult);
 }
 
-export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorProps) {
+export function StatPointEditor({ value, onChange, baseStats, nature }: StatPointEditorProps) {
+  const [speedTiers, setSpeedTiers] = useState<SpeedTierEntry[]>([]);
+
+  useEffect(() => {
+    fetchSpeedTiers("doubles", true)
+      .then((res) => setSpeedTiers(res.data))
+      .catch((err) => {
+        console.error("Failed to fetch speed tiers:", err);
+        setSpeedTiers([]);
+      });
+  }, []);
+
   const total = Object.values(value).reduce((sum, v) => sum + v, 0);
   const remaining = MAX_TOTAL - total;
 
@@ -51,15 +80,27 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
   // Speed tier context
   const baseSpeed = baseStats?.speed ?? 0;
   const speedInvestment = value.speed || 0;
-  const finalSpeed = baseSpeed > 0 ? calcFinalSpeed(baseSpeed, speedInvestment) : 0;
+  const finalSpeed = baseSpeed > 0 ? calcFinalSpeed(baseSpeed, speedInvestment, nature) : 0;
 
-  // Find what you outspeed / underspeed
-  const nearestAbove = SPEED_TIERS.find(
-    (t) => calcFinalSpeed(t.base, 0) > finalSpeed
-  );
-  const nearestBelow = [...SPEED_TIERS].reverse().find(
-    (t) => calcFinalSpeed(t.base, 0) <= finalSpeed
-  );
+  // Benchmarking logic: find closest 5 meta benchmarks relative to finalSpeed
+  const benchmarks = useMemo(() => {
+    if (finalSpeed === 0 || speedTiers.length === 0) return [];
+
+    const allBenchmarks: { name: string; speed: number; type: string }[] = [];
+    speedTiers.forEach((tier) => {
+      allBenchmarks.push({ name: tier.name, speed: tier.neutral_max, type: "neutral" });
+      if (tier.positive_max !== tier.neutral_max) {
+        allBenchmarks.push({ name: tier.name, speed: tier.positive_max, type: "positive" });
+      }
+      allBenchmarks.push({ name: tier.name, speed: tier.scarf_max, type: "scarf" });
+    });
+
+    return allBenchmarks
+      .map((b) => ({ ...b, diff: b.speed - finalSpeed }))
+      .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))
+      .slice(0, 5)
+      .sort((a, b) => b.speed - a.speed);
+  }, [finalSpeed, speedTiers]);
 
   return (
     <div>
@@ -135,29 +176,57 @@ export function StatPointEditor({ value, onChange, baseStats }: StatPointEditorP
           })}
         </div>
 
-        {/* Speed tier context */}
-        {finalSpeed > 0 && (
-          <div className="mt-3 rounded-full bg-surface-mid px-3 py-1.5 text-center">
-            <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-              Speed: {finalSpeed}
-            </span>
-            {nearestBelow && (
-              <span className="ml-2 font-display text-[0.6rem] text-secondary">
-                outspeeds {nearestBelow.name}
+        {/* Speed Benchmarks */}
+        {finalSpeed > 0 && benchmarks.length > 0 && (
+          <div className="mt-4 border-t border-outline-variant/30 pt-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                Speed Benchmarks
               </span>
-            )}
-            {nearestAbove && (
-              <span className="ml-2 font-display text-[0.6rem] text-tertiary">
-                outsped by {nearestAbove.name}
+              <span className="font-mono text-[0.6rem] text-on-surface-muted">
+                Current: <span className="text-on-surface font-bold">{finalSpeed}</span>
               </span>
-            )}
+            </div>
+            <div className="space-y-1.5">
+              {benchmarks.map((b, i) => {
+                const isOutspeeding = finalSpeed > b.speed;
+                const isSpeedTie = finalSpeed === b.speed;
+
+                return (
+                  <div key={i} className="flex items-center justify-between rounded bg-surface-mid/40 px-2 py-1 text-[0.65rem]">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span
+                        className={`rounded px-1 font-display text-[0.55rem] font-bold ${
+                          isOutspeeding
+                            ? "bg-secondary/20 text-secondary"
+                            : isSpeedTie
+                              ? "bg-primary/20 text-primary"
+                              : "bg-tertiary/20 text-tertiary"
+                        }`}
+                      >
+                        {isOutspeeding ? "FAST" : isSpeedTie ? "TIE" : "SLOW"}
+                      </span>
+                      <span className="truncate text-on-surface">
+                        {b.name}{" "}
+                        <span className="text-[0.55rem] uppercase opacity-60">
+                          {b.type === "neutral" ? "" : b.type === "positive" ? "+Nat" : "Scarf"}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="ml-2 shrink-0 font-mono text-on-surface-muted">
+                      {b.speed}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        <div className="mt-2 text-center">
+        <div className="mt-3 text-center">
           <Link
             href="/speed-tiers"
-            className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted hover:text-accent transition-colors"
+            className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted transition-colors hover:text-accent"
           >
             See full speed tiers →
           </Link>

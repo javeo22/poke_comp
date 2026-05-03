@@ -344,6 +344,7 @@ export function RosterForm({ editing, pokemonLookup, preselectedPokemonId, onSub
               value={statPoints}
               onChange={setStatPoints}
               baseStats={selectedPokemon?.base_stats}
+              nature={nature}
             />
           </div>
 

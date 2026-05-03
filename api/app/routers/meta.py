@@ -15,7 +15,7 @@ router = APIRouter(prefix="/meta", tags=["meta"])
 
 @router.get("", response_model=MetaSnapshotList)
 def list_snapshots(
-    format: str | None = Query(None, description="Filter by format (singles, doubles, megas)"),
+    format: str | None = Query(None, description="Filter by format (singles, doubles)"),
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -34,7 +34,7 @@ def list_snapshots(
 @router.get("/latest", response_model=list[MetaSnapshotResponse])
 def get_latest_snapshots():
     """Return the most recent snapshot for each format."""
-    formats = ["singles", "doubles", "megas"]
+    formats = ["singles", "doubles"]
     results: list[MetaSnapshotResponse] = []
 
     for fmt in formats:
@@ -56,7 +56,7 @@ def get_latest_snapshots():
 @limiter.limit("30/minute")
 def get_trends(
     request: Request,
-    format: str = Query("doubles", pattern=r"^(singles|doubles|megas)$"),
+    format: str = Query("doubles", pattern=r"^(singles|doubles)$"),
     limit: int = Query(6, ge=1, le=20),
 ):
     """Fetch top Pokemon trends with usage swings."""

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class MetaSnapshotCreate(BaseModel):
     snapshot_date: date
-    format: str = Field(pattern=r"^(singles|doubles|megas)$")
+    format: str = Field(pattern=r"^(singles|doubles)$")
     tier_data: dict[str, list[str]]
     source_url: str | None = None
     source: str | None = None

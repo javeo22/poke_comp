@@ -22,7 +22,6 @@ interface TeamCardProps {
 const FORMAT_LABEL: Record<string, string> = {
   singles: "Singles",
   doubles: "Doubles",
-  megas: "Megas",
 };
 
 export function TeamCard({

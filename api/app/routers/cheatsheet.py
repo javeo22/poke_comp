@@ -201,7 +201,7 @@ def _fetch_meta_context(team_format: str = "doubles") -> tuple[list[dict], list[
     """
     # Latest tier snapshots
     tier_rows: list[dict] = []
-    for fmt in ("singles", "doubles", "megas"):
+    for fmt in ("singles", "doubles"):
         result = (
             supabase.table("meta_snapshots")
             .select("format, tier_data")

@@ -20,7 +20,7 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 
 @router.get("", response_model=TeamList)
 def list_teams(
-    format: str | None = Query(None, description="Filter by format (singles, doubles, megas)"),
+    format: str | None = Query(None, description="Filter by format (singles, doubles)"),
     archetype_tag: str | None = Query(None, description="Filter by archetype tag"),
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -156,7 +156,7 @@ def delete_team(team_id: str, user_id: str = Depends(get_current_user)):
 class ImportRequest(BaseModel):
     paste: str = Field(description="Showdown paste text")
     team_name: str = Field(description="Name for the imported team")
-    format: str = Field(pattern=r"^(singles|doubles|megas)$")
+    format: str = Field(pattern=r"^(singles|doubles)$")
 
 
 class PreviewRequest(BaseModel):
