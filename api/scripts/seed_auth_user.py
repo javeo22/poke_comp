@@ -41,9 +41,6 @@ def seed_user():
         print("Updating password from SEED_USER_PASSWORD...")
         supabase.auth.admin.update_user_by_id(uuid, {"password": password})
         print("Password updated.")
-        print("\nYou can log in at /login with:")
-        print(f"Email: {user.user.email}")
-        print("Password: [from SEED_USER_PASSWORD]")
     except Exception:
         print("User does not exist, creating...")
         try:
@@ -56,11 +53,24 @@ def seed_user():
                 }
             )
             print(f"Created user {res.user.email} with id {res.user.id}")
-            print("\nSeeded Auth user successfully!")
-            print(f"Email: {email}")
-            print("Password: [from SEED_USER_PASSWORD]")
         except Exception as create_err:
             print(f"Failed to create user: {create_err}")
+            return
+
+    # Ensure profile exists and is_admin=True
+    try:
+        supabase.table("user_profiles").upsert({
+            "user_id": uuid,
+            "display_name": "Admin",
+            "is_admin": True
+        }).execute()
+        print("User profile updated with is_admin=True")
+    except Exception as e:
+        print(f"Failed to update user profile: {e}")
+
+    print("\nYou can log in at /login with:")
+    print(f"Email: {email}")
+    print("Password: [from SEED_USER_PASSWORD]")
 
 
 if __name__ == "__main__":
