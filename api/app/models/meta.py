@@ -34,6 +34,11 @@ class TierEntry(BaseModel):
     snapshot_date: date
 
 
+class UsageItem(BaseModel):
+    name: str
+    percent: float
+
+
 class MetaTrendResponse(BaseModel):
     id: int
     pokemon_name: str
@@ -43,3 +48,6 @@ class MetaTrendResponse(BaseModel):
     up: bool = True
     win_rate: float | None = None
     role: str | None = None
+    top_moves: list[UsageItem] = []
+    top_items: list[UsageItem] = []
+    top_abilities: list[UsageItem] = []
