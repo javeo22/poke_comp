@@ -13,6 +13,7 @@ import {
   fetchAdminItems,
   updateAdminItem,
   fetchAdminMetaSnapshots,
+  triggerAdminIngest,
   fetchStrategyNotes,
   createStrategyNote,
   updateStrategyNote,
@@ -157,6 +158,17 @@ function DashboardTab({
     load();
   }, [onAccessDenied, onError]);
 
+  const handleTriggerIngest = async (source: "pikalytics" | "limitless") => {
+    try {
+      await triggerAdminIngest(source);
+      // Small toast-like feedback could be better, but for now we just log success
+      // and rely on the user to check cron runs after a while.
+      alert(`Ingest task for ${source} has been queued in the background.`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : `Failed to trigger ${source} ingest`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -278,6 +290,27 @@ function DashboardTab({
           </div>
         </div>
       )}
+
+      {/* Live Data Triggers */}
+      <div className="rounded-[1rem] bg-surface-low p-6">
+        <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+          Live Data (Manual Triggers)
+        </h3>
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => handleTriggerIngest("pikalytics")}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-display text-[0.65rem] font-bold uppercase tracking-wider text-on-primary transition-all hover:brightness-110"
+          >
+            Scrape Pikalytics
+          </button>
+          <button
+            onClick={() => handleTriggerIngest("limitless")}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-display text-[0.65rem] font-bold uppercase tracking-wider text-on-primary transition-all hover:brightness-110"
+          >
+            Scrape Limitless
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

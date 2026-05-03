@@ -916,6 +916,12 @@ export async function updateAdminMetaSnapshot(id: string, updates: Record<string
   });
 }
 
+export async function triggerAdminIngest(source: "pikalytics" | "limitless") {
+  return apiFetch<{ status: string; source: string }>(`/admin/ingest/${source}`, {
+    method: "POST",
+  });
+}
+
 // ── Admin Review (HITL) ──
 
 export interface ReviewQueueItem {

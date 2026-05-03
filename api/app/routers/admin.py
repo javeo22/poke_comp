@@ -7,11 +7,13 @@ can access these endpoints.
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 
 from app.auth import get_current_user
 from app.config import settings
 from app.database import supabase
+from app.routers.admin_cron import _record_cron_run
+from scripts.ingest import limitless_teams, pikalytics_usage
 from scripts.validate_data import run_validation
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -546,3 +548,29 @@ def update_meta_snapshot(
     if not rows:
         raise HTTPException(status_code=404, detail="Snapshot not found")
     return rows[0]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Manual Ingest Triggers
+# ═══════════════════════════════════════════════════════════════════
+
+
+@router.post("/ingest/{source}")
+async def trigger_ingest(
+    source: str,
+    background_tasks: BackgroundTasks,
+    _: str = Depends(get_admin_user),
+):
+    """Trigger a data ingest task in the background."""
+    if source == "pikalytics":
+        background_tasks.add_task(
+            _record_cron_run, "ingest_pikalytics", lambda: pikalytics_usage.run(False)
+        )
+    elif source == "limitless":
+        background_tasks.add_task(
+            _record_cron_run, "ingest_limitless", lambda: limitless_teams.run(False, None)
+        )
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown source: {source}")
+
+    return {"status": "queued", "source": source}

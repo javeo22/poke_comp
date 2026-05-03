@@ -36,7 +36,11 @@ from app.services.data_freshness import (
     is_stale,
     snapshot_age_days,
 )
-from app.services.retrieval import fetch_personal_context, fetch_tournament_context
+from app.services.retrieval import (
+    fetch_personal_context,
+    fetch_personal_win_rates,
+    fetch_tournament_context,
+)
 from app.services.strategy_context import fetch_strategy_context
 
 logger = logging.getLogger(__name__)
@@ -430,6 +434,7 @@ def _build_prompt(
     personal_context: str = "",
     usage_snapshot_date: str | None = None,
     usage_age_days: int | None = None,
+    personal_win_rates: dict[str, dict] | None = None,
 ) -> str:
     # Format my team
     my_lines = []
@@ -483,6 +488,19 @@ def _build_prompt(
                 f"  Common items: {items}"
             )
         usage_context = "\n\n## Competitive Usage Data\n" + "\n".join(usage_lines)
+
+    # Format personal win rates
+    win_rate_context = ""
+    if personal_win_rates:
+        wr_lines = []
+        for name, stats in personal_win_rates.items():
+            wr_lines.append(
+                f"- {name}: {stats['wins']}W-{stats['losses']}L "
+                f"({round(stats['win_rate'] * 100, 1)}% win rate over {stats['total']} games)"
+            )
+        win_rate_context = (
+            "\n\n## Historical Performance Against These Species\n" + "\n".join(wr_lines)
+        )
 
     mega_note = ""
     if my_team.get("mega_pokemon_id"):
@@ -540,6 +558,7 @@ def _build_prompt(
         f"{usage_context}"
         f"{tournament_context}"
         f"{personal_context}"
+        f"{win_rate_context}"
     )
     task_section = """\
 ## Task
@@ -712,6 +731,7 @@ def analyze_draft(
 
     tournament_context = _fetch_tournament_context(opponent_ids)
     personal_context = _fetch_personal_context(user_id, opponent_names)
+    personal_win_rates = fetch_personal_win_rates(user_id, opponent_names)
 
     # Build prompt and call Claude
     prompt = _build_prompt(
@@ -723,6 +743,7 @@ def analyze_draft(
         personal_context,
         usage_snapshot_date=snapshot_date,
         usage_age_days=age_days,
+        personal_win_rates=personal_win_rates,
     )
 
     ai = anthropic.Anthropic(api_key=settings.anthropic_api_key)
