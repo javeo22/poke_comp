@@ -15,8 +15,10 @@
 - [x] **Phase 4: Cron alerting + freshness telemetry** — Page a human when `cron_runs` records `fail`; surface freshness state in the admin dashboard.
 - [x] **Phase 5: Data Truth & HITL Review** — Ensure 100% data accuracy by staging suspect scraper results and replacing hardcoded Meta trends.
 - [x] **Phase 7: Homepage Resilience & "Regulation M-A" Dashboard** — Fix the "empty" look of the homepage by adopting a professional "Lab Dashboard" aesthetic, implementing accurate baseline fallbacks from the actual Champions Season M-1 data, and increasing information density with real-time Regulation M-A telemetry.
-- [ ] **Phase 8: Competitive Tools Overhaul (Teambuilder & Calc)** — Transform the teambuilding and damage calculation experience into a VGC-grade toolset by enabling deep stat customization, flexible move selection, and a streamlined "Roster-first" draft flow.
-- [ ] **Phase 6+: Stretch backlog (F9–F10, F12–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted.
+- [x] **Phase 8: Competitive Tools Overhaul (Teambuilder & Calc)** — Transform the teambuilding and damage calculation experience into a VGC-grade toolset by enabling deep stat customization, flexible move selection, and a streamlined "Roster-first" draft flow.
+- [ ] **Phase 9: Quality Tech-Debt & Bug Fixes** — Address the "Speed Comparator" gap in the calculator and convert standalone scripts to a robust `pytest` suite for CI.
+- [ ] **Phase 10: Team Builder Helper (F10)** — Proactive assistance for building balanced teams from the user's roster and meta trends.
+- [ ] **Phase 6+: Stretch backlog (F12–F15)** — Prioritized post-MVP; prompts for explicit user direction before any item is promoted. (F9 discarded).
 
 ---
 

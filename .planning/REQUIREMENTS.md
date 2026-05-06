@@ -163,13 +163,13 @@ Per orchestrator decision in this bootstrap: **F7 and F8 are ELEVATED from PRD-s
 
 Per `champions-prd.md` section 6 + scope guard in section 11. **Not scheduled for current MVP timebox.** Promotions from this list require explicit user direction (F7 and F8 were promoted in the 2026-04-28 bootstrap; nothing else is).
 
-- **F9** — VP-cost calculator for full-team builds (estimate VP for a 6-Pokemon team across the Champions shop).
-- **F10** — Counter-team builder ("build me a team that beats rain stall").
+- **F10** — Team Builder Helper (assist in building balanced rosters/teams using AI and meta data).
 - **F11** — Tournament team scraping from Limitless VGC when richer Champions data appears.
 - **F12** — Screenshot OCR for opponent team preview.
-- **F13** — Public read-only mode for sharing teams via URL (foundation already in place: `web/src/app/share/`, `web/src/app/u/[username]/`).
+- **F13** — Public read-only mode for sharing teams via URL.
 - **F14** — Discord bot integration for matchup queries.
 - **F15** — Push notification when meta tier list updates.
+- (F9 Discarded)
 
 ---
 

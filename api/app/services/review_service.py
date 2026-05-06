@@ -6,6 +6,12 @@ from app.database import supabase
 
 class ReviewService:
     @staticmethod
+    def _first_row(data: object, not_found_message: str) -> Dict[str, Any]:
+        if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+            raise ValueError(not_found_message)
+        return data[0]
+
+    @staticmethod
     async def stage_item(
         source: str,
         payload: Dict[str, Any],
@@ -24,7 +30,7 @@ class ReviewService:
         }
         # supabase-py is synchronous, but we wrap it in async as per task requirements
         response = supabase.table("scraper_review_queue").insert(data).execute()
-        return response.data[0]
+        return ReviewService._first_row(response.data, "Failed to stage review item.")
 
     @staticmethod
     async def approve_item(review_id: str, admin_user_id: str) -> Dict[str, Any]:
@@ -36,7 +42,7 @@ class ReviewService:
         if not response.data:
             raise ValueError(f"Review item {review_id} not found.")
 
-        item = response.data[0]
+        item = ReviewService._first_row(response.data, f"Review item {review_id} not found.")
         if item["status"] != "PENDING":
             raise ValueError(f"Review item {review_id} is already {item['status']}.")
 
@@ -67,7 +73,10 @@ class ReviewService:
         update_response = (
             supabase.table("scraper_review_queue").update(update_data).eq("id", review_id).execute()
         )
-        return update_response.data[0]
+        return ReviewService._first_row(
+            update_response.data,
+            f"Review item {review_id} not found after approval.",
+        )
 
     @staticmethod
     async def reject_item(review_id: str, admin_user_id: str) -> Dict[str, Any]:
@@ -82,7 +91,4 @@ class ReviewService:
         update_response = (
             supabase.table("scraper_review_queue").update(update_data).eq("id", review_id).execute()
         )
-        if not update_response.data:
-            raise ValueError(f"Review item {review_id} not found.")
-
-        return update_response.data[0]
+        return ReviewService._first_row(update_response.data, f"Review item {review_id} not found.")

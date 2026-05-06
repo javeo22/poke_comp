@@ -8,6 +8,12 @@ from app.database import supabase
 logger = logging.getLogger(__name__)
 
 
+def _dict_rows(data: object) -> list[dict[str, Any]]:
+    if not isinstance(data, list):
+        return []
+    return [row for row in data if isinstance(row, dict)]
+
+
 def fetch_tournament_context(pokemon_ids: list[int], limit: int = 5) -> list[dict[str, Any]]:
     """
     Fetch tournament context based on team overlap using get_similar_tournament_teams RPC.
@@ -28,10 +34,11 @@ def fetch_tournament_context(pokemon_ids: list[int], limit: int = 5) -> list[dic
             "get_similar_tournament_teams", {"p_pokemon_ids": pokemon_ids}
         ).execute()
 
-        if not result.data:
+        rows = _dict_rows(result.data)
+        if not rows:
             return []
 
-        return result.data[:limit]
+        return rows[:limit]
     except APIError as e:
         logger.error(f"Supabase RPC error in fetch_tournament_context: {e}")
         return []
@@ -63,10 +70,11 @@ def fetch_personal_context(
             {"p_user_id": user_id, "p_opponent_names": opponent_names},
         ).execute()
 
-        if not result.data:
+        rows = _dict_rows(result.data)
+        if not rows:
             return []
 
-        return result.data[:limit]
+        return rows[:limit]
     except APIError as e:
         logger.error(f"Supabase RPC error in fetch_personal_context: {e}")
         return []
@@ -97,7 +105,7 @@ def fetch_personal_win_rates(user_id: str, pokemon_names: list[str]) -> dict[str
             .eq("user_id", user_id)
             .execute()
         )
-        all_rows: list[dict] = result.data or []
+        all_rows = _dict_rows(result.data)
 
         stats = {name: {"wins": 0, "losses": 0} for name in pokemon_names}
         search_names = {name.lower() for name in pokemon_names}

@@ -1,19 +1,27 @@
-import pytest
 import uuid
 from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
-from app.main import app
-from app.auth import get_current_user
 
-# Mock user for authentication
+import pytest
+from fastapi.testclient import TestClient
+
+from app.auth import get_current_user
+from app.main import app
+
 MOCK_USER_ID = str(uuid.uuid4())
+
 
 def override_get_current_user():
     return MOCK_USER_ID
 
-app.dependency_overrides[get_current_user] = override_get_current_user
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def mock_auth_dependency():
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 @patch("app.routers.draft.settings")
 @patch("app.routers.draft.supabase")

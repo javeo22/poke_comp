@@ -88,6 +88,14 @@ def _get_sprite_url(pokemon_id: int | None) -> str | None:
     return None
 
 
+def _optional_str(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _dict_value(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 class PublicProfile(BaseModel):
     username: str
     display_name: str | None = None
@@ -234,8 +242,8 @@ def get_public_cheatsheet(cheatsheet_id: str):
     if team_id:
         team_result = supabase.table("teams").select("name, format").eq("id", team_id).execute()
         if team_result.data and isinstance(team_result.data[0], dict):
-            team_name = team_result.data[0].get("name")
-            team_format = team_result.data[0].get("format")
+            team_name = _optional_str(team_result.data[0].get("name"))
+            team_format = _optional_str(team_result.data[0].get("format"))
 
     # Resolve owner info
     owner_username = None
@@ -251,8 +259,8 @@ def get_public_cheatsheet(cheatsheet_id: str):
         )
         if profile_result.data and isinstance(profile_result.data[0], dict):
             p = profile_result.data[0]
-            owner_username = p.get("username")
-            owner_display_name = p.get("display_name")
+            owner_username = _optional_str(p.get("username"))
+            owner_display_name = _optional_str(p.get("display_name"))
             avatar_id = p.get("avatar_pokemon_id")
             if isinstance(avatar_id, int):
                 owner_avatar_sprite_url = _get_sprite_url(avatar_id)
@@ -261,7 +269,7 @@ def get_public_cheatsheet(cheatsheet_id: str):
         id=str(cs.get("id", "")),
         team_name=team_name,
         team_format=team_format,
-        cheatsheet_json=cs.get("cheatsheet_json") or {},
+        cheatsheet_json=_dict_value(cs.get("cheatsheet_json")),
         owner_username=owner_username,
         owner_display_name=owner_display_name,
         owner_avatar_sprite_url=owner_avatar_sprite_url,

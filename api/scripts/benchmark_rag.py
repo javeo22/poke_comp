@@ -3,6 +3,7 @@ import os
 import statistics
 import sys
 import time
+from typing import Any
 
 # Add the 'api' directory to sys.path so we can import 'app'
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,6 +14,12 @@ from app.services.retrieval import fetch_personal_context, fetch_tournament_cont
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
+
+
+def _dict_rows(data: object) -> list[dict[str, Any]]:
+    if not isinstance(data, list):
+        return []
+    return [row for row in data if isinstance(row, dict)]
 
 
 def benchmark():
@@ -26,17 +33,20 @@ def benchmark():
             .limit(6)
             .execute()
         )
-        if not res.data:
+        pokemon_rows = _dict_rows(res.data)
+        if not pokemon_rows:
             print("No pokemon data found. Cannot benchmark.")
             return
 
-        pokemon_ids = [p["id"] for p in res.data]
-        pokemon_names = [p["name"] for p in res.data]
+        pokemon_ids = [p["id"] for p in pokemon_rows if isinstance(p.get("id"), int)]
+        pokemon_names = [p["name"] for p in pokemon_rows if isinstance(p.get("name"), str)]
 
         # Get a real user_id from user_profiles to make the RPC do some work
         user_res = supabase.table("user_profiles").select("user_id").limit(1).execute()
+        user_rows = _dict_rows(user_res.data)
+        user_value = user_rows[0].get("user_id") if user_rows else None
         user_id = (
-            user_res.data[0]["user_id"] if user_res.data else "00000000-0000-0000-0000-000000000000"
+            user_value if isinstance(user_value, str) else "00000000-0000-0000-0000-000000000000"
         )
     except Exception as e:
         print(f"Error fetching sample data: {e}")

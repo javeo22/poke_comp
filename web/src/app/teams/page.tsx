@@ -56,7 +56,6 @@ export default function TeamsPage() {
   const [importFormat, setImportFormat] = useState("doubles");
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   // Review step state
   const [importStep, setImportStep] = useState<"paste" | "review">("paste");
   const [previewPokemon, setPreviewPokemon] = useState<ShowdownPreviewPokemon[]>([]);
@@ -199,7 +198,6 @@ export default function TeamsPage() {
     setImportTeamName("");
     setImportFormat("doubles");
     setImportError(null);
-    setImportWarnings([]);
     setImportStep("paste");
     setPreviewPokemon([]);
     setPreviewWarnings([]);
@@ -232,8 +230,7 @@ export default function TeamsPage() {
         team_name: importTeamName,
         format: importFormat,
       };
-      const result = await importTeamFromShowdown(body);
-      setImportWarnings(result.warnings);
+      await importTeamFromShowdown(body);
       setShowImport(false);
       loadData(formatFilter);
     } catch (err) {

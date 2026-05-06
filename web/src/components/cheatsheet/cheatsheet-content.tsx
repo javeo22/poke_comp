@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
-import { pokeArt, pokeSprite } from "@/lib/sprites";
+import { pokeArt } from "@/lib/sprites";
 
 const TYPE_COLORS: Record<string, string> = {
   fire: "#EE8130",

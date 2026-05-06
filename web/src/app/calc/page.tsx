@@ -17,6 +17,7 @@ import { friendlyError } from "@/lib/errors";
 import type { Move } from "@/types/move";
 import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
 import { NATURES } from "@/types/user-pokemon";
+import { calcFinalSpeed } from "@/utils/stats";
 import Image from "next/image";
 
 type Weather = "none" | "sun" | "rain" | "snow" | "sand";
@@ -172,7 +173,7 @@ export default function CalcPage() {
     setter((prev) => {
       const otherTotal = Object.entries(prev.statPoints)
         .filter(([k]) => k !== key)
-        .reduce((a, [_, b]) => a + b, 0);
+        .reduce((a, [, b]) => a + b, 0);
       const clamped = Math.max(0, Math.min(32, val));
       const maxAllowed = Math.min(clamped, 66 - otherTotal);
       return { ...prev, statPoints: { ...prev.statPoints, [key]: maxAllowed } };
@@ -321,6 +322,43 @@ export default function CalcPage() {
                     {result.is_ohko_chance && !result.is_guaranteed_ohko && (
                       <div className="bg-accent/10 text-accent text-[0.6rem] font-mono uppercase tracking-widest py-1 rounded border border-accent/20">OHKO Chance</div>
                     )}
+
+                    {/* Speed Comparison */}
+                    {(() => {
+                      const atkSpeed = calcFinalSpeed(
+                        attacker.pokemon?.base_stats?.speed ?? 0,
+                        attacker.statPoints.speed || 0,
+                        attacker.nature
+                      );
+                      const defSpeed = calcFinalSpeed(
+                        defender.pokemon?.base_stats?.speed ?? 0,
+                        defender.statPoints.speed || 0,
+                        defender.nature
+                      );
+                      const isFaster = atkSpeed > defSpeed;
+                      const isTie = atkSpeed === defSpeed;
+
+                      return (
+                        <div className="mt-2 bg-surface-mid/50 rounded p-2 border border-outline-variant/30">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">Speed Comparison</span>
+                            <span className={`font-mono text-[0.55rem] font-bold ${isFaster ? 'text-primary' : isTie ? 'text-accent' : 'text-tertiary'}`}>
+                              {isFaster ? 'ATTACKER FASTER' : isTie ? 'SPEED TIE' : 'DEFENDER FASTER'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between font-mono text-xs">
+                            <div className="flex flex-col items-start">
+                              <span className="text-[0.5rem] uppercase text-on-surface-muted">Atk</span>
+                              <span className={isFaster ? 'text-primary font-bold' : ''}>{atkSpeed}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[0.5rem] uppercase text-on-surface-muted">Def</span>
+                              <span className={!isFaster && !isTie ? 'text-tertiary font-bold' : ''}>{defSpeed}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                  </div>
 
                  <button 

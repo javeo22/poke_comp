@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { PokemonUsage } from "@/types/usage";
 import { fetchPokemon, fetchPokemonUsage } from "@/lib/api";
@@ -136,7 +137,13 @@ export function QuickAddModal({
                     className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-mid transition-colors"
                   >
                     {p.sprite_url && (
-                      <img src={p.sprite_url} alt="" className="h-8 w-8 pixelated" />
+                      <Image
+                        src={p.sprite_url}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 pixelated object-contain"
+                      />
                     )}
                     <span className="font-body text-sm text-on-surface">{p.name}</span>
                     <span className="ml-auto font-display text-[0.6rem] uppercase text-on-surface-muted">
@@ -155,10 +162,12 @@ export function QuickAddModal({
             {/* Pokemon header */}
             <div className="flex items-center gap-4 rounded-lg bg-surface-lowest p-4 border border-outline-variant">
               {selectedPokemon.sprite_url && (
-                <img
+                <Image
                   src={selectedPokemon.sprite_url}
                   alt={selectedPokemon.name}
-                  className="h-16 w-16 pixelated"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 pixelated object-contain"
                 />
               )}
               <div>

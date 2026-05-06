@@ -83,7 +83,12 @@ def _is_supporter(user_id: str) -> bool:
             .maybe_single()
             .execute()
         )
-        if result and result.data and isinstance(result.data, dict) and result.data.get("supporter"):
+        if (
+            result
+            and result.data
+            and isinstance(result.data, dict)
+            and result.data.get("supporter")
+        ):
             return True
     except Exception:
         pass

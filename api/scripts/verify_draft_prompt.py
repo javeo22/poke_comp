@@ -1,5 +1,3 @@
-from typing import Any
-
 def _build_prompt(
     my_team: dict,
     opponent_pokemon: list[dict],
@@ -60,9 +58,22 @@ opponent_pokemon = [{"name": "Pikachu", "types": ["Electric"], "base_stats": {}}
 opponent_usage = []
 personal_win_rates = {"Pikachu": {"wins": 2, "losses": 1, "total": 3, "win_rate": 0.667}}
 
-prompt = _build_prompt(my_team, opponent_pokemon, opponent_usage, [], "", "", None, None, personal_win_rates)
+prompt = _build_prompt(
+    my_team,
+    opponent_pokemon,
+    opponent_usage,
+    [],
+    "",
+    "",
+    None,
+    None,
+    personal_win_rates,
+)
 print(prompt)
-if "## Historical Performance Against These Species" in prompt and "Pikachu: 2W-1L (66.7% win rate over 3 games)" in prompt:
+if (
+    "## Historical Performance Against These Species" in prompt
+    and "Pikachu: 2W-1L (66.7% win rate over 3 games)" in prompt
+):
     print("SUCCESS: Win rates included in prompt")
 else:
     print("FAILURE: Win rates missing from prompt")
