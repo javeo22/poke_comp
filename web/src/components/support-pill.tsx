@@ -11,7 +11,7 @@ export function SupportPill({ onClick, className = "" }: SupportPillProps) {
     <Link
       href="/support"
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-accent transition-colors hover:bg-accent/20 hover:border-accent/60 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border-2 border-outline-variant bg-accent px-3 py-1.5 font-display text-[0.65rem] font-bold uppercase tracking-[0.14em] text-on-surface shadow-[2px_2px_0_var(--color-outline-variant)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--color-outline-variant)] ${className}`}
       title="Support PokeComp"
     >
       <Image

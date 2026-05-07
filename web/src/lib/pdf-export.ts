@@ -2,8 +2,11 @@
  * Export the cheatsheet content div to a downloadable PDF file.
  * Uses html2canvas to capture the rendered DOM and jsPDF to create the PDF.
  */
-export async function exportCheatsheetPDF(teamTitle: string): Promise<void> {
-  const element = document.getElementById("cheatsheet-content");
+export async function exportCheatsheetPDF(
+  teamTitle: string,
+  elementId = "cheatsheet-content",
+): Promise<void> {
+  const element = document.getElementById(elementId);
   if (!element) return;
 
   // Dynamically import to avoid SSR issues
@@ -22,7 +25,7 @@ export async function exportCheatsheetPDF(teamTitle: string): Promise<void> {
   });
 
   const canvas = await html2canvas(element, {
-    backgroundColor: "#0a0a0f",
+    backgroundColor: "#f4efe5",
     scale: 2,
     useCORS: true,
     logging: false,

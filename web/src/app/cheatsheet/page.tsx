@@ -446,7 +446,7 @@ export default function CheatsheetPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          exportCheatsheetPDF(tempSheet.team_title);
+                          exportCheatsheetPDF(tempSheet.team_title, "cheatsheet-content-session");
                         }}
                         className="btn-ghost h-9 px-4 font-display text-xs font-medium uppercase tracking-wider"
                       >
@@ -455,7 +455,7 @@ export default function CheatsheetPage() {
                       <button onClick={() => setTempSheet(null)} className="btn-ghost h-9 px-4 font-display text-xs uppercase tracking-wider">Close</button>
                    </div>
                 </div>
-                <div className="p-5">
+                <div id="cheatsheet-content-session" className="p-5">
                    <CheatsheetContent data={tempSheet} />
                 </div>
              </div>
@@ -547,7 +547,7 @@ export default function CheatsheetPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          exportCheatsheetPDF(data.team_title);
+                          exportCheatsheetPDF(data.team_title, `cheatsheet-content-${saved.team_id}`);
                         }}
                         className="btn-ghost h-9 px-5 font-display text-xs font-medium uppercase tracking-wider"
                       >
@@ -614,7 +614,7 @@ export default function CheatsheetPage() {
                         {data.roster.length} Pokemon
                       </span>
                     </div>
-                    <div id="cheatsheet-content">
+                    <div id={`cheatsheet-content-${saved.team_id}`}>
                       <CheatsheetContent data={data} />
                     </div>
                     {/* Contextual support prompt */}

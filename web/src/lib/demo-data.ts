@@ -196,6 +196,7 @@ export const DEMO_CHEATSHEET: CheatsheetResponse = {
   format: "doubles",
   roster: [
     {
+      id: 727,
       name: "Incineroar",
       types: ["fire", "dark"],
       item: null,
@@ -211,6 +212,7 @@ export const DEMO_CHEATSHEET: CheatsheetResponse = {
       is_mega: false,
     },
     {
+      id: 983,
       name: "Kingambit",
       types: ["dark", "steel"],
       item: null,

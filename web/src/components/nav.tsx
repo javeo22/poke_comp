@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { resetOnboardingTour } from "@/components/onboarding-tour";
 import { SupportPill } from "@/components/support-pill";
 import { fetchProfile } from "@/lib/api";
+import { PcMark } from "@/components/pc-mark";
 import type { User } from "@supabase/supabase-js";
 
 interface ProfileBrief {
@@ -100,24 +101,31 @@ export function Nav() {
   };
 
   return (
-    <nav className="relative z-20 border-b border-outline-variant bg-surface/70 backdrop-blur-[2px]">
-      <div className="flex items-center justify-between px-6 py-4 lg:px-9">
+    <nav className="relative z-20 border-b-2 border-outline-variant bg-surface shadow-[0_2px_0_var(--color-outline-variant)]">
+      <div className="hidden items-center justify-between bg-on-surface px-6 py-1.5 font-mono text-[0.55rem] uppercase tracking-[0.22em] text-surface sm:flex lg:px-9">
+        <span>
+          <span className="text-primary">●</span> Live prep · Champions companion
+        </span>
+        <span className="text-accent">Usage, roster, draft, cheatsheet</span>
+      </div>
+
+      <div className="flex items-center justify-between px-6 py-3 lg:px-9">
         {/* LEFT: logo + tour reset */}
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
             <BrandMark />
             <div className="hidden sm:block leading-tight">
-              <div className="font-display text-[0.95rem] font-bold tracking-[-0.02em] text-on-surface">
-                pokecomp
+              <div className="font-display text-[1rem] font-bold uppercase tracking-[0.08em] text-on-surface">
+                PokeComp
               </div>
-              <div className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted mt-0.5">
-                Live prep
+              <div className="mt-0.5 font-mono text-[0.5rem] uppercase tracking-[0.22em] text-on-surface-muted">
+                Companion · S1
               </div>
             </div>
           </Link>
           <button
             onClick={resetOnboardingTour}
-            className="ml-1 hidden sm:flex h-6 w-6 items-center justify-center rounded-full border border-outline-variant text-[0.6rem] font-mono text-on-surface-dim hover:text-accent hover:border-accent/40 transition-colors"
+            className="ml-1 hidden h-6 w-6 items-center justify-center rounded-[2px] border-2 border-outline-variant bg-surface-lowest text-[0.6rem] font-mono text-on-surface-muted transition-colors hover:bg-accent hover:text-on-surface sm:flex"
             title="Show feature tour"
           >
             ?
@@ -128,10 +136,10 @@ export function Nav() {
         <div className="hidden lg:flex items-center gap-7 text-[0.85rem]">
           <Link
             href={HOME_LINK.href}
-            className={`transition-colors ${
+            className={`relative px-3 py-2 font-display text-xs uppercase tracking-[0.12em] transition-colors ${
               HOME_LINK.match(pathname)
-                ? "text-accent font-semibold"
-                : "text-on-surface-muted hover:text-on-surface"
+                ? "bg-on-surface text-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                : "text-on-surface hover:bg-surface-high"
             }`}
           >
             {HOME_LINK.label}
@@ -142,25 +150,25 @@ export function Nav() {
               <div key={group.label} className="group relative">
                 <button
                   type="button"
-                  className={`transition-colors ${
+                  className={`relative px-3 py-2 font-display text-xs uppercase tracking-[0.12em] transition-colors ${
                     active
-                      ? "text-accent font-semibold"
-                      : "text-on-surface-muted hover:text-on-surface"
+                      ? "bg-on-surface text-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                      : "text-on-surface hover:bg-surface-high"
                   }`}
                 >
                   {group.label}
                 </button>
-                <div className="invisible absolute left-1/2 top-full z-30 mt-3 min-w-44 -translate-x-1/2 rounded-lg border border-outline-variant bg-surface p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+                <div className="invisible absolute left-1/2 top-full z-30 mt-3 min-w-44 -translate-x-1/2 rounded-[2px] border-2 border-outline-variant bg-surface-lowest p-2 opacity-0 shadow-[4px_4px_0_var(--color-outline-variant)] transition-all group-hover:visible group-hover:opacity-100">
                   {group.links.map((link) => {
                     const linkActive = link.match(pathname);
                     return (
                       <Link
                         key={link.href}
                         href={link.href}
-                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                        className={`block rounded-[2px] px-3 py-2 font-display text-xs uppercase tracking-[0.1em] transition-colors ${
                           linkActive
-                            ? "bg-surface-mid text-accent"
-                            : "text-on-surface-muted hover:bg-surface-mid hover:text-on-surface"
+                            ? "bg-on-surface text-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                            : "text-on-surface hover:bg-surface-high"
                         }`}
                       >
                         {link.label}
@@ -190,21 +198,21 @@ export function Nav() {
           {/* Hamburger -- mobile only */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden flex flex-col gap-1 p-2 rounded-lg hover:bg-surface-mid transition-colors"
+            className="flex flex-col gap-1 rounded-[2px] border-2 border-outline-variant bg-surface-lowest p-2 transition-colors hover:bg-surface-high lg:hidden"
             aria-label="Toggle navigation"
           >
             <span
-              className={`block h-0.5 w-5 bg-on-surface-muted transition-transform duration-200 ${
+              className={`block h-0.5 w-5 bg-on-surface transition-transform duration-200 ${
                 mobileOpen ? "translate-y-1.5 rotate-45" : ""
               }`}
             />
             <span
-              className={`block h-0.5 w-5 bg-on-surface-muted transition-opacity duration-200 ${
+              className={`block h-0.5 w-5 bg-on-surface transition-opacity duration-200 ${
                 mobileOpen ? "opacity-0" : ""
               }`}
             />
             <span
-              className={`block h-0.5 w-5 bg-on-surface-muted transition-transform duration-200 ${
+              className={`block h-0.5 w-5 bg-on-surface transition-transform duration-200 ${
                 mobileOpen ? "-translate-y-1.5 -rotate-45" : ""
               }`}
             />
@@ -214,22 +222,22 @@ export function Nav() {
 
       {/* MOBILE menu */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-outline-variant bg-surface px-6 pb-5 pt-3">
+        <div className="border-t-2 border-outline-variant bg-surface px-6 pb-5 pt-3 lg:hidden">
           <div className="flex flex-col gap-1">
             <Link
               href={HOME_LINK.href}
               onClick={closeMobile}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`rounded-[2px] px-3 py-2 font-display text-xs uppercase tracking-[0.12em] transition-colors ${
                 HOME_LINK.match(pathname)
-                  ? "bg-surface-mid text-accent font-semibold"
-                  : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
+                  ? "bg-on-surface text-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                  : "text-on-surface hover:bg-surface-high"
               }`}
             >
               {HOME_LINK.label}
             </Link>
             {NAV_GROUPS.map((group) => (
               <div key={group.label} className="pt-2">
-                <div className="px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-muted">
+                <div className="px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.2em] text-primary">
                   {group.label}
                 </div>
                 {group.links.map((link) => {
@@ -239,10 +247,10 @@ export function Nav() {
                       key={link.href}
                       href={link.href}
                       onClick={closeMobile}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                      className={`block rounded-[2px] px-3 py-2 font-display text-xs uppercase tracking-[0.12em] transition-colors ${
                         active
-                          ? "bg-surface-mid text-accent font-semibold"
-                          : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
+                          ? "bg-on-surface text-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                          : "text-on-surface hover:bg-surface-high"
                       }`}
                     >
                       {link.label}
@@ -252,7 +260,7 @@ export function Nav() {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center gap-2 border-t border-outline-variant pt-4 sm:hidden">
+          <div className="mt-4 flex items-center gap-2 border-t-2 border-outline-variant pt-4 sm:hidden">
             <SupportPill onClick={closeMobile} />
             <AuthButtons
               user={user}
@@ -270,21 +278,8 @@ export function Nav() {
 
 function BrandMark() {
   return (
-    <div
-      className="grid h-8 w-8 place-items-center rounded-lg shrink-0"
-      style={{
-        background:
-          "conic-gradient(from 220deg, #FF2D7A, #7E22CE, #FFD23F, #FF2D7A)",
-      }}
-    >
-      <div
-        className="grid h-[22px] w-[22px] place-items-center rounded-[5px]"
-        style={{ background: "var(--color-surface)" }}
-      >
-        <span className="font-mono text-[0.8rem] font-extrabold leading-none text-accent">
-          P
-        </span>
-      </div>
+    <div className="grid h-9 w-12 shrink-0 place-items-center rounded-[2px] border-2 border-outline-variant bg-surface-lowest text-primary shadow-[3px_3px_0_var(--color-outline-variant)]">
+      <PcMark size={34} />
     </div>
   );
 }
@@ -314,10 +309,10 @@ function AuthButtons({
         <Link
           href="/profile"
           onClick={onClick}
-          className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors ${
+          className={`flex items-center gap-2 rounded-[2px] border-2 px-2.5 py-1.5 transition-colors ${
             pathname === "/profile"
-              ? "bg-surface-mid text-accent"
-              : "hover:bg-surface-mid"
+              ? "border-outline-variant bg-on-surface text-surface"
+              : "border-transparent hover:border-outline-variant hover:bg-surface-high"
           }`}
         >
           {profileBrief?.avatar_sprite_url ? (
@@ -333,7 +328,7 @@ function AuthButtons({
             <span
               className={`flex h-6 w-6 items-center justify-center rounded-full border text-[0.7rem] font-display font-bold ${
                 pathname === "/profile"
-                  ? "border-accent/40 text-accent"
+                  ? "border-surface text-surface"
                   : "border-outline-variant text-on-surface-muted"
               }`}
             >
@@ -342,7 +337,7 @@ function AuthButtons({
           )}
           <span
             className={`font-display text-xs ${
-              pathname === "/profile" ? "text-accent" : "text-on-surface-muted"
+              pathname === "/profile" ? "text-surface" : "text-on-surface-muted"
             }`}
           >
             {displayName.length > 12

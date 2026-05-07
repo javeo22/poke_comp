@@ -18,10 +18,11 @@ import type { Matchup } from "@/types/matchup";
 import { pokeArt, pokeSprite } from "@/lib/sprites";
 import { createClient } from "@/utils/supabase/client";
 import { SearchableDropdown, type DropdownOption } from "@/components/ui/searchable-dropdown";
-import { ChevronRight, Play, Trophy, Users, Zap, Shield } from "lucide-react";
+import { ChevronRight, Play } from "lucide-react";
 import { LabDashboard } from "@/components/ui/lab-dashboard";
 import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
 import { DataFreshness } from "@/components/data-freshness";
+import { PcEmblem } from "@/components/pc-mark";
 
 export default function HomePage() {
   const router = useRouter();
@@ -91,9 +92,9 @@ export default function HomePage() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-12">
           <div className="flex-1">
             <div className="inline-flex flex-col gap-1 mb-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 bg-surface-low/50 w-fit">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)] animate-pulse" />
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-muted">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-on-surface px-3 py-1 text-surface">
+                <span className="h-4 w-4 rounded-full bg-primary" />
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-surface">
                   CHAMPIONS META DASHBOARD
                 </span>
               </div>
@@ -102,21 +103,23 @@ export default function HomePage() {
               </span>
             </div>
 
-            <h1 className="font-display font-bold tracking-[-0.04em] text-[3rem] leading-[1.05] sm:text-6xl lg:text-[5.5rem] lg:leading-[0.98] text-on-surface m-0">
+            <h1 className="font-display m-0 text-[3.25rem] font-bold uppercase leading-[0.95] tracking-[-0.02em] text-on-surface sm:text-6xl lg:text-[5.75rem]">
               Master the <br />
-              <span className="text-gradient">Champions Meta.</span>
+              <span className="text-gradient relative inline-block">
+                Champions Meta.
+                <span className="absolute -bottom-1 left-0 h-1 w-full bg-on-surface" />
+              </span>
             </h1>
 
-            <p className="mt-8 max-w-[38rem] text-lg sm:text-xl leading-relaxed text-on-surface-dim">
+            <p className="mt-8 max-w-[38rem] text-base leading-relaxed text-on-surface-muted sm:text-lg">
               The only AI-powered companion built exclusively for Pokemon Champions. 
               Draft counters, track your roster, and outplay the meta with real-time data.
             </p>
 
             {/* Quick Action Search */}
             <div className="mt-10 max-w-[32rem]">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur opacity-25 group-focus-within:opacity-100 transition duration-500" />
-                <div className="relative flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-lowest/80 p-2 backdrop-blur-xl shadow-2xl">
+              <div className="relative">
+                <div className="relative flex items-center gap-2 rounded-[2px] border-2 border-outline-variant bg-surface-lowest p-2 shadow-[4px_4px_0_var(--color-outline-variant)]">
                   <div className="flex-1 px-2">
                     <SearchableDropdown
                       value={quickDraftPokemon}
@@ -131,7 +134,7 @@ export default function HomePage() {
                   <button 
                     onClick={() => handleQuickDraft(quickDraftPokemon)}
                     disabled={!quickDraftPokemon}
-                    className="h-12 w-12 flex items-center justify-center rounded-xl bg-accent text-surface-lowest hover:scale-105 active:scale-95 transition-all shadow-lg"
+                    className="flex h-12 w-12 items-center justify-center rounded-[2px] border-2 border-outline-variant bg-primary text-surface transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--color-outline-variant)] active:translate-x-0 active:translate-y-0"
                     title="Quick Draft"
                   >
                     <Play className="fill-current" size={20} />
@@ -145,7 +148,7 @@ export default function HomePage() {
                     <button 
                       key={t.id} 
                       onClick={() => handleQuickDraft(t.pokemon_name)}
-                      className="font-mono text-[0.65rem] text-primary hover:text-accent transition-colors"
+                      className="font-mono text-[0.65rem] text-primary underline decoration-on-surface decoration-2 underline-offset-4 transition-colors hover:text-on-surface"
                     >
                       {t.pokemon_name.toUpperCase()}
                     </button>
@@ -155,12 +158,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Feature Badge Grid (Visual) */}
-          <div className="hidden lg:grid grid-cols-2 gap-4 w-[380px]">
-            <FeatureCard icon={<Zap size={18} />} title="Real-time Stats" desc="Pikalytics + Limitless" />
-            <FeatureCard icon={<Shield size={18} />} title="Roster Guard" desc="Legal data only" />
-            <FeatureCard icon={<Trophy size={18} />} title="Tournament Meta" desc="Recent high-placing wins" />
-            <FeatureCard icon={<Users size={18} />} title="Community" desc="Built by fan-grinders" />
+          {/* Team badge visual from the redesign */}
+          <div className="hidden w-[390px] lg:block">
+            <PcEmblem className="border-[3px] border-outline-variant shadow-[8px_8px_0_var(--color-outline-variant)]" />
           </div>
         </div>
       </section>
@@ -168,21 +168,20 @@ export default function HomePage() {
       {/* DYNAMIC LIVE BOARD */}
       <section className="mx-auto max-w-[82rem] px-6 py-12 sm:px-9">
         <div
-          className="overflow-hidden rounded-3xl border border-outline-variant shadow-2xl"
+          className="overflow-hidden rounded-[2px] border-2 border-outline-variant shadow-[6px_6px_0_var(--color-outline-variant)]"
           style={{
-            background: "linear-gradient(180deg, rgba(20,12,28,0.9), rgba(15,9,22,0.95))",
-            boxShadow: "0 0 0 1px rgba(255,210,63,0.05) inset",
+            background: "var(--color-surface-lowest)",
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-low/30">
+          <div className="flex items-center justify-between border-b-2 border-outline-variant bg-on-surface px-6 py-4 text-surface">
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--color-primary)]" />
-              <span className="font-mono text-[0.75rem] font-bold tracking-[0.25em] text-primary uppercase">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              <span className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.25em] text-accent">
                 {isLogged && lastMatch ? "Your Latest Match" : "Global Meta Snapshot"}
               </span>
             </div>
-            <div className="font-mono text-[0.65rem] tracking-[0.15em] text-on-surface-muted">
+            <div className="font-mono text-[0.65rem] tracking-[0.15em] text-surface">
               {isLogged && lastMatch ? (
                 new Date(lastMatch.played_at).toLocaleDateString()
               ) : (
@@ -193,7 +192,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2">
             {/* Board Left: The Match/Meta */}
-            <div className="p-8 border-b lg:border-b-0 lg:border-r border-outline-variant">
+            <div className="border-b-2 border-outline-variant p-8 lg:border-b-0 lg:border-r-2">
               <div className="mb-8">
                 <h3 className="font-display text-xl font-bold text-on-surface flex items-center gap-2 mb-2">
                   {isLogged && lastMatch ? "Matchup History" : "Meta Threat Assessment"}
@@ -217,7 +216,7 @@ export default function HomePage() {
                     const id = p.id || (found ? Number(found.value) : 0);
                     
                     return (
-                      <div key={idx} className="group relative aspect-square rounded-xl border border-primary/20 bg-primary/5 p-1 transition-all hover:border-primary/50">
+                      <div key={idx} className="group relative aspect-square rounded-[2px] border-2 border-outline-variant bg-surface p-1 transition-all hover:shadow-[3px_3px_0_var(--color-primary)]">
                         <Image
                           src={id ? pokeArt(id) : pokeArt(1)} 
                           alt={name}
@@ -225,7 +224,7 @@ export default function HomePage() {
                           unoptimized
                           className="object-contain p-1 drop-shadow-2xl"
                         />
-                        <div className="absolute -bottom-1 -right-1 h-5 px-1.5 rounded bg-surface border border-outline-variant text-[0.5rem] font-mono font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute -bottom-1 -right-1 flex h-5 items-center justify-center rounded-[2px] border border-outline-variant bg-surface-lowest px-1.5 font-mono text-[0.5rem] font-bold opacity-0 transition-opacity group-hover:opacity-100">
                           {name.toUpperCase()}
                         </div>
                       </div>
@@ -235,7 +234,7 @@ export default function HomePage() {
               </div>
 
               {/* Logic Block */}
-              <div className="rounded-2xl bg-surface-lowest/50 border border-outline-variant p-6">
+              <div className="rounded-[2px] border-2 border-outline-variant bg-surface p-6 shadow-[3px_3px_0_var(--color-outline-variant)]">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-mono text-[0.65rem] uppercase tracking-widest text-accent">◆ AI Logic</span>
                   {isLogged && lastMatch && (
@@ -253,20 +252,20 @@ export default function HomePage() {
             </div>
 
             {/* Board Right: The Solution/Counters */}
-            <div className="p-8 bg-surface-low/20">
+            <div className="bg-surface p-8">
               <div className="mb-8">
                 <div className="mb-3 font-mono text-[0.7rem] uppercase tracking-widest text-accent">◆ Strategy & Counterplay</div>
                 <div className="grid grid-cols-2 gap-4">
                    {/* Recommendation slots */}
                    {trends.slice(0, 2).map(t => (
-                     <div key={t.id} className="relative overflow-hidden rounded-2xl border border-accent/20 bg-accent/5 p-4 group cursor-pointer hover:border-accent/40 transition-all">
+                     <div key={t.id} className="group relative cursor-pointer overflow-hidden rounded-[2px] border-2 border-outline-variant bg-accent/30 p-4 transition-all hover:shadow-[3px_3px_0_var(--color-outline-variant)]">
                         <Image src={pokeArt(t.id)} alt="" fill unoptimized className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10 group-hover:opacity-25 transition-opacity" />
                         <div className="relative">
                           <div className="text-[0.6rem] font-mono uppercase text-accent tracking-tighter mb-1">Top Tier Pillar</div>
                           <div className="text-lg font-display font-bold text-on-surface">{t.pokemon_name}</div>
                           <div className="mt-2 flex gap-1">
-                            <span className="px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-[0.55rem] font-mono text-on-surface-muted">USG {t.usage_percent.toFixed(1)}%</span>
-                            <span className="px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-[0.55rem] font-mono text-on-surface-muted">WR {t.win_rate.toFixed(1)}%</span>
+                            <span className="rounded-[2px] border border-outline-variant bg-surface px-1.5 py-0.5 font-mono text-[0.55rem] text-on-surface-muted">USG {t.usage_percent.toFixed(1)}%</span>
+                            <span className="rounded-[2px] border border-outline-variant bg-surface px-1.5 py-0.5 font-mono text-[0.55rem] text-on-surface-muted">WR {t.win_rate.toFixed(1)}%</span>
                           </div>
                         </div>
                      </div>
@@ -285,12 +284,12 @@ export default function HomePage() {
                 <div className="grid grid-cols-4 gap-3">
                   {loadingUser ? (
                      Array.from({ length: 4 }).map((_, i) => (
-                       <div key={i} className="aspect-[4/5] rounded-xl bg-surface-low animate-pulse" />
+                       <div key={i} className="aspect-[4/5] animate-pulse rounded-[2px] border-2 border-outline-variant bg-surface-high" />
                      ))
                   ) : (
                     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                     (isLogged && userPokemon.length > 0 ? userPokemon.slice(0, 4) : trends.slice(0, 4) as any[]).map((p: any, idx) => (
-                      <div key={idx} className="aspect-[4/5] rounded-xl border border-outline-variant bg-surface-lowest/30 p-2 flex flex-col items-center justify-center text-center">
+                      <div key={idx} className="flex aspect-[4/5] flex-col items-center justify-center rounded-[2px] border-2 border-outline-variant bg-surface-lowest p-2 text-center">
                          <Image 
                           src={p.pokemon_id ? pokeSprite(p.pokemon_id) : pokeSprite(p.id || 1)} 
                           alt="" 
@@ -306,7 +305,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <Link href="/draft" className="mt-8 block w-full py-4 rounded-xl bg-accent text-surface-lowest text-center font-display font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl">
+              <Link href="/draft" className="mt-8 block w-full rounded-[2px] border-2 border-outline-variant bg-primary py-4 text-center font-display text-sm font-bold uppercase tracking-[0.14em] text-surface shadow-[4px_4px_0_var(--color-outline-variant)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">
                 START FULL DRAFT ANALYSIS
               </Link>
             </div>
@@ -323,7 +322,7 @@ export default function HomePage() {
         
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {loadingTrends ? <div className="col-span-full h-40 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> : trends.map(t => (
-            <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive relative overflow-hidden p-4 group min-h-[140px]">
+            <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive group relative min-h-[140px] overflow-hidden p-4">
                <Image src={pokeArt(t.id)} alt="" width={80} height={80} unoptimized className="absolute -right-3 -top-2 opacity-15 group-hover:opacity-30 transition-opacity" />
                <div className="relative h-full flex flex-col">
                   <div className="flex items-center justify-between mb-1">
@@ -341,7 +340,7 @@ export default function HomePage() {
                         <div className="font-mono text-[0.5rem] uppercase tracking-tighter text-on-surface-muted mb-0.5">Key Moves</div>
                         <div className="flex flex-wrap gap-1">
                           {t.top_moves.slice(0, 2).map(m => (
-                            <span key={m.name} className="text-[0.55rem] text-on-surface-dim bg-surface px-1 rounded border border-outline-variant/50">{m.name}</span>
+                            <span key={m.name} className="rounded-[2px] border border-outline-variant/50 bg-surface px-1 text-[0.55rem] text-on-surface-dim">{m.name}</span>
                           ))}
                         </div>
                       </div>
@@ -360,28 +359,18 @@ export default function HomePage() {
 
       {/* FOOTER STATS */}
       {stats && (
-        <section className="border-t border-outline-variant mt-12 bg-surface-low/20 py-16">
+        <section className="mt-12 border-t-2 border-outline-variant bg-surface-lowest py-16">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 flex-wrap gap-12">
             <StatItem value={stats.pokemon_count} label="Roster" />
-            <div className="h-12 w-px bg-outline-variant hidden md:block" />
+            <div className="hidden h-12 w-0.5 bg-outline-variant md:block" />
             <StatItem value={stats.teams_count} label="Teams Built" />
-            <div className="h-12 w-px bg-outline-variant hidden md:block" />
+            <div className="hidden h-12 w-0.5 bg-outline-variant md:block" />
             <StatItem value={stats.matches_count} label="Matches Analyzed" />
           </div>
         </section>
       )}
       </div>
     </LabDashboard>
-  );
-}
-
-function FeatureCard({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
-  return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-low/30 p-5 backdrop-blur-md">
-      <div className="mb-3 text-accent">{icon}</div>
-      <div className="font-display text-sm font-bold text-on-surface mb-1">{title}</div>
-      <div className="font-body text-xs text-on-surface-muted">{desc}</div>
-    </div>
   );
 }
 

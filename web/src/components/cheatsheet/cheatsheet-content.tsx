@@ -1,6 +1,7 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import type { CheatsheetResponse } from "@/types/cheatsheet";
-import { pokeArt } from "@/lib/sprites";
+import { pokeSprite } from "@/lib/sprites";
 
 const TYPE_COLORS: Record<string, string> = {
   fire: "#EE8130",
@@ -23,18 +24,12 @@ const TYPE_COLORS: Record<string, string> = {
   normal: "#A8A77A",
 };
 
-const MOVE_CATEGORY_CLASSES: Record<string, string> = {
-  stab: "border-primary/40 text-primary",
-  priority: "border-tertiary/40 text-tertiary",
-  utility: "border-accent/40 text-accent",
-};
-
 function renderNoteWithBold(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <span key={i} className="font-bold text-accent">
+        <span key={i} className="font-bold text-primary">
           {part.slice(2, -2)}
         </span>
       );
@@ -43,224 +38,274 @@ function renderNoteWithBold(text: string) {
   });
 }
 
+function shortDate(value?: string | null) {
+  if (!value) return "Fresh run";
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function CheatsheetContent({ data }: { data: CheatsheetResponse }) {
-  const maxSpeed = Math.max(...data.speed_tiers.map((t) => t.speed), 1);
+  const roster = data.roster.slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-8 pt-4">
-      {/* Roster Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.roster.map((mon, i) => (
-          <div
-            key={i}
-            className="card relative overflow-hidden p-4 border border-outline-variant"
-            style={{
-              background: "linear-gradient(180deg, rgba(20,12,28,0.7), rgba(15,9,22,0.9))",
-            }}
-          >
-            <Image
-              src={pokeArt(mon.id || 0)}
-              alt={mon.name}
-              width={100}
-              height={100}
-              unoptimized
-              className="absolute -right-2 -top-2 h-[100px] w-[100px] opacity-20 pointer-events-none"
-            />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-display text-base font-bold text-on-surface">
-                  {mon.name}
-                </span>
+    <div className="mx-auto w-full max-w-[860px] bg-surface-lowest p-5 text-on-surface sm:p-7">
+      <article className="relative min-h-[1100px] overflow-hidden border-2 border-outline-variant bg-surface-lowest p-6 shadow-[8px_8px_0_var(--color-outline-variant)] sm:p-8">
+        {/* Masthead */}
+        <header className="mb-4 flex items-end justify-between gap-4 border-b-[3px] border-double border-outline-variant pb-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.22em] text-primary">
+              ◆ Operative briefing
+            </p>
+            <h2 className="mt-1 truncate font-display text-3xl font-bold uppercase leading-none tracking-[-0.01em] text-on-surface sm:text-4xl">
+              {data.team_title}
+            </h2>
+          </div>
+          <div className="shrink-0 text-right font-mono text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-muted">
+            {data.format}
+            <br />
+            {shortDate(data.generated_at)}
+          </div>
+        </header>
+
+        {/* Team row */}
+        <section className="mb-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {roster.map((mon, index) => (
+            <div
+              key={`${mon.name}-${index}`}
+              className="relative aspect-square border border-outline-variant bg-surface"
+            >
+              {mon.id ? (
+                <Image
+                  src={pokeSprite(mon.id)}
+                  alt={mon.name}
+                  fill
+                  unoptimized
+                  className="image-rendering-pixelated object-contain p-1"
+                />
+              ) : (
+                <div className="grid h-full place-items-center font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                  PKMN
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+
+        {/* Roster cards */}
+        <section className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {roster.map((mon, index) => (
+            <div
+              key={`${mon.name}-card-${index}`}
+              className="border border-outline-variant bg-surface p-2.5"
+            >
+              <div className="mb-1.5 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="truncate font-display text-sm font-bold uppercase tracking-[0.02em]">
+                    {mon.name}
+                  </h3>
+                  <p className="truncate font-mono text-[0.5rem] uppercase tracking-[0.12em] text-on-surface-muted">
+                    {mon.item ?? "No item"} · {mon.ability ?? "No ability"}
+                  </p>
+                </div>
                 {mon.is_mega && (
-                  <span className="rounded-full border border-primary/40 px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-wider text-primary">
+                  <span className="border border-outline-variant bg-primary px-1.5 py-0.5 font-mono text-[0.45rem] font-bold uppercase tracking-wider text-surface">
                     Mega
                   </span>
                 )}
               </div>
-              <div className="flex flex-wrap gap-1 mb-3">
+
+              <div className="mb-2 flex flex-wrap gap-1">
                 {mon.types.map((type) => (
                   <span
                     key={type}
-                    className="px-2 py-px rounded-full font-mono text-[0.55rem] font-bold uppercase tracking-wider text-surface"
-                    style={{ background: TYPE_COLORS[type.toLowerCase()] ?? "var(--color-on-surface-muted)" }}
+                    className="border border-outline-variant px-1.5 py-0.5 font-mono text-[0.48rem] font-bold uppercase tracking-[0.08em] text-on-surface"
+                    style={{ background: TYPE_COLORS[type.toLowerCase()] ?? "var(--color-surface-high)" }}
                   >
                     {type}
                   </span>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
-                <div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Item</div>
-                  <div className="font-display text-xs font-semibold text-accent">{mon.item ?? "--"}</div>
-                </div>
-                <div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Ability</div>
-                  <div className="font-display text-xs font-semibold text-secondary">{mon.ability ?? "--"}</div>
-                </div>
-                <div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-widest">Nature / SP</div>
-                  <div className="font-display text-[0.65rem] text-on-surface-muted">
-                    {mon.nature ?? "--"} · {mon.stat_points ?? "0 SP"}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-outline-variant/30">
-                {mon.moves.map((move, j) => (
+
+              <div className="grid grid-cols-2 gap-1 border-t border-outline-variant pt-2">
+                {mon.moves.slice(0, 4).map((move, moveIndex) => (
                   <span
-                    key={j}
-                    className={`rounded-md border px-2 py-0.5 font-mono text-[0.6rem] tracking-tight ${
-                      MOVE_CATEGORY_CLASSES[move.category] ?? "border-outline-variant text-on-surface-muted"
-                    }`}
+                    key={`${move.name}-${moveIndex}`}
+                    className="truncate border border-outline-variant bg-surface-lowest px-1.5 py-0.5 font-mono text-[0.5rem] text-on-surface-muted"
                   >
                     {move.name}
                   </span>
                 ))}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </section>
 
-      {/* 3-column grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Game Plan */}
-        <div className="card p-5 border border-primary/20 bg-primary/5">
-          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-primary mb-4 uppercase">
-            ◆ Game Plan
-          </div>
-          <div className="flex flex-col gap-6">
-            {data.game_plan.map((step) => (
-              <div key={step.step} className="flex gap-4">
-                <span className="font-display text-4xl font-bold leading-none text-primary/40 italic">
-                  {step.step.toString().padStart(2, '0')}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-display text-[0.9rem] font-bold text-on-surface">{step.title}</p>
-                  <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Speed Tiers */}
-        <div className="card p-5 border border-accent/20 bg-accent/5">
-          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-accent mb-4 uppercase">
-            ◆ Speed Tiers
-          </div>
-          <div className="flex flex-col gap-3.5">
-            {data.speed_tiers.map((tier, i) => (
-              <div key={i} className="flex flex-col gap-1.5">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="font-display text-xs font-bold text-on-surface truncate">
-                      {tier.pokemon}
-                    </span>
+        {/* Two-column dossier */}
+        <section className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Panel title="Speed tiers">
+            <div className="space-y-1.5 font-mono text-[0.65rem] leading-relaxed">
+              {data.speed_tiers.map((tier, index) => (
+                <div key={`${tier.pokemon}-${index}`} className="flex gap-2">
+                  <span className="w-10 shrink-0 font-bold text-primary">{tier.speed}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    <strong>{tier.pokemon}</strong>
                     {tier.note && (
-                      <span className="font-mono text-[0.55rem] text-on-surface-dim uppercase truncate">
-                        · {tier.note}
-                      </span>
+                      <span className="text-on-surface-muted"> · {tier.note}</span>
                     )}
-                  </div>
-                  <span className="font-mono text-xs font-bold text-accent shrink-0">
-                    {tier.speed}
                   </span>
                 </div>
-                <div className="h-1 w-full rounded-full bg-surface-lowest overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent/30 transition-all duration-500 shadow-[0_0_8px_var(--color-accent)]"
-                    style={{ width: `${(tier.speed / maxSpeed) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </Panel>
 
-        {/* Key Rules */}
-        <div className="card p-5 border border-secondary/20 bg-secondary/5">
-          <div className="font-mono text-[0.7rem] tracking-[0.22em] text-secondary mb-4 uppercase">
-            ◆ Key Rules
-          </div>
-          <div className="flex flex-col gap-5">
-            {data.key_rules.map((rule, i) => (
-              <div
-                key={i}
-                className="relative pl-5 py-0.5"
-              >
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-secondary to-transparent" />
-                <p className="font-display text-[0.85rem] font-bold text-on-surface">{rule.title}</p>
-                <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
-                  {rule.description}
+          <Panel title="Game plan">
+            <div className="space-y-2">
+              {data.game_plan.map((step) => (
+                <div key={step.step} className="grid grid-cols-[2rem_1fr] gap-2">
+                  <span className="font-display text-2xl font-bold leading-none text-primary/50">
+                    {step.step.toString().padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p className="font-display text-sm font-bold uppercase leading-tight">
+                      {step.title}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-on-surface-muted">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Panel title="Key rules">
+            <div className="space-y-2">
+              {data.key_rules.map((rule, index) => (
+                <div key={`${rule.title}-${index}`} className="border-l-2 border-primary pl-3">
+                  <p className="font-display text-sm font-bold uppercase leading-tight">
+                    {rule.title}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-on-surface-muted">
+                    {rule.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Watch out">
+            <div className="space-y-2">
+              {data.weaknesses.length > 0 ? (
+                data.weaknesses.map((weakness, index) => (
+                  <div key={`${weakness.title}-${index}`}>
+                    <p className="font-display text-sm font-bold uppercase leading-tight">
+                      {weakness.title}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-on-surface-muted">
+                      {weakness.description}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs leading-relaxed text-on-surface-muted">
+                  No major weaknesses were returned for this sheet.
                 </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Lead Matchups */}
-      <div className="card p-5 border border-outline-variant bg-[rgba(10,5,16,0.4)]">
-        <div className="font-mono text-[0.7rem] tracking-[0.22em] text-on-surface-dim mb-6 uppercase">
-          ◆ Lead Matchups
-        </div>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {data.lead_matchups.map((matchup, i) => (
-            <div key={i} className="rounded-xl border border-outline-variant p-4 bg-surface-low/40">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="font-mono text-[0.65rem] font-bold text-accent tracking-[0.15em] uppercase">
-                  {matchup.archetype}
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[0.55rem] font-bold font-mono tracking-widest ${
-                  matchup.threat_tier === "HIGH" ? "bg-primary/20 text-primary border border-primary/30" : 
-                  matchup.threat_tier === "MEDIUM" ? "bg-accent/20 text-accent border border-accent/30" : 
-                  "bg-success/20 text-success border border-success/30"
-                }`}>
-                  {matchup.threat_tier} THREAT
-                </span>
-              </div>
-              <div className="grid grid-cols-[1fr_1fr] gap-4 mb-4">
-                <div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-[0.2em] mb-2">Lead</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {matchup.lead.map((name, j) => (
-                      <span key={j} className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-display text-[0.7rem] font-bold">
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="font-mono text-[0.55rem] text-on-surface-dim uppercase tracking-[0.2em] mb-2">Back</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {matchup.back.map((name, j) => (
-                      <span key={j} className="px-2 py-0.5 rounded bg-on-surface/5 text-on-surface-muted border border-outline-variant font-display text-[0.7rem] font-bold">
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {matchup.note && (
-                <div className="pt-3 border-t border-outline-variant/30 font-body text-[0.7rem] leading-relaxed text-on-surface-muted italic">
-                  {renderNoteWithBold(matchup.note)}
-                </div>
               )}
             </div>
-          ))}
-        </div>
-      </div>
+          </Panel>
+        </section>
 
-      {/* AI Disclaimer */}
+        {/* Lead matchups table */}
+        <section className="mb-12">
+          <div className="mb-1 border-b border-outline-variant pb-1 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">
+            Lead matrix · vs common threats
+          </div>
+          <div className="overflow-hidden border border-outline-variant">
+            <table className="w-full border-collapse font-mono text-[0.58rem]">
+              <thead className="bg-surface">
+                <tr>
+                  <TableHead>Vs archetype</TableHead>
+                  <TableHead>Lead</TableHead>
+                  <TableHead>Back</TableHead>
+                  <TableHead>Tier</TableHead>
+                </tr>
+              </thead>
+              <tbody>
+                {data.lead_matchups.map((matchup, index) => (
+                  <tr key={`${matchup.archetype}-${index}`}>
+                    <TableCell>
+                      <strong>{matchup.archetype}</strong>
+                      <span className="block truncate text-on-surface-muted">
+                        {matchup.example}
+                      </span>
+                    </TableCell>
+                    <TableCell>{matchup.lead.join(" + ")}</TableCell>
+                    <TableCell>{matchup.back.join(" + ")}</TableCell>
+                    <TableCell>
+                      <span className="font-bold text-primary">{matchup.threat_tier}</span>
+                    </TableCell>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {data.lead_matchups[0]?.note && (
+            <p className="mt-2 text-xs italic leading-relaxed text-on-surface-muted">
+              {renderNoteWithBold(data.lead_matchups[0].note)}
+            </p>
+          )}
+        </section>
+
+        <footer className="absolute bottom-4 left-6 right-6 flex justify-between border-t border-outline-variant pt-2 font-mono text-[0.5rem] uppercase tracking-[0.15em] text-on-surface-muted sm:left-8 sm:right-8">
+          <span>PokeComp · {data.team_name}</span>
+          <span className="text-primary">Prepare for trouble.</span>
+          <span>{data.cached ? "Cached" : "Fresh"} · AI sheet</span>
+        </footer>
+      </article>
+
       {data.ai_disclaimer && (
-        <div className="rounded-xl border border-outline-variant bg-surface-lowest px-5 py-3 text-center">
-          <p className="font-mono text-[0.6rem] tracking-[0.1em] text-on-surface-dim">
-            {data.ai_disclaimer}
-          </p>
-        </div>
+        <p className="mt-4 text-center font-mono text-[0.55rem] uppercase tracking-[0.12em] text-on-surface-muted">
+          {data.ai_disclaimer}
+        </p>
       )}
     </div>
+  );
+}
+
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-2 border-b border-outline-variant pb-1 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TableHead({ children }: { children: ReactNode }) {
+  return (
+    <th className="border border-outline-variant px-2 py-1.5 text-left font-semibold uppercase tracking-[0.08em]">
+      {children}
+    </th>
+  );
+}
+
+function TableCell({ children }: { children: ReactNode }) {
+  return (
+    <td className="border border-outline-variant px-2 py-1.5 align-top">
+      {children}
+    </td>
   );
 }
