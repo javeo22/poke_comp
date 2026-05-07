@@ -60,7 +60,7 @@ export default function SpeedTiersPage() {
         Speed Tiers
       </h1>
       <p className="mt-1 font-body text-sm text-on-surface-muted">
-        Level 50, 252 EV / 31 IV / neutral nature. +Nat applies a 1.10x boost; Scarf adds 1.50x on top.
+        Level 50 Champions speed stats from base speed plus stat-point investment. +Nat applies a 1.10x boost; Scarf adds 1.50x on top.
       </p>
 
       {/* Filters */}

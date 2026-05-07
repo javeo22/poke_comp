@@ -11,6 +11,7 @@
 export interface FriendlyError {
   title: string;
   message: string;
+  isAuthRequired?: boolean;
 }
 
 const NETWORK_PATTERNS = [
@@ -34,6 +35,7 @@ export function friendlyError(err: unknown): FriendlyError {
     return {
       title: "Sign-in required",
       message: "Please sign in to continue.",
+      isAuthRequired: true,
     };
   }
 

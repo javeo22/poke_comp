@@ -56,6 +56,28 @@ _ALIASES: dict[str, str] = {
     "Ogerpon Wellspring": "Ogerpon-Wellspring-Mask",
     "Ogerpon Hearthflame": "Ogerpon-Hearthflame-Mask",
     "Ogerpon Cornerstone": "Ogerpon-Cornerstone-Mask",
+    # Common ladder / stream shorthand
+    "Rotom-W": "Rotom-Wash",
+    "Rotom W": "Rotom-Wash",
+    "Rotom-H": "Rotom-Heat",
+    "Rotom H": "Rotom-Heat",
+    "Gambit": "Kingambit",
+    "H-Arcanine": "Arcanine-Hisui",
+    "H Arcanine": "Arcanine-Hisui",
+    "Arcanine-H": "Arcanine-Hisui",
+    "A-Ninetales": "Ninetales-Alola",
+    "A Ninetales": "Ninetales-Alola",
+    "Ninetales-A": "Ninetales-Alola",
+    "Lando-T": "Landorus-Therian",
+    "Lando T": "Landorus-Therian",
+    "Thundy-T": "Thundurus-Therian",
+    "Thundy T": "Thundurus-Therian",
+    "Torn-T": "Tornadus-Therian",
+    "Torn T": "Tornadus-Therian",
+    "Urshifu-R": "Urshifu-Rapid-Strike",
+    "Urshifu R": "Urshifu-Rapid-Strike",
+    "Urshifu-S": "Urshifu-Single-Strike",
+    "Urshifu S": "Urshifu-Single-Strike",
 }
 
 # Regional form prefixes and their canonical suffixes.

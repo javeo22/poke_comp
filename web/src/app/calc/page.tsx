@@ -6,6 +6,7 @@ import {
   fetchMoves,
   fetchPokemonBasic,
   fetchPokemonDetail,
+  fetchUserPokemon,
   runCalc,
   type CalcResponse,
 } from "@/lib/api";
@@ -16,6 +17,7 @@ import {
 import { friendlyError } from "@/lib/errors";
 import type { Move } from "@/types/move";
 import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
+import type { UserPokemon } from "@/types/user-pokemon";
 import { NATURES } from "@/types/user-pokemon";
 import { calcFinalSpeed } from "@/utils/stats";
 import Image from "next/image";
@@ -63,6 +65,7 @@ export default function CalcPage() {
 
   const [allPokemon, setAllPokemon] = useState<PokemonBasic[]>([]);
   const [allMoves, setAllMoves] = useState<Move[]>([]);
+  const [rosterBuilds, setRosterBuilds] = useState<UserPokemon[]>([]);
 
   const [attacker, setAttacker] = useState<SideState>({
     pokemonId: initialAttacker,
@@ -82,6 +85,12 @@ export default function CalcPage() {
   const [weather, setWeather] = useState<Weather>("none");
   const [isDoubles, setIsDoubles] = useState(true);
   const [allMovesToggle, setAllMovesToggle] = useState(false);
+  const [burnModifier, setBurnModifier] = useState(false);
+  const [helpingHandModifier, setHelpingHandModifier] = useState(false);
+  const [screenModifier, setScreenModifier] = useState(false);
+  const [critModifier, setCritModifier] = useState(false);
+  const [spreadModifier, setSpreadModifier] = useState(false);
+  const [customModifier, setCustomModifier] = useState(1);
 
   const [result, setResult] = useState<CalcResponse | null>(null);
   const [running, setRunning] = useState(false);
@@ -92,6 +101,12 @@ export default function CalcPage() {
     setDefender({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
     setMoveId("");
     setWeather("none");
+    setBurnModifier(false);
+    setHelpingHandModifier(false);
+    setScreenModifier(false);
+    setCritModifier(false);
+    setSpreadModifier(false);
+    setCustomModifier(1);
     setResult(null);
   };
 
@@ -103,6 +118,9 @@ export default function CalcPage() {
     fetchMoves({ champions_only: true, limit: 1500 }).then((res) =>
       setAllMoves(res.data)
     );
+    fetchUserPokemon({ limit: 500 })
+      .then((res) => setRosterBuilds(res.data))
+      .catch(() => {});
   }, []);
 
   // Fetch details when IDs change
@@ -144,6 +162,54 @@ export default function CalcPage() {
       }));
   }, [allMoves, attacker.pokemon, allMovesToggle]);
 
+  const rosterBuildOptions: DropdownOption[] = useMemo(() => {
+    const nameById = new Map(allPokemon.map((p) => [p.id, p.name]));
+    return rosterBuilds.map((build) => ({
+      value: build.id,
+      label: nameById.get(build.pokemon_id) ?? `Pokemon #${build.pokemon_id}`,
+      sublabel: [build.item_id ? "item set" : null, build.nature, build.ability]
+        .filter(Boolean)
+        .join(" / "),
+    }));
+  }, [allPokemon, rosterBuilds]);
+
+  const extraModifier = useMemo(() => {
+    let modifier = customModifier;
+    if (burnModifier) modifier *= 0.5;
+    if (helpingHandModifier) modifier *= 1.5;
+    if (screenModifier) modifier *= 2 / 3;
+    if (critModifier) modifier *= 1.5;
+    if (spreadModifier) modifier *= 0.75;
+    return Number(modifier.toFixed(4));
+  }, [
+    burnModifier,
+    helpingHandModifier,
+    screenModifier,
+    critModifier,
+    spreadModifier,
+    customModifier,
+  ]);
+
+  const applyRosterBuild = (side: "attacker" | "defender", buildId: string) => {
+    const build = rosterBuilds.find((entry) => entry.id === buildId);
+    if (!build) return;
+    const nextState: SideState = {
+      pokemonId: String(build.pokemon_id),
+      pokemon: null,
+      statPoints: { ...DEFAULT_STATS, ...(build.stat_points ?? {}) },
+      nature: build.nature ?? "Hardy",
+    };
+    if (side === "attacker") {
+      setAttacker(nextState);
+      const firstMove = (build.moves ?? [])
+        .map((name) => allMoves.find((move) => move.name.toLowerCase() === name.toLowerCase()))
+        .find((move): move is Move => !!move && move.category !== "status" && (move.power ?? 0) > 0);
+      if (firstMove) setMoveId(String(firstMove.id));
+    } else {
+      setDefender(nextState);
+    }
+  };
+
   const handleRun = async () => {
     if (!attacker.pokemonId || !defender.pokemonId || !moveId) return;
     setRunning(true);
@@ -159,6 +225,7 @@ export default function CalcPage() {
         defender_nature: defender.nature,
         weather,
         is_doubles: isDoubles,
+        extra_modifier: extraModifier,
       });
       setResult(res);
     } catch (err) {
@@ -232,6 +299,17 @@ export default function CalcPage() {
               onChange={(v) => setAttacker(p => ({ ...p, pokemonId: v }))}
               options={pokemonOptions}
             />
+            {rosterBuildOptions.length > 0 && (
+              <div className="mt-3">
+                <SearchableDropdown
+                  label="Load from roster"
+                  placeholder="Use saved attacker build..."
+                  value=""
+                  onChange={(v) => applyRosterBuild("attacker", v)}
+                  options={rosterBuildOptions}
+                />
+              </div>
+            )}
 
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -392,6 +470,30 @@ export default function CalcPage() {
                   <span className="text-[0.6rem] text-on-surface-muted uppercase tracking-tight">Spread reduction (0.75x) active</span>
                 </div>
               </label>
+              <div className="grid grid-cols-2 gap-2">
+                <ModifierToggle label="Burn" active={burnModifier} onClick={() => setBurnModifier((v) => !v)} />
+                <ModifierToggle label="Helping Hand" active={helpingHandModifier} onClick={() => setHelpingHandModifier((v) => !v)} />
+                <ModifierToggle label="Screen" active={screenModifier} onClick={() => setScreenModifier((v) => !v)} />
+                <ModifierToggle label="Crit" active={critModifier} onClick={() => setCritModifier((v) => !v)} />
+                <ModifierToggle label="Spread" active={spreadModifier} onClick={() => setSpreadModifier((v) => !v)} />
+                <div className="rounded-lg bg-surface-low p-2">
+                  <label className="mb-1 block font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                    Custom x
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.05"
+                    value={customModifier}
+                    onChange={(e) => setCustomModifier(Number(e.target.value) || 1)}
+                    className="input-field h-8 w-full rounded px-2 font-mono text-xs text-on-surface"
+                  />
+                </div>
+              </div>
+              <p className="font-mono text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                Extra modifier: {extraModifier.toFixed(2)}x
+              </p>
             </div>
           </div>
         </div>
@@ -418,6 +520,17 @@ export default function CalcPage() {
               onChange={(v) => setDefender(p => ({ ...p, pokemonId: v }))}
               options={pokemonOptions}
             />
+            {rosterBuildOptions.length > 0 && (
+              <div className="mt-3">
+                <SearchableDropdown
+                  label="Load from roster"
+                  placeholder="Use saved defender build..."
+                  value=""
+                  onChange={(v) => applyRosterBuild("defender", v)}
+                  options={rosterBuildOptions}
+                />
+              </div>
+            )}
 
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -450,5 +563,29 @@ export default function CalcPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ModifierToggle({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg p-2 font-display text-[0.58rem] uppercase tracking-wider transition-colors ${
+        active
+          ? "bg-primary text-surface"
+          : "bg-surface-low text-on-surface-muted hover:bg-surface-mid"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

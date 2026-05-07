@@ -17,6 +17,7 @@ interface TeamCardProps {
   onDelete: (id: string) => void;
   onClone: (team: Team) => void;
   onExport: (team: Team) => void;
+  onBenchmark?: (team: Team) => void;
 }
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -33,6 +34,7 @@ export function TeamCard({
   onDelete,
   onClone,
   onExport,
+  onBenchmark,
 }: TeamCardProps) {
   // Resolve team members
   const members = team.pokemon_ids
@@ -177,6 +179,15 @@ export function TeamCard({
         >
           Cheatsheet
         </Link>
+        {onBenchmark && (
+          <button
+            type="button"
+            onClick={() => onBenchmark(team)}
+            className="h-8 rounded-lg bg-surface-high px-4 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted transition-colors hover:bg-primary/20 hover:text-primary"
+          >
+            Benchmark
+          </button>
+        )}
       </div>
     </div>
   );

@@ -155,10 +155,21 @@ export default function MetaPage() {
       ) : (
         <div className="animate-stagger flex flex-col gap-6">
           {filteredSnapshots.length === 0 ? (
-            <EmptyState
-              title="No tier data yet"
-              description="Tier data is sourced from Smogon, Pikalytics, and Limitless."
-            />
+            usageData.length > 0 ? (
+              <>
+                <div className="rounded-lg bg-surface-mid px-4 py-2.5">
+                  <p className="font-display text-xs text-on-surface-muted">
+                    No curated tier snapshot is available for {formatFilter}; showing usage as the live meta fallback.
+                  </p>
+                </div>
+                <UsageList data={usageData} onPokemonClick={handlePokemonClick} />
+              </>
+            ) : (
+              <EmptyState
+                title="No tier data yet"
+                description="Tier data is sourced from Smogon, Pikalytics, and Limitless."
+              />
+            )
           ) : (
             filteredSnapshots.map((snapshot) => (
               <TierListCard

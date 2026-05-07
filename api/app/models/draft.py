@@ -53,6 +53,13 @@ class DamageCalc(BaseModel):
     verification_note: str | None = None
 
 
+class LeadMatchup(BaseModel):
+    my_lead: list[str]
+    opponent_lead: list[str]
+    note: str
+    favorability: str = Field(pattern=r"^(favored|even|unfavored)$")
+
+
 class DraftAnalysis(BaseModel):
     summary: str = Field(description="1-2 sentence overview of the matchup")
     bring_four: list[BringRecommendation] = Field(
@@ -72,6 +79,9 @@ class DraftAnalysis(BaseModel):
     game_plan: str = Field(
         description="Turn 1 plan and general strategy overview",
     )
+    opponent_likely_bring_four: list[str] | None = None
+    opponent_likely_leads: list[list[str]] | None = None
+    lead_matchups: list[LeadMatchup] | None = None
     # Populated by `verify_draft_analysis` with human-readable issues the
     # AI's output could not fully substantiate against the DB. Empty list
     # means the analysis passed all cross-checks.

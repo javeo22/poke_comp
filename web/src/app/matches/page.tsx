@@ -45,6 +45,7 @@ import {
   fetchMatchupStats,
   createMatchup,
   deleteMatchup,
+  resolvePokemonNames,
 } from "@/lib/api";
 import type { UserPokemon } from "@/types/user-pokemon";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
@@ -52,7 +53,15 @@ import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorCard } from "@/components/ui/error-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AuthEmptyState } from "@/components/ui/auth-empty-state";
 import { friendlyError } from "@/lib/errors";
+import {
+  DEMO_MATCHUPS,
+  DEMO_MATCHUP_STATS,
+  DEMO_ROSTER,
+  DEMO_TEAMS,
+  isDemoModeEnabled,
+} from "@/lib/demo-data";
 
 type ViewMode = "log" | "stats";
 
@@ -68,6 +77,8 @@ export default function MatchesPage() {
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [demoMode] = useState(isDemoModeEnabled);
   const [viewMode, setViewMode] = useState<ViewMode>("log");
 
   // Filters
@@ -84,19 +95,73 @@ export default function MatchesPage() {
   // slots (only relevant for partial teams).
   const [formMyTeamActual, setFormMyTeamActual] = useState<string[]>([]);
   const [formOpponents, setFormOpponents] = useState<string[]>(["", "", "", "", "", ""]);
+  const [formOpponentPaste, setFormOpponentPaste] = useState("");
+  const [formOpponentWarning, setFormOpponentWarning] = useState<string | null>(null);
   const [formLeads, setFormLeads] = useState<[string, string]>(["", ""]);
+  const [formOpponentLeads, setFormOpponentLeads] = useState<[string, string]>(["", ""]);
+  const [formMySelectedFour, setFormMySelectedFour] = useState<string[]>(["", "", "", ""]);
+  const [formOpponentSelectedFour, setFormOpponentSelectedFour] = useState<string[]>(["", "", "", ""]);
   const [formOutcome, setFormOutcome] = useState<"win" | "loss">("win");
   const [formNotes, setFormNotes] = useState("");
   const [formFormat, setFormFormat] = useState<MatchFormat | "">("");
   const [formTags, setFormTags] = useState("");
   const [formCloseType, setFormCloseType] = useState<CloseType | "">("");
   const [formMvp, setFormMvp] = useState("");
+  const [formReplayUrl, setFormReplayUrl] = useState("");
+  const [formOpponentName, setFormOpponentName] = useState("");
+  const [formOpponentRating, setFormOpponentRating] = useState("");
+  const [formEventName, setFormEventName] = useState("");
+  const [formRoundLabel, setFormRoundLabel] = useState("");
+  const [formGameNumber, setFormGameNumber] = useState("");
+  const [formLossReason, setFormLossReason] = useState("");
+  const [formWinCondition, setFormWinCondition] = useState("");
+  const [formKeyTurn, setFormKeyTurn] = useState("");
+  const [formAdjustmentNote, setFormAdjustmentNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setAuthRequired(false);
     try {
+      if (demoMode) {
+        const [pokemonResult, usageResult] = await Promise.all([
+          fetchPokemonBasic({ limit: 500, champions_only: true }),
+          fetchUsage("doubles", 50).catch(() => null),
+        ]);
+        setMatchups(DEMO_MATCHUPS);
+        setCount(DEMO_MATCHUPS.length);
+        setStats(DEMO_MATCHUP_STATS);
+        setTeams(DEMO_TEAMS);
+        setUserPokemonByUuid(new Map(DEMO_ROSTER.map((up) => [up.id, up])));
+        setPokemonNameById(new Map(pokemonResult.data.map((p: PokemonBasic) => [p.id, p.name])));
+        const byName = new Map(
+          pokemonResult.data.map((p: PokemonBasic) => [p.name.toLowerCase(), p])
+        );
+        const topUsageNames = (usageResult?.data ?? [])
+          .map((u) => u.pokemon_name)
+          .filter((n) => byName.has(n.toLowerCase()));
+        const topSet = new Set(topUsageNames.map((n) => n.toLowerCase()));
+        const topOptions: DropdownOption[] = topUsageNames
+          .map((n) => byName.get(n.toLowerCase())!)
+          .map((p) => ({
+            value: p.name,
+            label: p.name,
+            sublabel: p.types.join("/"),
+            section: "Most Used",
+          }));
+        const restOptions: DropdownOption[] = pokemonResult.data
+          .filter((p: PokemonBasic) => !topSet.has(p.name.toLowerCase()))
+          .sort((a: PokemonBasic, b: PokemonBasic) => a.name.localeCompare(b.name))
+          .map((p: PokemonBasic) => ({
+            value: p.name,
+            label: p.name,
+            sublabel: p.types.join("/"),
+            section: "All Pokemon",
+          }));
+        setPokemonOptions([...topOptions, ...restOptions]);
+        return;
+      }
       const [matchResult, statsResult, teamsResult, pokemonResult, usageResult, userPokeResult] =
         await Promise.all([
           fetchMatchups({
@@ -150,11 +215,13 @@ export default function MatchesPage() {
 
       setPokemonOptions([...topOptions, ...restOptions]);
     } catch (err) {
-      setError(friendlyError(err).message);
+      const friendly = friendlyError(err);
+      setAuthRequired(!!friendly.isAuthRequired);
+      setError(friendly.message);
     } finally {
       setIsLoading(false);
     }
-  }, [outcomeFilter, teamFilter, formatFilter]);
+  }, [demoMode, outcomeFilter, teamFilter, formatFilter]);
 
   useEffect(() => {
     loadData();
@@ -197,13 +264,28 @@ export default function MatchesPage() {
     setFormTeamId("");
     setFormMyTeamActual([]);
     setFormOpponents(["", "", "", "", "", ""]);
+    setFormOpponentPaste("");
+    setFormOpponentWarning(null);
     setFormLeads(["", ""]);
+    setFormOpponentLeads(["", ""]);
+    setFormMySelectedFour(["", "", "", ""]);
+    setFormOpponentSelectedFour(["", "", "", ""]);
     setFormOutcome("win");
     setFormNotes("");
     setFormFormat("");
     setFormTags("");
     setFormCloseType("");
     setFormMvp("");
+    setFormReplayUrl("");
+    setFormOpponentName("");
+    setFormOpponentRating("");
+    setFormEventName("");
+    setFormRoundLabel("");
+    setFormGameNumber("");
+    setFormLossReason("");
+    setFormWinCondition("");
+    setFormKeyTurn("");
+    setFormAdjustmentNote("");
   };
 
   const handleSubmit = async () => {
@@ -228,10 +310,22 @@ export default function MatchesPage() {
         formMyTeamActual.some((name, i) => (name || "") !== (teamDefault[i] || ""));
       const myTeamActual =
         differs && actualFilled.length > 0 ? actualFilled : undefined;
+      const mySelectedFour = formMySelectedFour.filter((s) => s.trim());
+      const opponentSelectedFour = formOpponentSelectedFour.filter((s) => s.trim());
+      const opponentLeads =
+        formOpponentLeads[0] && formOpponentLeads[1] ? formOpponentLeads : undefined;
+      if (demoMode) {
+        setShowForm(false);
+        resetForm();
+        return;
+      }
       await createMatchup({
         my_team_id: formTeamId,
         opponent_team_data: filledOpponents.map((name) => ({ name })),
         lead_pair: leads,
+        opponent_lead_pair: opponentLeads,
+        my_selected_four: mySelectedFour.length ? mySelectedFour : undefined,
+        opponent_selected_four: opponentSelectedFour.length ? opponentSelectedFour : undefined,
         outcome: formOutcome,
         notes: formNotes || undefined,
         format: formFormat || undefined,
@@ -239,6 +333,16 @@ export default function MatchesPage() {
         close_type: formCloseType || undefined,
         mvp_pokemon: formMvp || undefined,
         my_team_actual: myTeamActual,
+        replay_url: formReplayUrl || undefined,
+        opponent_name: formOpponentName || undefined,
+        opponent_rating: formOpponentRating ? Number(formOpponentRating) : undefined,
+        event_name: formEventName || undefined,
+        round_label: formRoundLabel || undefined,
+        game_number: formGameNumber ? Number(formGameNumber) : undefined,
+        loss_reason: formLossReason || undefined,
+        win_condition: formWinCondition || undefined,
+        key_turn: formKeyTurn || undefined,
+        adjustment_note: formAdjustmentNote || undefined,
       });
       setShowForm(false);
       resetForm();
@@ -251,6 +355,7 @@ export default function MatchesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (demoMode) return;
     try {
       await deleteMatchup(id);
       loadData();
@@ -265,6 +370,41 @@ export default function MatchesPage() {
       next[index] = value;
       return next;
     });
+  };
+
+  const resolveMatchOpponentPaste = async () => {
+    const rawNames = formOpponentPaste
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    if (rawNames.length === 0) return;
+    const exactByLabel = new Map(pokemonOptions.map((o) => [o.label.toLowerCase(), o.value]));
+    const exact: string[] = [];
+    const apiInputs: string[] = [];
+    for (const raw of rawNames) {
+      const match = exactByLabel.get(raw.toLowerCase());
+      if (match) exact.push(match);
+      else apiInputs.push(raw);
+    }
+    const unresolved: string[] = [];
+    const resolved = [...exact];
+    if (apiInputs.length > 0) {
+      try {
+        const apiResolved = await resolvePokemonNames(apiInputs);
+        resolved.push(...apiResolved.resolved.map((item) => item.name));
+        unresolved.push(...apiResolved.unresolved);
+      } catch {
+        unresolved.push(...apiInputs);
+      }
+    }
+    setFormOpponents([...new Set(resolved), ...Array(6).fill("")].slice(0, 6));
+    setFormOpponentPaste("");
+    setFormOpponentWarning(
+      unresolved.length > 0
+        ? `Filled ${resolved.length}/${rawNames.length}. Couldn't match: ${unresolved.join(", ")}`
+        : null
+    );
   };
 
   return (
@@ -376,6 +516,11 @@ export default function MatchesPage() {
       {/* Content */}
       {isLoading ? (
         <LoadingSkeleton variant="list" count={6} />
+      ) : authRequired ? (
+        <AuthEmptyState
+          title="Sign in to review matches"
+          description="Match logs save your replay links, selected four, lead pairs, tournament rounds, and adjustments."
+        />
       ) : error ? (
         <ErrorCard
           title="Couldn't load matches"
@@ -453,11 +598,23 @@ export default function MatchesPage() {
                   </div>
 
                   {/* Meta row: leads + MVP */}
-                  {(m.lead_pair || m.mvp_pokemon) && (
+                  {(m.lead_pair || m.opponent_lead_pair || m.mvp_pokemon || m.event_name) && (
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {m.event_name && (
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          {m.event_name}
+                          {m.round_label ? ` · ${m.round_label}` : ""}
+                          {m.game_number ? ` · G${m.game_number}` : ""}
+                        </span>
+                      )}
                       {m.lead_pair && (
                         <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
                           Leads: <span className="text-on-surface">{m.lead_pair.join(" + ")}</span>
+                        </span>
+                      )}
+                      {m.opponent_lead_pair && (
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          Opp leads: <span className="text-on-surface">{m.opponent_lead_pair.join(" + ")}</span>
                         </span>
                       )}
                       {m.mvp_pokemon && (
@@ -488,6 +645,14 @@ export default function MatchesPage() {
                       {m.notes}
                     </p>
                   )}
+                  {(m.win_condition || m.loss_reason || m.key_turn || m.adjustment_note) && (
+                    <div className="mt-2 grid gap-1 font-body text-xs text-on-surface-muted sm:grid-cols-2">
+                      {m.win_condition && <span>Win condition: {m.win_condition}</span>}
+                      {m.loss_reason && <span>Loss reason: {m.loss_reason}</span>}
+                      {m.key_turn && <span>Key turn: {m.key_turn}</span>}
+                      {m.adjustment_note && <span>Adjustment: {m.adjustment_note}</span>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Date + delete */}
@@ -501,6 +666,16 @@ export default function MatchesPage() {
                   >
                     Delete
                   </button>
+                  {m.replay_url && (
+                    <a
+                      href={m.replay_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg px-2 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted transition-all hover:bg-surface-high hover:text-primary"
+                    >
+                      Replay
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -514,7 +689,7 @@ export default function MatchesPage() {
       {/* Log Match Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-surface p-6">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-6">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-on-surface">
                 Log Match
@@ -568,6 +743,45 @@ export default function MatchesPage() {
                 )}
               </div>
 
+              {/* Match context */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Event
+                  </label>
+                  <input
+                    value={formEventName}
+                    onChange={(e) => setFormEventName(e.target.value)}
+                    placeholder="Ladder / tour name"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Round
+                  </label>
+                  <input
+                    value={formRoundLabel}
+                    onChange={(e) => setFormRoundLabel(e.target.value)}
+                    placeholder="Round 3"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Game #
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formGameNumber}
+                    onChange={(e) => setFormGameNumber(e.target.value)}
+                    placeholder="1"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+              </div>
+
               {/* Outcome */}
               <div>
                 <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
@@ -604,6 +818,28 @@ export default function MatchesPage() {
                 <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
                   Opponent Team
                 </label>
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={formOpponentPaste}
+                    onChange={(e) => setFormOpponentPaste(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && resolveMatchOpponentPaste()}
+                    placeholder="Paste names, aliases, or preview text"
+                    className="input-field h-10 flex-1 rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={resolveMatchOpponentPaste}
+                    disabled={!formOpponentPaste.trim()}
+                    className="btn-ghost h-10 px-4 font-display text-[0.65rem] uppercase tracking-wider disabled:opacity-40"
+                  >
+                    Resolve
+                  </button>
+                </div>
+                {formOpponentWarning && (
+                  <p className="mb-2 font-body text-[0.7rem] text-amber-400">
+                    {formOpponentWarning}
+                  </p>
+                )}
                 <div className="grid grid-cols-3 gap-2">
                   {formOpponents.map((slot, i) => (
                     <SearchableDropdown
@@ -633,6 +869,75 @@ export default function MatchesPage() {
                     placeholder="Lead 2"
                     value={formLeads[1]}
                     onChange={(v) => setFormLeads([formLeads[0], v])}
+                    options={pokemonOptions}
+                  />
+                </div>
+              </div>
+
+              {/* Selected four */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    My Selected Four
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {formMySelectedFour.map((name, i) => (
+                      <SearchableDropdown
+                        key={i}
+                        placeholder={`My ${i + 1}`}
+                        value={name}
+                        onChange={(v) =>
+                          setFormMySelectedFour((prev) => {
+                            const next = [...prev];
+                            next[i] = v;
+                            return next;
+                          })
+                        }
+                        options={pokemonOptions}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Opponent Selected Four
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {formOpponentSelectedFour.map((name, i) => (
+                      <SearchableDropdown
+                        key={i}
+                        placeholder={`Opp ${i + 1}`}
+                        value={name}
+                        onChange={(v) =>
+                          setFormOpponentSelectedFour((prev) => {
+                            const next = [...prev];
+                            next[i] = v;
+                            return next;
+                          })
+                        }
+                        options={pokemonOptions}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Opponent leads */}
+              <div>
+                <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                  Opponent Leads (optional)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <SearchableDropdown
+                    placeholder="Opp lead 1"
+                    value={formOpponentLeads[0]}
+                    onChange={(v) => setFormOpponentLeads([v, formOpponentLeads[1]])}
+                    options={pokemonOptions}
+                  />
+                  <SearchableDropdown
+                    placeholder="Opp lead 2"
+                    value={formOpponentLeads[1]}
+                    onChange={(v) => setFormOpponentLeads([formOpponentLeads[0], v])}
                     options={pokemonOptions}
                   />
                 </div>
@@ -701,6 +1006,44 @@ export default function MatchesPage() {
                 </div>
               </div>
 
+              {/* Opponent + replay */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Opponent
+                  </label>
+                  <input
+                    value={formOpponentName}
+                    onChange={(e) => setFormOpponentName(e.target.value)}
+                    placeholder="Name"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Rating
+                  </label>
+                  <input
+                    type="number"
+                    value={formOpponentRating}
+                    onChange={(e) => setFormOpponentRating(e.target.value)}
+                    placeholder="1680"
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                    Replay URL
+                  </label>
+                  <input
+                    value={formReplayUrl}
+                    onChange={(e) => setFormReplayUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                  />
+                </div>
+              </div>
+
               {/* Notes */}
               <div>
                 <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
@@ -710,6 +1053,38 @@ export default function MatchesPage() {
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="What happened? Key turns, misplays..."
+                  rows={2}
+                  className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                />
+              </div>
+
+              {/* Review notes */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <textarea
+                  value={formWinCondition}
+                  onChange={(e) => setFormWinCondition(e.target.value)}
+                  placeholder="Win condition"
+                  rows={2}
+                  className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                />
+                <textarea
+                  value={formLossReason}
+                  onChange={(e) => setFormLossReason(e.target.value)}
+                  placeholder="Loss reason"
+                  rows={2}
+                  className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                />
+                <textarea
+                  value={formKeyTurn}
+                  onChange={(e) => setFormKeyTurn(e.target.value)}
+                  placeholder="Key turn"
+                  rows={2}
+                  className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
+                />
+                <textarea
+                  value={formAdjustmentNote}
+                  onChange={(e) => setFormAdjustmentNote(e.target.value)}
+                  placeholder="Adjustment for next game"
                   rows={2}
                   className="input-field w-full rounded-xl px-4 py-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted outline-none"
                 />

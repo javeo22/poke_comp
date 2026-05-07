@@ -30,6 +30,14 @@ export interface DraftAnalysis {
   summary: string;
   bring_four: BringRecommendation[];
   lead_pair: [string, string];
+  opponent_likely_bring_four?: string[] | null;
+  opponent_likely_leads?: string[][] | null;
+  lead_matchups?: {
+    my_lead: string[];
+    opponent_lead: string[];
+    note: string;
+    favorability: "favored" | "even" | "unfavored";
+  }[] | null;
   threats: ThreatInfo[];
   damage_calcs: DamageCalc[];
   game_plan: string;

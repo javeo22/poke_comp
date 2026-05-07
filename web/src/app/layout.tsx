@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Nav } from "@/components/nav";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { AdSlot } from "@/components/ad-slot";
+import { DemoBanner } from "@/components/demo-banner";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -82,6 +83,7 @@ export default function RootLayout({
         <Providers>
           <Analytics />
           <Nav />
+          <DemoBanner />
           <OnboardingTour />
           <main className="flex-1 flex flex-col items-center w-full relative z-10">
             {children}

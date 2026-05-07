@@ -16,17 +16,39 @@ interface ProfileBrief {
   email: string | null;
 }
 
-const PRIMARY_LINKS = [
-  { href: "/", label: "Home", match: (p: string) => p === "/" },
-  { href: "/pokemon", label: "Pokedex", match: (p: string) => p.startsWith("/pokemon") },
-  { href: "/draft", label: "Draft", match: (p: string) => p.startsWith("/draft") },
-  { href: "/calc", label: "Calc", match: (p: string) => p.startsWith("/calc") },
-  { href: "/roster", label: "Roster", match: (p: string) => p === "/roster" },
-  { href: "/teams", label: "Teams", match: (p: string) => p.startsWith("/teams") },
-  { href: "/cheatsheet", label: "Cheatsheet", match: (p: string) => p.startsWith("/cheatsheet") },
-  { href: "/meta", label: "Meta", match: (p: string) => p.startsWith("/meta") },
-  { href: "/speed-tiers", label: "Speed", match: (p: string) => p.startsWith("/speed-tiers") },
-  { href: "/matches", label: "Matches", match: (p: string) => p.startsWith("/matches") },
+const HOME_LINK = { href: "/", label: "Home", match: (p: string) => p === "/" } as const;
+
+const NAV_GROUPS = [
+  {
+    label: "Build",
+    links: [
+      { href: "/pokemon", label: "Pokedex", match: (p: string) => p.startsWith("/pokemon") },
+      { href: "/roster", label: "Roster", match: (p: string) => p === "/roster" },
+      { href: "/teams", label: "Teams", match: (p: string) => p.startsWith("/teams") },
+    ],
+  },
+  {
+    label: "Prep",
+    links: [
+      { href: "/draft", label: "Draft", match: (p: string) => p.startsWith("/draft") },
+      { href: "/cheatsheet", label: "Cheatsheet", match: (p: string) => p.startsWith("/cheatsheet") },
+      { href: "/meta", label: "Meta", match: (p: string) => p.startsWith("/meta") },
+      { href: "/speed-tiers", label: "Speed", match: (p: string) => p.startsWith("/speed-tiers") },
+    ],
+  },
+  {
+    label: "Battle",
+    links: [
+      { href: "/calc", label: "Calc", match: (p: string) => p.startsWith("/calc") },
+      { href: "/type-chart", label: "Types", match: (p: string) => p.startsWith("/type-chart") },
+    ],
+  },
+  {
+    label: "Review",
+    links: [
+      { href: "/matches", label: "Matches", match: (p: string) => p.startsWith("/matches") },
+    ],
+  },
 ] as const;
 
 export function Nav() {
@@ -89,7 +111,7 @@ export function Nav() {
                 pokecomp
               </div>
               <div className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-on-surface-muted mt-0.5">
-                S1 · WK 17
+                Live prep
               </div>
             </div>
           </Link>
@@ -104,20 +126,49 @@ export function Nav() {
 
         {/* CENTER: primary links (desktop) */}
         <div className="hidden lg:flex items-center gap-7 text-[0.85rem]">
-          {PRIMARY_LINKS.map((link) => {
-            const active = link.match(pathname);
+          <Link
+            href={HOME_LINK.href}
+            className={`transition-colors ${
+              HOME_LINK.match(pathname)
+                ? "text-accent font-semibold"
+                : "text-on-surface-muted hover:text-on-surface"
+            }`}
+          >
+            {HOME_LINK.label}
+          </Link>
+          {NAV_GROUPS.map((group) => {
+            const active = group.links.some((link) => link.match(pathname));
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`transition-colors ${
-                  active
-                    ? "text-accent font-semibold"
-                    : "text-on-surface-muted hover:text-on-surface"
-                }`}
-              >
-                {link.label}
-              </Link>
+              <div key={group.label} className="group relative">
+                <button
+                  type="button"
+                  className={`transition-colors ${
+                    active
+                      ? "text-accent font-semibold"
+                      : "text-on-surface-muted hover:text-on-surface"
+                  }`}
+                >
+                  {group.label}
+                </button>
+                <div className="invisible absolute left-1/2 top-full z-30 mt-3 min-w-44 -translate-x-1/2 rounded-lg border border-outline-variant bg-surface p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+                  {group.links.map((link) => {
+                    const linkActive = link.match(pathname);
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                          linkActive
+                            ? "bg-surface-mid text-accent"
+                            : "text-on-surface-muted hover:bg-surface-mid hover:text-on-surface"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -165,23 +216,41 @@ export function Nav() {
       {mobileOpen && (
         <div className="lg:hidden border-t border-outline-variant bg-surface px-6 pb-5 pt-3">
           <div className="flex flex-col gap-1">
-            {PRIMARY_LINKS.map((link) => {
-              const active = link.match(pathname);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={closeMobile}
-                  className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? "bg-surface-mid text-accent font-semibold"
-                      : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
+            <Link
+              href={HOME_LINK.href}
+              onClick={closeMobile}
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                HOME_LINK.match(pathname)
+                  ? "bg-surface-mid text-accent font-semibold"
+                  : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
+              }`}
+            >
+              {HOME_LINK.label}
+            </Link>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="pt-2">
+                <div className="px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-muted">
+                  {group.label}
+                </div>
+                {group.links.map((link) => {
+                  const active = link.match(pathname);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={closeMobile}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        active
+                          ? "bg-surface-mid text-accent font-semibold"
+                          : "text-on-surface-muted hover:text-on-surface hover:bg-surface-mid"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </div>
           <div className="mt-4 flex items-center gap-2 border-t border-outline-variant pt-4 sm:hidden">
             <SupportPill onClick={closeMobile} />

@@ -20,7 +20,9 @@ import { RosterForm } from "@/components/roster/roster-form";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorCard } from "@/components/ui/error-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AuthEmptyState } from "@/components/ui/auth-empty-state";
 import { friendlyError } from "@/lib/errors";
+import { DEMO_ROSTER, isDemoModeEnabled } from "@/lib/demo-data";
 
 export default function RosterPage() {
   const searchParams = useSearchParams();
@@ -32,6 +34,8 @@ export default function RosterPage() {
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [demoMode] = useState(isDemoModeEnabled);
   const [statusFilter, setStatusFilter] = useState("");
 
   // Form modal state
@@ -45,13 +49,22 @@ export default function RosterPage() {
   const loadRoster = useCallback(async (status?: string) => {
     setIsLoading(true);
     setError(null);
+    setAuthRequired(false);
     try {
-      const result = await fetchUserPokemon({
-        build_status: status || undefined,
-        limit: 200,
-      });
-      setEntries(result.data);
-      setCount(result.count);
+      if (demoMode) {
+        const demoEntries = status
+          ? DEMO_ROSTER.filter((entry) => entry.build_status === status)
+          : DEMO_ROSTER;
+        setEntries(demoEntries);
+        setCount(demoEntries.length);
+      } else {
+        const result = await fetchUserPokemon({
+          build_status: status || undefined,
+          limit: 200,
+        });
+        setEntries(result.data);
+        setCount(result.count);
+      }
 
       // Fetch pokemon + items for all roster entries
       const [pokemonResult, itemsResult] = await Promise.all([
@@ -67,13 +80,15 @@ export default function RosterPage() {
       for (const item of itemsResult.data) iMap.set(item.id, item);
       setItemsMap(iMap);
     } catch (err) {
-      setError(friendlyError(err).message);
+      const friendly = friendlyError(err);
+      setAuthRequired(!!friendly.isAuthRequired);
+      setError(friendly.message);
       setEntries([]);
       setCount(0);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     loadRoster(statusFilter);
@@ -88,16 +103,25 @@ export default function RosterPage() {
   }, [preselectedPokemonId, isLoading, pokemonMap]);
 
   const handleCreate = () => {
+    if (demoMode) {
+      setError("Demo mode is read-only. Sign in to save your own roster.");
+      return;
+    }
     setEditing(null);
     setShowForm(true);
   };
 
   const handleQuickAdd = () => {
+    if (demoMode) {
+      setError("Demo mode is read-only. Sign in to save your own roster.");
+      return;
+    }
     setPreselectedPokemonId(undefined);
     setShowQuickAdd(true);
   };
 
   const handleQuickAddSubmit = async (data: { pokemon_id: number; ability?: string; build_status: string }) => {
+    if (demoMode) return;
     try {
       await createUserPokemon(data as UserPokemonCreate);
       setShowQuickAdd(false);
@@ -116,11 +140,16 @@ export default function RosterPage() {
   };
 
   const handleEdit = (entry: UserPokemon) => {
+    if (demoMode) {
+      setError("Demo mode is read-only. Sign in to edit roster builds.");
+      return;
+    }
     setEditing(entry);
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
+    if (demoMode) return;
     try {
       await deleteUserPokemon(id);
       loadRoster(statusFilter);
@@ -132,6 +161,7 @@ export default function RosterPage() {
   const handleFormSubmit = async (
     data: UserPokemonCreate | (UserPokemonUpdate & { id: string })
   ) => {
+    if (demoMode) return;
     try {
       if ("id" in data) {
         const { id, ...body } = data;
@@ -224,6 +254,11 @@ export default function RosterPage() {
       {/* Grid */}
       {isLoading ? (
         <LoadingSkeleton variant="card" count={8} />
+      ) : authRequired ? (
+        <AuthEmptyState
+          title="Sign in to build your roster"
+          description="Roster tracking stores your Pokemon, moves, stat points, and notes across devices."
+        />
       ) : error ? (
         <ErrorCard
           title="Couldn't load roster"

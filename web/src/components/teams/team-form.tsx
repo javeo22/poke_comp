@@ -7,6 +7,7 @@ import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team, TeamCreate, TeamUpdate } from "@/types/team";
 import { FORMATS } from "@/types/team";
 import { TypeCoverage } from "./type-coverage";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 interface TeamFormProps {
   editing: Team | null;
@@ -49,6 +50,16 @@ export function TeamForm({
     }
   };
 
+  const moveSlot = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= selectedIds.length) return;
+    setSelectedIds((prev) => {
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || selectedIds.length === 0) return;
@@ -88,6 +99,10 @@ export function TeamForm({
       return poke?.types ?? null;
     })
     .filter((t): t is string[] => t !== null);
+
+  const selectedEntries = selectedIds
+    .map((id) => rosterLookup.get(id))
+    .filter((entry): entry is UserPokemon => !!entry);
 
   const getMegaForms = (entry: UserPokemon): { formId: number; formName: string }[] => {
     const poke = pokemonMap.get(entry.pokemon_id);
@@ -197,6 +212,32 @@ export function TeamForm({
                      <svg className="w-2.5 h-2.5 text-on-surface-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                      </svg>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1 p-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveSlot(i, -1);
+                      }}
+                      disabled={i === 0}
+                      className="grid h-5 w-5 place-items-center rounded bg-surface-high text-on-surface-muted disabled:opacity-30"
+                      title="Move left"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveSlot(i, 1);
+                      }}
+                      disabled={i === selectedIds.length - 1}
+                      className="grid h-5 w-5 place-items-center rounded bg-surface-high text-on-surface-muted disabled:opacity-30"
+                      title="Move right"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
                   </div>
                   <button
                     type="button"
@@ -365,8 +406,9 @@ export function TeamForm({
 
         {/* Type coverage analysis */}
         {teamTypes.length > 0 && (
-          <div className="mb-6 rounded-lg bg-surface-lowest p-4">
+          <div className="mb-6 space-y-4 rounded-lg bg-surface-lowest p-4">
             <TypeCoverage teamTypes={teamTypes} />
+            <RoleCoverageAudit entries={selectedEntries} />
           </div>
         )}
 
@@ -389,5 +431,107 @@ export function TeamForm({
         </div>
       </form>
     </div>
+  );
+}
+
+function RoleCoverageAudit({ entries }: { entries: UserPokemon[] }) {
+  const roleChecks = [
+    {
+      label: "Speed control",
+      active: hasMove(entries, ["tailwind", "icy wind", "thunder wave", "trick room"]),
+    },
+    { label: "Fake Out", active: hasMove(entries, ["fake out"]) },
+    {
+      label: "Protect count",
+      active: entries.filter((entry) => hasMove([entry], ["protect", "detect", "spiky shield"])).length >= 4,
+    },
+    {
+      label: "Intimidate",
+      active: entries.some((entry) => entry.ability?.toLowerCase() === "intimidate"),
+    },
+    { label: "Redirection", active: hasMove(entries, ["follow me", "rage powder"]) },
+    {
+      label: "Priority",
+      active: hasMove(entries, [
+        "sucker punch",
+        "extreme speed",
+        "aqua jet",
+        "bullet punch",
+        "grassy glide",
+        "mach punch",
+        "ice shard",
+        "shadow sneak",
+        "first impression",
+      ]),
+    },
+    {
+      label: "Trick Room mode/check",
+      active: hasMove(entries, ["trick room", "taunt", "imprison"]),
+    },
+    {
+      label: "Spread damage",
+      active: hasMove(entries, [
+        "earthquake",
+        "rock slide",
+        "heat wave",
+        "dazzling gleam",
+        "surf",
+        "muddy water",
+        "hyper voice",
+        "blizzard",
+        "discharge",
+        "make it rain",
+        "matcha gotcha",
+      ]),
+    },
+    { label: "Pivoting", active: hasMove(entries, ["parting shot", "u-turn", "volt switch", "flip turn", "baton pass"]) },
+    { label: "Setup", active: hasMove(entries, ["swords dance", "nasty plot", "dragon dance", "calm mind"]) },
+    {
+      label: "Weather / terrain",
+      active: hasMove(entries, [
+        "rain dance",
+        "sunny day",
+        "sandstorm",
+        "snowscape",
+        "electric terrain",
+        "grassy terrain",
+        "psychic terrain",
+        "misty terrain",
+      ]),
+    },
+  ];
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+          Role Coverage
+        </span>
+        <span className="font-display text-xs text-secondary">
+          {roleChecks.filter((check) => check.active).length}/{roleChecks.length} covered
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {roleChecks.map((check) => (
+          <div
+            key={check.label}
+            className={`rounded-lg px-2 py-1.5 font-display text-[0.58rem] uppercase tracking-wider ${
+              check.active
+                ? "bg-secondary-container text-on-surface"
+                : "bg-surface-mid text-on-surface-muted"
+            }`}
+          >
+            {check.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function hasMove(entries: UserPokemon[], moves: string[]): boolean {
+  const wanted = new Set(moves.map((move) => move.toLowerCase()));
+  return entries.some((entry) =>
+    (entry.moves ?? []).some((move) => wanted.has(move.toLowerCase()))
   );
 }

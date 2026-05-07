@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     supabase_service_key: str = _resolve_supabase_key()
     anthropic_api_key: str = ""
     supabase_jwt_secret: str = ""
-    cors_origins: str = "http://localhost:3000,https://pokecomp.app,https://www.pokecomp.app"
+    cors_origins: str = (
+        "http://localhost:3000,http://localhost:3001,https://pokecomp.app,https://www.pokecomp.app"
+    )
     admin_user_ids: str = ""  # comma-separated Supabase user UUIDs
     cron_secret: str = ""  # shared secret for Vercel Cron HTTP invocations
     slack_webhook_url: str = ""

@@ -12,10 +12,14 @@ from app.models.pokemon import (
     PokemonBasicList,
     PokemonDetail,
     PokemonList,
+    PokemonNameResolved,
+    PokemonNameResolveRequest,
+    PokemonNameResolveResponse,
     PokemonUsageSummary,
     SpeedTierEntry,
     SpeedTierList,
 )
+from app.services.name_resolver import resolve_name
 
 router = APIRouter(prefix="/pokemon", tags=["pokemon"])
 
@@ -42,6 +46,18 @@ def _extract_usage_names(data: list | dict | None, limit: int) -> list[str]:
             entry["name"] for entry in data[:limit] if isinstance(entry, dict) and "name" in entry
         ]
     return list(data.keys())[:limit]
+
+
+def _resolver_key(name: str) -> str:
+    return name.lower().replace("-", "").replace(" ", "")
+
+
+def _resolve_confidence(raw: str, canonical: str) -> float:
+    if raw.strip() == canonical:
+        return 1.0
+    if _resolver_key(raw) == _resolver_key(canonical):
+        return 0.98
+    return 0.9
 
 
 @router.get("/basic", response_model=PokemonBasicList)
@@ -72,6 +88,56 @@ def list_pokemon_basic(
         data=[PokemonBasic.model_validate(r) for r in rows],
         count=result.count or len(rows),
     )
+
+
+@router.post("/resolve-names", response_model=PokemonNameResolveResponse)
+def resolve_pokemon_names(body: PokemonNameResolveRequest):
+    """Resolve pasted or abbreviated Pokemon names to Champions canonical names.
+
+    Public and read-only so team-preview paste, quick links, and future OCR
+    review can all share one resolver.
+    """
+    raw_names = [name.strip() for name in body.names if name and name.strip()]
+    if not raw_names:
+        return PokemonNameResolveResponse(resolved=[], unresolved=[])
+
+    rows: list[dict[str, Any]] = (
+        supabase.table("pokemon").select("id, name").eq("champions_eligible", True).execute().data
+        or []
+    )  # type: ignore[assignment]
+    name_by_key = {_resolver_key(str(row["name"])): str(row["name"]) for row in rows}
+    id_by_name = {str(row["name"]): int(row["id"]) for row in rows}
+
+    resolved: list[PokemonNameResolved] = []
+    unresolved: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_names[:30]:
+        canonical = resolve_name(raw, name_by_key)
+        if not canonical:
+            unresolved.append(raw)
+            continue
+        pokemon_id = id_by_name.get(canonical)
+        if pokemon_id is None and "-" in canonical:
+            base_name = canonical.split("-", 1)[0]
+            canonical = name_by_key.get(_resolver_key(base_name), canonical)
+            pokemon_id = id_by_name.get(canonical)
+        if pokemon_id is None:
+            unresolved.append(raw)
+            continue
+        dedupe_key = canonical.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        resolved.append(
+            PokemonNameResolved(
+                input=raw,
+                name=canonical,
+                pokemon_id=pokemon_id,
+                confidence=_resolve_confidence(raw, canonical),
+            )
+        )
+
+    return PokemonNameResolveResponse(resolved=resolved, unresolved=unresolved)
 
 
 @router.get("", response_model=PokemonList)

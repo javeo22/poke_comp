@@ -191,6 +191,27 @@ export async function fetchPokemonDetail(pokemonId: number) {
   return apiFetch<PokemonDetail>(`/pokemon/${pokemonId}/detail`);
 }
 
+export interface PokemonNameResolved {
+  input: string;
+  name: string;
+  pokemon_id: number;
+  confidence: number;
+}
+
+export interface PokemonNameResolveResponse {
+  resolved: PokemonNameResolved[];
+  unresolved: string[];
+}
+
+export async function resolvePokemonNames(
+  names: string[]
+): Promise<PokemonNameResolveResponse> {
+  return apiFetch<PokemonNameResolveResponse>("/pokemon/resolve-names", {
+    method: "POST",
+    body: JSON.stringify({ names }),
+  });
+}
+
 // ── Speed Tiers (Reference) ──
 
 export interface SpeedTierEntry {
@@ -357,6 +378,69 @@ export async function fetchTeams(filters: TeamFilters = {}) {
 
 export async function fetchOneTeam(id: string) {
   return apiFetch<Team>(`/teams/${id}`);
+}
+
+export interface TeamBenchmarkCalc {
+  pokemon_name: string;
+  pokemon_id: number;
+  usage_percent: number;
+  move: string | null;
+  damage_text: string;
+  damage_percent: number;
+  target_name: string;
+  severity: "ohko" | "danger" | "chip" | "low" | string;
+}
+
+export interface TeamBenchmarkAnswer {
+  pokemon_name: string;
+  pokemon_id: number;
+  usage_percent: number;
+  answer_pokemon: string;
+  move: string | null;
+  damage_text: string;
+  damage_percent: number;
+  reliability: "ko" | "strong" | "chip" | "weak" | string;
+}
+
+export interface TeamBenchmarkSpeedIssue {
+  pokemon_name: string;
+  pokemon_id: number;
+  usage_percent: number;
+  threat_speed: number;
+  fastest_team_member: string | null;
+  fastest_team_speed: number;
+  note: string;
+}
+
+export interface TeamBenchmarkCoverageGap {
+  pokemon_name: string;
+  pokemon_id: number;
+  usage_percent: number;
+  best_damage_percent: number;
+  best_answer: string | null;
+  note: string;
+}
+
+export interface TeamBenchmarkResponse {
+  team_id: string;
+  team_name: string;
+  format: string;
+  generated_at: string;
+  meta_snapshot_date: string | null;
+  threat_count: number;
+  defensive_dangers: TeamBenchmarkCalc[];
+  offensive_answers: TeamBenchmarkAnswer[];
+  speed_issues: TeamBenchmarkSpeedIssue[];
+  coverage_gaps: TeamBenchmarkCoverageGap[];
+}
+
+export async function fetchTeamBenchmark(
+  teamId: string,
+  params: { format?: string; limit?: number } = {}
+): Promise<TeamBenchmarkResponse> {
+  return apiFetch<TeamBenchmarkResponse>(`/teams/${teamId}/benchmark`, {
+    params,
+  });
 }
 
 export async function createTeam(body: TeamCreate) {
@@ -657,7 +741,7 @@ export async function checkUsername(
 
 export interface ShowdownImportRequest {
   paste: string;
-  team_name: string;
+  team_name?: string;
   format: string;
 }
 
@@ -958,4 +1042,3 @@ export async function rejectReview(id: string): Promise<ReviewQueueItem> {
 }
 
 export { apiFetch };
-

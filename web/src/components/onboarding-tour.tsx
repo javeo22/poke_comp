@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { DEMO_MODE_KEY } from "@/lib/demo-data";
 
 const STORAGE_KEY = "pokecomp_onboarded";
 
@@ -8,7 +9,7 @@ const TOUR_STEPS = [
   {
     title: "Browse the Pokedex",
     description:
-      "Explore all 186 Champions-eligible Pokemon. Filter by type, search by name, and click any card to see full stats, movepool, and abilities.",
+      "Explore Champions-eligible Pokemon. Filter by type, search by name, and click any card to see full stats, movepool, and abilities.",
     href: "/pokemon",
     tag: "Game Data",
   },
@@ -42,18 +43,51 @@ const TOUR_STEPS = [
   },
 ];
 
-function getInitialShowState(): boolean {
+function subscribeToOnboardingStorage(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", callback);
+  window.addEventListener("pokecomp-storage", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("pokecomp-storage", callback);
+  };
+}
+
+function getOnboardingSnapshot(): boolean {
   if (typeof window === "undefined") return false;
-  return !localStorage.getItem(STORAGE_KEY);
+  return !window.localStorage.getItem(STORAGE_KEY);
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
+function notifyStorageChange(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("pokecomp-storage"));
+  }
 }
 
 export function OnboardingTour() {
-  const [show, setShow] = useState(getInitialShowState);
+  const shouldShow = useSyncExternalStore(
+    subscribeToOnboardingStorage,
+    getOnboardingSnapshot,
+    getServerSnapshot
+  );
+  const [dismissedThisSession, setDismissedThisSession] = useState(false);
   const [step, setStep] = useState(0);
+  const [showIntent, setShowIntent] = useState(true);
+
+  const chooseIntent = (href: string) => {
+    localStorage.setItem(STORAGE_KEY, "true");
+    localStorage.setItem(DEMO_MODE_KEY, "true");
+    window.location.href = href;
+  };
 
   const handleComplete = () => {
     localStorage.setItem(STORAGE_KEY, "true");
-    setShow(false);
+    notifyStorageChange();
+    setDismissedThisSession(true);
     setStep(0);
   };
 
@@ -69,10 +103,82 @@ export function OnboardingTour() {
     }
   };
 
-  if (!show) return null;
+  if (!shouldShow || dismissedThisSession) return null;
 
   const current = TOUR_STEPS[step];
   const isLast = step === TOUR_STEPS.length - 1;
+
+  if (showIntent) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+        <div className="mx-4 w-full max-w-lg">
+          <div className="card p-8 shadow-2xl">
+            <span className="mb-3 inline-block rounded-full bg-primary/10 px-3 py-1 font-display text-[0.6rem] uppercase tracking-widest text-primary">
+              First run
+            </span>
+            <h2 className="mb-3 font-display text-2xl font-bold tracking-tight text-on-surface">
+              What do you want to do first?
+            </h2>
+            <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-muted">
+              Pick a path and PokeComp will open a working demo with the right tools already in view.
+            </p>
+            <div className="grid gap-3">
+              <button
+                type="button"
+                onClick={() => chooseIntent("/teams?demo=1")}
+                className="rounded-lg bg-surface-low p-4 text-left transition-colors hover:bg-surface-mid"
+              >
+                <span className="block font-display text-sm font-bold text-on-surface">
+                  Build a team
+                </span>
+                <span className="mt-1 block font-body text-xs text-on-surface-muted">
+                  Start from a sample roster and team builder.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseIntent("/draft?demo=1")}
+                className="rounded-lg bg-surface-low p-4 text-left transition-colors hover:bg-surface-mid"
+              >
+                <span className="block font-display text-sm font-bold text-on-surface">
+                  Get matchup help
+                </span>
+                <span className="mt-1 block font-body text-xs text-on-surface-muted">
+                  Open Draft Helper with demo team data.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseIntent("/meta")}
+                className="rounded-lg bg-surface-low p-4 text-left transition-colors hover:bg-surface-mid"
+              >
+                <span className="block font-display text-sm font-bold text-on-surface">
+                  Learn the meta
+                </span>
+                <span className="mt-1 block font-body text-xs text-on-surface-muted">
+                  Go straight to usage, tiers, and speed references.
+                </span>
+              </button>
+            </div>
+            <div className="mt-6 flex justify-between">
+              <button
+                onClick={handleSkip}
+                className="font-display text-xs uppercase tracking-wider text-on-surface-muted hover:text-on-surface transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => setShowIntent(false)}
+                className="btn-ghost px-4 py-2 font-display text-xs uppercase tracking-wider"
+              >
+                Show tour
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">

@@ -18,12 +18,46 @@ def list_usage(
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
-    query = (
-        supabase.table("pokemon_usage").select("*", count=CountMethod.exact).eq("format", format)
+    latest_result = (
+        supabase.table("pokemon_usage")
+        .select("snapshot_date")
+        .eq("format", format)
+        .order("snapshot_date", desc=True)
+        .limit(1)
+        .execute()
     )
+    latest_rows: list[dict] = latest_result.data or []  # type: ignore[assignment]
+    if not latest_rows:
+        response.headers["Cache-Control"] = _USAGE_CACHE_HEADER
+        return PokemonUsageList(data=[], count=0)
 
-    result = query.order("usage_percent", desc=True).range(offset, offset + limit - 1).execute()
-    usage_rows: list[dict] = result.data  # type: ignore[assignment]
+    latest_snapshot = latest_rows[0]["snapshot_date"]
+    result = (
+        supabase.table("pokemon_usage")
+        .select("*", count=CountMethod.exact)
+        .eq("format", format)
+        .eq("snapshot_date", latest_snapshot)
+        .order("usage_percent", desc=True)
+        .execute()
+    )
+    all_rows: list[dict] = result.data or []  # type: ignore[assignment]
+    deduped_by_name: dict[str, dict] = {}
+    for row in all_rows:
+        name = str(row.get("pokemon_name") or "")
+        if not name:
+            continue
+        current = deduped_by_name.get(name)
+        if current is None or float(row.get("usage_percent") or 0) > float(
+            current.get("usage_percent") or 0
+        ):
+            deduped_by_name[name] = row
+
+    deduped_rows = sorted(
+        deduped_by_name.values(),
+        key=lambda r: float(r.get("usage_percent") or 0),
+        reverse=True,
+    )
+    usage_rows = deduped_rows[offset : offset + limit]
 
     sprite_map: dict[str, str | None] = {}
     if usage_rows:
@@ -48,7 +82,7 @@ def list_usage(
     response.headers["Cache-Control"] = _USAGE_CACHE_HEADER
     return PokemonUsageList(
         data=[PokemonUsageResponse.model_validate(row) for row in usage_rows],
-        count=result.count or len(usage_rows),
+        count=len(deduped_rows),
     )
 
 

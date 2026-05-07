@@ -38,6 +38,22 @@ class PokemonBasicList(BaseModel):
     count: int
 
 
+class PokemonNameResolveRequest(BaseModel):
+    names: list[str]
+
+
+class PokemonNameResolved(BaseModel):
+    input: str
+    name: str
+    pokemon_id: int
+    confidence: float
+
+
+class PokemonNameResolveResponse(BaseModel):
+    resolved: list[PokemonNameResolved]
+    unresolved: list[str]
+
+
 class MoveDetail(BaseModel):
     """Subset of MoveBase for the detail view -- only fields useful inline."""
 

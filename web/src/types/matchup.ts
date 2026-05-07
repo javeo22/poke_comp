@@ -19,10 +19,24 @@ export interface Matchup {
   close_type?: CloseType | null;
   mvp_pokemon?: string | null;
   my_team_actual?: string[] | null;
+  replay_url?: string | null;
+  opponent_name?: string | null;
+  opponent_rating?: number | null;
+  event_name?: string | null;
+  round_label?: string | null;
+  game_number?: number | null;
+  set_id?: string | null;
+  opponent_lead_pair?: string[] | null;
+  opponent_selected_four?: string[] | null;
+  my_selected_four?: string[] | null;
+  loss_reason?: string | null;
+  win_condition?: string | null;
+  key_turn?: string | null;
+  adjustment_note?: string | null;
 }
 
 export interface MatchupCreate {
-  my_team_id: string;
+  my_team_id?: string | null;
   opponent_team_data: OpponentPokemon[];
   lead_pair?: string[];
   outcome: "win" | "loss";
@@ -32,6 +46,20 @@ export interface MatchupCreate {
   close_type?: CloseType;
   mvp_pokemon?: string;
   my_team_actual?: string[];
+  replay_url?: string;
+  opponent_name?: string;
+  opponent_rating?: number;
+  event_name?: string;
+  round_label?: string;
+  game_number?: number;
+  set_id?: string;
+  opponent_lead_pair?: string[];
+  opponent_selected_four?: string[];
+  my_selected_four?: string[];
+  loss_reason?: string;
+  win_condition?: string;
+  key_turn?: string;
+  adjustment_note?: string;
 }
 
 export interface MatchupUpdate {
@@ -44,6 +72,20 @@ export interface MatchupUpdate {
   close_type?: CloseType;
   mvp_pokemon?: string;
   my_team_actual?: string[];
+  replay_url?: string;
+  opponent_name?: string;
+  opponent_rating?: number;
+  event_name?: string;
+  round_label?: string;
+  game_number?: number;
+  set_id?: string;
+  opponent_lead_pair?: string[];
+  opponent_selected_four?: string[];
+  my_selected_four?: string[];
+  loss_reason?: string;
+  win_condition?: string;
+  key_turn?: string;
+  adjustment_note?: string;
 }
 
 export interface MatchupListResponse {

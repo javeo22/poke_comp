@@ -572,6 +572,16 @@ Provide your analysis as a JSON object with exactly this structure:
     {"pokemon": "Name", "role": "role", "reason": "why"}
   ],
   "lead_pair": ["Name1", "Name2"],
+  "opponent_likely_bring_four": ["Opponent1", "Opponent2", "Opponent3", "Opponent4"],
+  "opponent_likely_leads": [["Opponent1", "Opponent2"], ["Opponent3", "Opponent4"]],
+  "lead_matchups": [
+    {
+      "my_lead": ["Name1", "Name2"],
+      "opponent_lead": ["Opponent1", "Opponent2"],
+      "note": "one-sentence lead matchup read",
+      "favorability": "favored/even/unfavored"
+    }
+  ],
   "threats": [
     {
       "pokemon": "Name",

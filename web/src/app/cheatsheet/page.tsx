@@ -24,6 +24,14 @@ import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 import { CheatsheetContent } from "@/components/cheatsheet/cheatsheet-content";
 import { DataFreshness } from "@/components/data-freshness";
+import { AuthEmptyState } from "@/components/ui/auth-empty-state";
+import {
+  DEMO_CHEATSHEET,
+  DEMO_ROSTER,
+  DEMO_TEAMS,
+  isDemoModeEnabled,
+} from "@/lib/demo-data";
+import { friendlyError } from "@/lib/errors";
 
 // ── Helpers ──
 
@@ -58,6 +66,8 @@ export default function CheatsheetPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [demoMode] = useState(isDemoModeEnabled);
   const [quota, setQuota] = useState<AiUsageToday | null>(null);
   const [quotaMonth, setQuotaMonth] = useState<AiUsageMonth | null>(null);
   const [isSupporter, setIsSupporter] = useState(false);
@@ -65,7 +75,27 @@ export default function CheatsheetPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setAuthRequired(false);
     try {
+      if (demoMode) {
+        const pokemonResult = await fetchPokemon({ limit: 1000, champions_only: true });
+        const pMap = new Map<number, Pokemon>();
+        for (const p of pokemonResult.data) pMap.set(p.id, p);
+        setPokemonMap(pMap);
+        setTeams(DEMO_TEAMS);
+        setRoster(DEMO_ROSTER);
+        setSavedCheatsheets([
+          {
+            id: "demo-cheatsheet",
+            team_id: "demo-balance",
+            cheatsheet_json: DEMO_CHEATSHEET,
+            is_public: false,
+            created_at: "2026-05-07T00:00:00.000Z",
+            updated_at: "2026-05-07T00:00:00.000Z",
+          },
+        ]);
+        return;
+      }
       const [teamsResult, cheatsheetsResult, rosterResult, pokemonResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchAllCheatsheets(),
@@ -75,6 +105,11 @@ export default function CheatsheetPage() {
       if (teamsResult.status === "fulfilled") setTeams(teamsResult.value.data);
       if (cheatsheetsResult.status === "fulfilled") setSavedCheatsheets(cheatsheetsResult.value);
       if (rosterResult.status === "fulfilled") setRoster(rosterResult.value.data);
+      const rejected = [teamsResult, cheatsheetsResult, rosterResult].find(
+        (result) =>
+          result.status === "rejected" && friendlyError(result.reason).isAuthRequired
+      );
+      if (rejected) setAuthRequired(true);
       if (pokemonResult.status === "fulfilled") {
         const pMap = new Map<number, Pokemon>();
         for (const p of pokemonResult.value.data) pMap.set(p.id, p);
@@ -91,7 +126,7 @@ export default function CheatsheetPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     loadData();
@@ -126,6 +161,18 @@ export default function CheatsheetPage() {
       setError(null);
       setTempSheet(null);
       try {
+        if (demoMode) {
+          setSavedCheatsheets((prev) => (prev.length ? prev : [{
+            id: "demo-cheatsheet",
+            team_id: "demo-balance",
+            cheatsheet_json: DEMO_CHEATSHEET,
+            is_public: false,
+            created_at: "2026-05-07T00:00:00.000Z",
+            updated_at: "2026-05-07T00:00:00.000Z",
+          }]));
+          setExpandedId("demo-balance");
+          return;
+        }
         await generateCheatsheet(selectedTeamId);
         // Reload all cheatsheets to get the new one
         const updated = await fetchAllCheatsheets();
@@ -147,6 +194,10 @@ export default function CheatsheetPage() {
       setError(null);
       setTempSheet(null);
       try {
+        if (demoMode) {
+          setTempSheet(DEMO_CHEATSHEET);
+          return;
+        }
         const res = await generateSelectionCheatsheet({
           roster_ids: quickSelection,
           team_name: "Quick Selection",
@@ -223,6 +274,17 @@ export default function CheatsheetPage() {
             <div key={i} className="h-20 animate-pulse rounded-[1rem] bg-surface-low" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (authRequired) {
+    return (
+      <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
+        <AuthEmptyState
+          title="Sign in to generate cheatsheets"
+          description="Cheatsheets are built from your saved teams and can be regenerated when your sets change."
+        />
       </div>
     );
   }

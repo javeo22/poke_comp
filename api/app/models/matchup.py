@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Enum-like validators via regex (pydantic v2 style). Migration
 # 20260419100000 enforces the same set via CHECK constraints in Postgres.
@@ -14,7 +14,7 @@ class OpponentPokemon(BaseModel):
 
 
 class MatchupCreate(BaseModel):
-    my_team_id: str = Field(description="UUID of saved team used")
+    my_team_id: str | None = Field(None, description="UUID of saved team used")
     opponent_team_data: list[OpponentPokemon] = Field(
         min_length=1,
         max_length=6,
@@ -53,6 +53,26 @@ class MatchupCreate(BaseModel):
             "NULL = same as the saved team's roster."
         ),
     )
+    replay_url: str | None = None
+    opponent_name: str | None = None
+    opponent_rating: int | None = None
+    event_name: str | None = None
+    round_label: str | None = None
+    game_number: int | None = None
+    set_id: str | None = None
+    opponent_lead_pair: list[str] | None = Field(None, max_length=2)
+    opponent_selected_four: list[str] | None = Field(None, max_length=4)
+    my_selected_four: list[str] | None = Field(None, max_length=4)
+    loss_reason: str | None = None
+    win_condition: str | None = None
+    key_turn: str | None = None
+    adjustment_note: str | None = None
+
+    @model_validator(mode="after")
+    def validate_team_source(self) -> "MatchupCreate":
+        if not self.my_team_id and not self.my_team_actual:
+            raise ValueError("Provide either my_team_id or my_team_actual")
+        return self
 
 
 class MatchupUpdate(BaseModel):
@@ -65,6 +85,20 @@ class MatchupUpdate(BaseModel):
     close_type: str | None = Field(None, pattern=CLOSE_TYPE_PATTERN)
     mvp_pokemon: str | None = None
     my_team_actual: list[str] | None = Field(None, max_length=6)
+    replay_url: str | None = None
+    opponent_name: str | None = None
+    opponent_rating: int | None = None
+    event_name: str | None = None
+    round_label: str | None = None
+    game_number: int | None = None
+    set_id: str | None = None
+    opponent_lead_pair: list[str] | None = Field(None, max_length=2)
+    opponent_selected_four: list[str] | None = Field(None, max_length=4)
+    my_selected_four: list[str] | None = Field(None, max_length=4)
+    loss_reason: str | None = None
+    win_condition: str | None = None
+    key_turn: str | None = None
+    adjustment_note: str | None = None
 
 
 class MatchupResponse(BaseModel):
@@ -81,6 +115,20 @@ class MatchupResponse(BaseModel):
     close_type: str | None = None
     mvp_pokemon: str | None = None
     my_team_actual: list[str] | None = None
+    replay_url: str | None = None
+    opponent_name: str | None = None
+    opponent_rating: int | None = None
+    event_name: str | None = None
+    round_label: str | None = None
+    game_number: int | None = None
+    set_id: str | None = None
+    opponent_lead_pair: list[str] | None = None
+    opponent_selected_four: list[str] | None = None
+    my_selected_four: list[str] | None = None
+    loss_reason: str | None = None
+    win_condition: str | None = None
+    key_turn: str | None = None
+    adjustment_note: str | None = None
 
 
 class MatchupList(BaseModel):

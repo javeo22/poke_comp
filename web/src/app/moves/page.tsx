@@ -8,6 +8,7 @@ import { POKEMON_TYPES } from "@/features/pokemon/types";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorCard } from "@/components/ui/error-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ExpandableText } from "@/components/ui/expandable-text";
 import { friendlyError } from "@/lib/errors";
 
 const PAGE_SIZE = 50;
@@ -227,8 +228,12 @@ export default function MovesPage() {
                   <td className="px-4 py-3 font-body text-sm text-on-surface tabular-nums">
                     {move.accuracy != null ? `${move.accuracy}%` : "\u2014"}
                   </td>
-                  <td className="max-w-xs truncate px-4 py-3 font-body text-sm text-on-surface-muted">
-                    {move.effect_text ?? "\u2014"}
+                  <td className="max-w-xs px-4 py-3 font-body text-sm text-on-surface-muted">
+                    <ExpandableText
+                      text={move.effect_text}
+                      className="font-body text-sm text-on-surface-muted"
+                      collapsedClassName="line-clamp-1"
+                    />
                   </td>
                   <td className="px-4 py-3 font-display text-xs text-on-surface-muted tabular-nums">
                     {move.learner_count != null

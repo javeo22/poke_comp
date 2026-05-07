@@ -6,6 +6,7 @@ import { fetchItems } from "@/lib/api";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorCard } from "@/components/ui/error-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ExpandableText } from "@/components/ui/expandable-text";
 import { friendlyError } from "@/lib/errors";
 
 const PAGE_SIZE = 30;
@@ -33,7 +34,7 @@ export default function ItemsPage() {
   const [filters, setFilters] = useState<FilterState>({
     name: "",
     category: "",
-    championsOnly: false,
+    championsOnly: true,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -185,9 +186,10 @@ export default function ItemsPage() {
               </div>
 
               {item.effect_text && (
-                <p className="font-body text-sm leading-relaxed text-on-surface-muted">
-                  {item.effect_text}
-                </p>
+                <ExpandableText
+                  text={item.effect_text}
+                  className="font-body text-sm leading-relaxed text-on-surface-muted"
+                />
               )}
               {item.top_holders && item.top_holders.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">

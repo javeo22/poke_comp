@@ -21,6 +21,7 @@ import { SearchableDropdown, type DropdownOption } from "@/components/ui/searcha
 import { ChevronRight, Play, Trophy, Users, Zap, Shield } from "lucide-react";
 import { LabDashboard } from "@/components/ui/lab-dashboard";
 import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
+import { DataFreshness } from "@/components/data-freshness";
 
 export default function HomePage() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function HomePage() {
   const [userPokemon, setUserPokemon] = useState<UserPokemon[]>([]);
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
+  const [pokemonNameById, setPokemonNameById] = useState<Map<number, string>>(new Map());
+  const [quickDraftPokemon, setQuickDraftPokemon] = useState("");
   const [isLogged, setIsLogged] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
 
@@ -47,8 +50,9 @@ export default function HomePage() {
 
     // 2. Search options
     fetchPokemonBasic({ champions_only: true, limit: 1000 }).then(res => {
+      setPokemonNameById(new Map(res.data.map((p) => [p.id, p.name])));
       setPokemonOptions(res.data.map(p => ({
-        value: String(p.id),
+        value: p.name,
         label: p.name,
         sublabel: p.types.join(" / ")
       })));
@@ -74,9 +78,9 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleQuickDraft = (id: string) => {
-    if (!id) return;
-    router.push(`/draft?opp=${id}`);
+  const handleQuickDraft = (name: string) => {
+    if (!name) return;
+    router.push(`/draft?opp=${encodeURIComponent(name)}`);
   };
 
   return (
@@ -90,11 +94,11 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 bg-surface-low/50 w-fit">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)] animate-pulse" />
                 <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-muted">
-                  REGULATION M-A DASHBOARD
+                  CHAMPIONS META DASHBOARD
                 </span>
               </div>
               <span className="px-3 font-mono text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-dim">
-                LIVE TELEMETRY FROM SEASON M-1 CHAMPIONS
+                LIVE USAGE SNAPSHOTS AND PERSONAL PREP
               </span>
             </div>
 
@@ -115,13 +119,18 @@ export default function HomePage() {
                 <div className="relative flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-lowest/80 p-2 backdrop-blur-xl shadow-2xl">
                   <div className="flex-1 px-2">
                     <SearchableDropdown
-                      value={""}
-                      onChange={(v) => handleQuickDraft(v)}
+                      value={quickDraftPokemon}
+                      onChange={(v) => {
+                        setQuickDraftPokemon(v);
+                        handleQuickDraft(v);
+                      }}
                       options={pokemonOptions}
                       placeholder="Enter opponent's Pokemon to start draft..."
                     />
                   </div>
                   <button 
+                    onClick={() => handleQuickDraft(quickDraftPokemon)}
+                    disabled={!quickDraftPokemon}
                     className="h-12 w-12 flex items-center justify-center rounded-xl bg-accent text-surface-lowest hover:scale-105 active:scale-95 transition-all shadow-lg"
                     title="Quick Draft"
                   >
@@ -135,7 +144,7 @@ export default function HomePage() {
                   {trends.slice(0, 3).map(t => (
                     <button 
                       key={t.id} 
-                      onClick={() => handleQuickDraft(String(t.id))}
+                      onClick={() => handleQuickDraft(t.pokemon_name)}
                       className="font-mono text-[0.65rem] text-primary hover:text-accent transition-colors"
                     >
                       {t.pokemon_name.toUpperCase()}
@@ -174,7 +183,11 @@ export default function HomePage() {
               </span>
             </div>
             <div className="font-mono text-[0.65rem] tracking-[0.15em] text-on-surface-muted">
-              {isLogged && lastMatch ? new Date(lastMatch.played_at).toLocaleDateString() : "REFRESHED 6H AGO"}
+              {isLogged && lastMatch ? (
+                new Date(lastMatch.played_at).toLocaleDateString()
+              ) : (
+                <DataFreshness format="doubles" />
+              )}
             </div>
           </div>
 
@@ -286,7 +299,7 @@ export default function HomePage() {
                           unoptimized 
                           className="image-rendering-pixelated mb-2"
                         />
-                         <span className="text-[0.6rem] font-display font-bold text-on-surface truncate w-full">{p.pokemon_name || pokemonOptions.find(o => o.value === String(p.pokemon_id))?.label || "Pokemon"}</span>
+                         <span className="text-[0.6rem] font-display font-bold text-on-surface truncate w-full">{p.pokemon_name || pokemonNameById.get(p.pokemon_id) || "Pokemon"}</span>
                       </div>
                     ))
                   )}

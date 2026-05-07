@@ -7,12 +7,23 @@ import Image from "next/image";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { DraftResponse } from "@/types/draft";
-import { fetchTeams, fetchPokemon, fetchUserPokemon, analyzeDraft, createMatchup, fetchAiUsage } from "@/lib/api";
+import {
+  fetchTeams,
+  fetchPokemon,
+  fetchUserPokemon,
+  analyzeDraft,
+  createMatchup,
+  fetchAiUsage,
+  resolvePokemonNames,
+} from "@/lib/api";
 import type { AiUsageMonth, AiUsageToday } from "@/lib/api";
 import { QuotaIndicator } from "@/components/quota-indicator";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { DropdownOption } from "@/components/ui/searchable-dropdown";
 import { DataFreshness } from "@/components/data-freshness";
+import { AuthEmptyState } from "@/components/ui/auth-empty-state";
+import { DEMO_DRAFT_RESULT, DEMO_ROSTER, DEMO_TEAMS, isDemoModeEnabled } from "@/lib/demo-data";
+import { friendlyError } from "@/lib/errors";
 
 const THREAT_COLORS: Record<string, string> = {
   high: "text-primary",
@@ -30,6 +41,9 @@ export default function DraftPage() {
   const [rosterLookup, setRosterLookup] = useState<Map<string, UserPokemon>>(new Map());
   const [pokemonMap, setPokemonMap] = useState<Map<number, Pokemon>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [demoMode] = useState(isDemoModeEnabled);
+  const [hydratedOppParam, setHydratedOppParam] = useState("");
 
   // Selection Mode
   const [selectionMode, setSelectionMode] = useState<"team" | "quick">("team");
@@ -62,12 +76,36 @@ export default function DraftPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setAuthRequired(false);
     try {
+      if (demoMode) {
+        const pokemonResult = await fetchPokemon({ limit: 1000, champions_only: true });
+        const pMap = new Map<number, Pokemon>();
+        for (const p of pokemonResult.data) pMap.set(p.id, p);
+        setPokemonMap(pMap);
+        setPokemonOptions(
+          pokemonResult.data.map((p: Pokemon) => ({
+            value: p.name,
+            label: p.name,
+            sublabel: p.types.join("/"),
+          }))
+        );
+        setTeams(DEMO_TEAMS);
+        setRoster(DEMO_ROSTER);
+        setRosterLookup(new Map(DEMO_ROSTER.map((entry) => [entry.id, entry])));
+        return;
+      }
+
       const [teamsResult, pokemonResult, rosterResult] = await Promise.allSettled([
         fetchTeams({ limit: 200 }),
         fetchPokemon({ limit: 1000, champions_only: true }),
         fetchUserPokemon({ limit: 500 }),
       ]);
+      const rejected = [teamsResult, pokemonResult, rosterResult].find(
+        (result) =>
+          result.status === "rejected" && friendlyError(result.reason).isAuthRequired
+      );
+      if (rejected) setAuthRequired(true);
       if (teamsResult.status === "fulfilled") {
         setTeams(teamsResult.value.data);
       }
@@ -105,7 +143,7 @@ export default function DraftPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     loadData();
@@ -134,7 +172,66 @@ export default function DraftPage() {
   // Parse a blob of 6 Pokemon names (newline, comma, or semicolon separated)
   // into the opponent slots. VGC team preview often lists opponent names in
   // chat/screenshots, so pasting them saves six separate dropdown interactions.
-  const handleQuickPaste = () => {
+  const resolveOpponentInputs = useCallback(
+    async (rawNames: string[]) => {
+      const resolvedFromIds: string[] = [];
+      const namesToResolve: string[] = [];
+      for (const raw of rawNames) {
+        const maybeId = Number(raw);
+        const byId = Number.isFinite(maybeId) ? pokemonMap.get(maybeId)?.name : undefined;
+        if (byId) {
+          resolvedFromIds.push(byId);
+        } else {
+          namesToResolve.push(raw);
+        }
+      }
+
+      const exactByLabel = new Map(pokemonOptions.map((o) => [o.label.toLowerCase(), o.value]));
+      const resolved: string[] = [...resolvedFromIds];
+      const unresolved: string[] = [];
+      const apiInputs = namesToResolve.filter((raw) => !exactByLabel.has(raw.toLowerCase()));
+      for (const raw of namesToResolve) {
+        const exact = exactByLabel.get(raw.toLowerCase());
+        if (exact) resolved.push(exact);
+      }
+
+      if (apiInputs.length > 0) {
+        try {
+          const apiResolved = await resolvePokemonNames(apiInputs);
+          resolved.push(...apiResolved.resolved.map((item) => item.name));
+          unresolved.push(...apiResolved.unresolved);
+        } catch {
+          unresolved.push(...apiInputs);
+        }
+      }
+
+      const deduped = [...new Set(resolved)].slice(0, 6);
+      return { resolved: deduped, unresolved };
+    },
+    [pokemonMap, pokemonOptions]
+  );
+
+  useEffect(() => {
+    const opp = searchParams.get("opp") ?? "";
+    if (!opp || opp === hydratedOppParam || pokemonOptions.length === 0) return;
+    const rawNames = opp
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    if (rawNames.length === 0) return;
+    setHydratedOppParam(opp);
+    resolveOpponentInputs(rawNames).then(({ resolved, unresolved }) => {
+      setOpponentSlots([...resolved, ...Array(6 - resolved.length).fill("")].slice(0, 6));
+      setQuickPasteError(
+        unresolved.length > 0
+          ? `Filled ${resolved.length}/${rawNames.length}. Couldn't match: ${unresolved.join(", ")}`
+          : null
+      );
+    });
+  }, [hydratedOppParam, pokemonOptions.length, resolveOpponentInputs, searchParams]);
+
+  const handleQuickPaste = async () => {
     if (!quickPaste.trim()) return;
     const rawNames = quickPaste
       .split(/[,;\n]/)
@@ -145,20 +242,7 @@ export default function DraftPage() {
       setQuickPasteError("Paste 1-6 Pokemon names, separated by commas or lines.");
       return;
     }
-    // Resolve each raw name against the Pokemon options (case-insensitive).
-    const optionByLabel = new Map(
-      pokemonOptions.map((o) => [o.label.toLowerCase(), o.value]),
-    );
-    const resolved: string[] = [];
-    const unresolved: string[] = [];
-    for (const raw of rawNames) {
-      const match = optionByLabel.get(raw.toLowerCase());
-      if (match) {
-        resolved.push(match);
-      } else {
-        unresolved.push(raw);
-      }
-    }
+    const { resolved, unresolved } = await resolveOpponentInputs(rawNames);
     const nextSlots = [...resolved, ...Array(6 - resolved.length).fill("")].slice(0, 6);
     setOpponentSlots(nextSlots);
     setQuickPaste("");
@@ -208,6 +292,11 @@ export default function DraftPage() {
     setSaveOutcome(null);
     setResult(null);
     try {
+      if (demoMode) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        setResult(DEMO_DRAFT_RESULT);
+        return;
+      }
       const response = await analyzeDraft(
         {
           opponent_team: filledOpponents,
@@ -246,15 +335,37 @@ export default function DraftPage() {
   };
 
   const handleConfirmSave = async () => {
-    if (!selectedTeamId || !result || !pendingOutcome) return;
+    if (!result || !pendingOutcome) return;
+    const actualLineup =
+      selectionMode === "quick"
+        ? quickSelection
+            .map((id) => {
+              const entry = rosterLookup.get(id);
+              return entry ? pokemonMap.get(entry.pokemon_id)?.name : "";
+            })
+            .filter((name): name is string => !!name)
+        : undefined;
+    if (selectionMode === "team" && !selectedTeamId) return;
+    if (selectionMode === "quick" && (!actualLineup || actualLineup.length === 0)) return;
     setIsSaving(true);
     try {
+      if (demoMode) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        setSavedId("demo-match");
+        setSaveOutcome(pendingOutcome);
+        setPendingOutcome(null);
+        return;
+      }
       const leads =
         saveLeads[0] && saveLeads[1] ? saveLeads : undefined;
       const matchup = await createMatchup({
-        my_team_id: selectedTeamId,
+        my_team_id: selectionMode === "team" ? selectedTeamId : undefined,
+        my_team_actual: actualLineup,
         opponent_team_data: filledOpponents.map((name) => ({ name })),
         lead_pair: leads,
+        my_selected_four: result.analysis.bring_four.map((rec) => rec.pokemon),
+        opponent_selected_four: result.analysis.opponent_likely_bring_four ?? undefined,
+        opponent_lead_pair: result.analysis.opponent_likely_leads?.[0] ?? undefined,
         outcome: pendingOutcome,
         notes: saveNotes || undefined,
       });
@@ -283,6 +394,17 @@ export default function DraftPage() {
             <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-low" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (authRequired) {
+    return (
+      <div className="relative z-10 mx-auto w-full max-w-[82rem] flex-1 px-6 sm:px-9 py-8">
+        <AuthEmptyState
+          title="Sign in to use Draft Helper"
+          description="Draft analysis needs a saved team or roster selection so recommendations match your actual builds."
+        />
       </div>
     );
   }
@@ -481,7 +603,8 @@ export default function DraftPage() {
             ))}
           </div>
           <p className="mt-3 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
-            {filledOpponents.length}/6 Pokemon entered
+            {filledOpponents.length}/6 Pokemon entered · Confidence{" "}
+            {filledOpponents.length >= 6 ? "High" : filledOpponents.length >= 4 ? "Medium" : "Low"}
           </p>
         </div>
       </div>
@@ -510,12 +633,12 @@ export default function DraftPage() {
             className="h-4 w-4 accent-primary"
           />
           <span className="font-display text-[0.7rem] uppercase tracking-wider text-on-surface-muted">
-            Deep analysis (Sonnet, slower)
+            Tournament prep (Sonnet, slower)
           </span>
         </label>
         {!isAnalyzing && !result && (
           <span className="font-display text-[0.65rem] uppercase tracking-wider text-secondary">
-            {deepMode ? "Deep · ~10-15s" : "Fast · ~3-5s"}
+            {deepMode ? "Tournament prep · ~10-15s" : "Ladder quick read · ~3-5s"}
           </span>
         )}
         {deepMode && quota !== null && (
@@ -551,7 +674,7 @@ export default function DraftPage() {
           <div className="rounded-xl border border-outline-variant bg-surface-low p-4">
             <div className="flex items-center justify-between">
               <p className="font-display text-xs uppercase tracking-wider text-secondary">
-                {deepMode ? "Deep analysis (Sonnet)" : "Fast analysis (Haiku)"}
+                {deepMode ? "Tournament prep (Sonnet)" : "Ladder quick read (Haiku)"}
               </p>
               <p className="font-mono text-xs text-on-surface-muted tabular-nums">
                 {(elapsedMs / 1000).toFixed(1)}s
@@ -594,6 +717,65 @@ export default function DraftPage() {
             </div>
           )}
 
+          {/* Team Preview Mode */}
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display text-xs font-bold uppercase tracking-wider text-primary">
+                Team Preview Mode
+              </h3>
+              <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                Compact game-one read
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <PreviewReadout
+                label="Bring 4"
+                value={result.analysis.bring_four.map((rec) => rec.pokemon).join(" / ")}
+              />
+              <PreviewReadout
+                label="Lead Pair"
+                value={result.analysis.lead_pair.join(" + ")}
+              />
+              <PreviewReadout
+                label="Opponent 4"
+                value={
+                  result.analysis.opponent_likely_bring_four?.join(" / ") ||
+                  "Not enough signal"
+                }
+              />
+              <PreviewReadout
+                label="Likely Lead"
+                value={
+                  result.analysis.opponent_likely_leads?.[0]?.join(" + ") ||
+                  result.analysis.threats[0]?.pokemon ||
+                  "Unknown"
+                }
+              />
+              <PreviewReadout
+                label="Biggest Threat"
+                value={result.analysis.threats[0]?.pokemon || "Unknown"}
+              />
+              <PreviewReadout
+                label="Turn One"
+                value={result.analysis.lead_matchups?.[0]?.note || result.analysis.game_plan}
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <PreviewReadout
+                label="Must Preserve"
+                value={result.analysis.bring_four[2]?.pokemon || result.analysis.lead_pair[0]}
+              />
+              <PreviewReadout
+                label="Avoid"
+                value={
+                  result.analysis.threats[0]
+                    ? `Letting ${result.analysis.threats[0].pokemon} dictate turn-one tempo`
+                    : "Overcommitting before scouting items"
+                }
+              />
+            </div>
+          </div>
+
           {/* Summary */}
           <div className="rounded-xl bg-surface-low p-6">
             <h3 className="mb-3 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
@@ -603,6 +785,39 @@ export default function DraftPage() {
               {result.analysis.summary}
             </p>
           </div>
+
+          {result.analysis.lead_matchups && result.analysis.lead_matchups.length > 0 && (
+            <div className="rounded-xl bg-surface-low p-6">
+              <h3 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+                Lead Matchups
+              </h3>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {result.analysis.lead_matchups.map((matchup, i) => (
+                  <div key={i} className="rounded-xl bg-surface-mid p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-display text-sm font-bold text-on-surface">
+                        {matchup.my_lead.join(" + ")} vs {matchup.opponent_lead.join(" + ")}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
+                          matchup.favorability === "favored"
+                            ? "bg-secondary/20 text-secondary"
+                            : matchup.favorability === "unfavored"
+                              ? "bg-tertiary/20 text-tertiary"
+                              : "bg-surface-high text-on-surface-muted"
+                        }`}
+                      >
+                        {matchup.favorability}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-body text-xs leading-relaxed text-on-surface-muted">
+                      {matchup.note}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bring 4 + Leads */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -747,40 +962,56 @@ export default function DraftPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.analysis.damage_calcs.map((calc, i) => (
-                    <tr
-                      key={i}
-                      className={
-                        calc.verified === false ? "bg-amber-500/5" : "group"
-                      }
-                    >
-                      <td className="py-2 pr-4 font-body text-sm text-on-surface">
-                        <span className="inline-flex items-center gap-1">
-                          {calc.attacker}
-                          {calc.verified === false && (
-                            <span
-                              title={calc.verification_note ?? "Could not verify"}
-                              className="text-amber-400 cursor-help"
+                  {result.analysis.damage_calcs.map((calc, i) => {
+                    const attackerId = [...pokemonMap.values()].find((p) => p.name === calc.attacker)?.id;
+                    const defenderId = [...pokemonMap.values()].find((p) => p.name === calc.defender)?.id;
+                    const calcHref =
+                      attackerId && defenderId
+                        ? `/calc?attacker=${attackerId}&defender=${defenderId}`
+                        : "/calc";
+                    return (
+                      <tr
+                        key={i}
+                        className={
+                          calc.verified === false ? "bg-amber-500/5" : "group"
+                        }
+                      >
+                        <td className="py-2 pr-4 font-body text-sm text-on-surface">
+                          <span className="inline-flex items-center gap-1">
+                            {calc.attacker}
+                            {calc.verified === false && (
+                              <span
+                                title={calc.verification_note ?? "Could not verify"}
+                                className="text-amber-400 cursor-help"
+                              >
+                                ⚠
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 font-body text-sm text-primary">
+                          {calc.move}
+                        </td>
+                        <td className="py-2 pr-4 font-body text-sm text-on-surface">
+                          {calc.defender}
+                        </td>
+                        <td className="py-2 pr-4 font-display text-sm font-bold text-secondary">
+                          {calc.estimated_damage}
+                        </td>
+                        <td className="py-2 font-body text-xs text-on-surface-muted">
+                          <div className="flex items-center gap-2">
+                            <span>{calc.note}</span>
+                            <a
+                              href={calcHref}
+                              className="shrink-0 font-display text-[0.55rem] uppercase tracking-wider text-primary hover:text-accent"
                             >
-                              ⚠
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4 font-body text-sm text-primary">
-                        {calc.move}
-                      </td>
-                      <td className="py-2 pr-4 font-body text-sm text-on-surface">
-                        {calc.defender}
-                      </td>
-                      <td className="py-2 pr-4 font-display text-sm font-bold text-secondary">
-                        {calc.estimated_damage}
-                      </td>
-                      <td className="py-2 font-body text-xs text-on-surface-muted">
-                        {calc.note}
-                      </td>
-                    </tr>
-                  ))}
+                              Calc
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -940,6 +1171,19 @@ export default function DraftPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PreviewReadout({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-surface-lowest/70 p-3">
+      <div className="mb-1 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+        {label}
+      </div>
+      <p className="line-clamp-2 font-body text-xs leading-relaxed text-on-surface">
+        {value}
+      </p>
     </div>
   );
 }
