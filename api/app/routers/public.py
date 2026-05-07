@@ -197,14 +197,10 @@ def list_public_cheatsheets(username: str):
         return []
 
     # Resolve team names
-    team_ids = [
-        str(c["team_id"]) for c in cheatsheets if isinstance(c, dict) and c.get("team_id")
-    ]
+    team_ids = [str(c["team_id"]) for c in cheatsheets if isinstance(c, dict) and c.get("team_id")]
     teams_result = supabase.table("teams").select("id, name, format").in_("id", team_ids).execute()
     team_map: dict[str, dict] = {
-        str(t["id"]): t
-        for t in (teams_result.data or [])
-        if isinstance(t, dict) and t.get("id")
+        str(t["id"]): t for t in (teams_result.data or []) if isinstance(t, dict) and t.get("id")
     }
 
     return [

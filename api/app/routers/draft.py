@@ -498,8 +498,8 @@ def _build_prompt(
                 f"- {name}: {stats['wins']}W-{stats['losses']}L "
                 f"({round(stats['win_rate'] * 100, 1)}% win rate over {stats['total']} games)"
             )
-        win_rate_context = (
-            "\n\n## Historical Performance Against These Species\n" + "\n".join(wr_lines)
+        win_rate_context = "\n\n## Historical Performance Against These Species\n" + "\n".join(
+            wr_lines
         )
 
     mega_note = ""

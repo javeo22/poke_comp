@@ -59,11 +59,9 @@ def seed_user():
 
     # Ensure profile exists and is_admin=True
     try:
-        supabase.table("user_profiles").upsert({
-            "user_id": uuid,
-            "display_name": "Admin",
-            "is_admin": True
-        }).execute()
+        supabase.table("user_profiles").upsert(
+            {"user_id": uuid, "display_name": "Admin", "is_admin": True}
+        ).execute()
         print("User profile updated with is_admin=True")
     except Exception as e:
         print(f"Failed to update user profile: {e}")
