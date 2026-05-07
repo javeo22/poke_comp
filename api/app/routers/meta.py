@@ -13,6 +13,30 @@ from app.models.meta import (
 router = APIRouter(prefix="/meta", tags=["meta"])
 
 
+def _normalize_usage_items(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized: list[dict[str, object]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        wrapped = item.get("value")
+        raw = wrapped if isinstance(wrapped, dict) else item
+        name = raw.get("name")
+        percent = raw.get("percent")
+        if isinstance(name, str) and isinstance(percent, int | float):
+            normalized.append({"name": name, "percent": float(percent)})
+    return normalized
+
+
+def _normalize_trend_row(row: dict) -> dict:
+    normalized = dict(row)
+    for key in ("top_moves", "top_items", "top_abilities"):
+        normalized[key] = _normalize_usage_items(normalized.get(key))
+    return normalized
+
+
 @router.get("", response_model=MetaSnapshotList)
 def list_snapshots(
     format: str | None = Query(None, description="Filter by format (singles, doubles)"),
@@ -63,7 +87,7 @@ def get_trends(
     result = supabase.rpc("get_meta_trends", {"p_format": format, "p_limit": limit}).execute()
     rows: list[dict] = result.data or []  # type: ignore[assignment]
 
-    return [MetaTrendResponse.model_validate(row) for row in rows]
+    return [MetaTrendResponse.model_validate(_normalize_trend_row(row)) for row in rows]
 
 
 @router.get("/{snapshot_id}", response_model=MetaSnapshotResponse)

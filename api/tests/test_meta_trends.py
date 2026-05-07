@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
 # Mock Supabase before app import
@@ -33,9 +32,9 @@ def test_get_meta_trends_endpoint_exists(mock_supabase):
             "previous_usage": 18.0,
             "swing": -3.0,
             "up": False,
-            "top_moves": [{"name": "Gigaton Hammer", "percent": 100}],
-            "top_items": [{"name": "Leftovers", "percent": 50}],
-            "top_abilities": [{"name": "Mold Breaker", "percent": 80}]
+            "top_moves": [{"value": {"name": "Gigaton Hammer", "percent": 100}}],
+            "top_items": [{"value": {"name": "Leftovers", "percent": 50}}],
+            "top_abilities": [{"value": {"name": "Mold Breaker", "percent": 80}}]
         }
     ]
     mock_supabase.rpc.return_value.execute.return_value = mock_rpc_result
@@ -45,13 +44,15 @@ def test_get_meta_trends_endpoint_exists(mock_supabase):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 2
-    
+
     assert data[0]["pokemon_name"] == "Garchomp"
     assert data[0]["usage_percent"] == 25.5
     assert data[0]["swing"] == 5.5
     assert data[0]["up"] is True
     assert len(data[0]["top_moves"]) == 1
     assert data[0]["top_moves"][0]["name"] == "Earthquake"
-    
+
     assert data[1]["pokemon_name"] == "Tinkaton"
     assert data[1]["up"] is False
+    assert data[1]["top_moves"][0]["name"] == "Gigaton Hammer"
+    assert data[1]["top_items"][0]["name"] == "Leftovers"
