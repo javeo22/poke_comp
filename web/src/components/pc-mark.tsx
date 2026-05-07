@@ -33,37 +33,39 @@ export function PcMark({ className = "", size = 32 }: PcMarkProps) {
 
 export function PcEmblem({ className = "" }: { className?: string }) {
   return (
-    <div
-      className={`relative grid aspect-square place-items-center rounded-full bg-surface-lowest ${className}`}
-    >
-      <div className="absolute inset-[7%] rounded-full border-[3px] border-outline-variant" />
-      <div className="absolute inset-[14%] rounded-full border border-outline-variant" />
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden="true">
-        {Array.from({ length: 24 }).map((_, index) => {
-          const angle = (index / 24) * Math.PI * 2;
-          const x1 = 100 + Math.cos(angle) * 78;
-          const y1 = 100 + Math.sin(angle) * 78;
-          const radius = index % 6 === 0 ? 70 : 74;
-          const x2 = 100 + Math.cos(angle) * radius;
-          const y2 = 100 + Math.sin(angle) * radius;
+    <figure className="m-0">
+      <div
+        className={`relative grid aspect-square place-items-center overflow-hidden rounded-full bg-surface-lowest ${className}`}
+      >
+        <div className="absolute inset-[7%] rounded-full border-[3px] border-outline-variant" />
+        <div className="absolute inset-[14%] rounded-full border border-outline-variant" />
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden="true">
+          {Array.from({ length: 24 }).map((_, index) => {
+            const angle = (index / 24) * Math.PI * 2;
+            const x1 = 100 + Math.cos(angle) * 78;
+            const y1 = 100 + Math.sin(angle) * 78;
+            const radius = index % 6 === 0 ? 70 : 74;
+            const x2 = 100 + Math.cos(angle) * radius;
+            const y2 = 100 + Math.sin(angle) * radius;
 
-          return (
-            <line
-              key={index}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke="var(--color-outline-variant)"
-              strokeWidth={index % 6 === 0 ? 2 : 1}
-            />
-          );
-        })}
-      </svg>
-      <PcMark size={220} className="relative z-10 text-primary" />
-      <div className="absolute bottom-[8%] font-mono text-[0.55rem] uppercase tracking-[0.24em] text-on-surface">
-        <span className="text-primary">◆</span> Team PokeComp <span className="text-primary">◆</span>
+            return (
+              <line
+                key={index}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="var(--color-outline-variant)"
+                strokeWidth={index % 6 === 0 ? 2 : 1}
+              />
+            );
+          })}
+        </svg>
+        <PcMark size={190} className="relative z-10 text-primary" />
       </div>
-    </div>
+      <figcaption className="mt-5 text-center font-mono text-[0.58rem] uppercase tracking-[0.18em] text-on-surface">
+        <span className="text-primary">◆</span> Team PokeComp <span className="text-primary">◆</span>
+      </figcaption>
+    </figure>
   );
 }

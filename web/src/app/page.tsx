@@ -24,6 +24,20 @@ import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
 import { DataFreshness } from "@/components/data-freshness";
 import { PcEmblem } from "@/components/pc-mark";
 
+const normalizePokemonName = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/♀/g, "f")
+    .replace(/♂/g, "m")
+    .replace(/[^a-z0-9]+/g, "");
+
+const coercePokemonId = (value: unknown) => {
+  const id =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [stats, setStats] = useState<PublicStats | null>(null);
@@ -33,6 +47,7 @@ export default function HomePage() {
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
   const [pokemonNameById, setPokemonNameById] = useState<Map<number, string>>(new Map());
+  const [pokemonIdByName, setPokemonIdByName] = useState<Map<string, number>>(new Map());
   const [quickDraftPokemon, setQuickDraftPokemon] = useState("");
   const [isLogged, setIsLogged] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
@@ -52,6 +67,9 @@ export default function HomePage() {
     // 2. Search options
     fetchPokemonBasic({ champions_only: true, limit: 1000 }).then(res => {
       setPokemonNameById(new Map(res.data.map((p) => [p.id, p.name])));
+      setPokemonIdByName(
+        new Map(res.data.map((p) => [normalizePokemonName(p.name), p.id]))
+      );
       setPokemonOptions(res.data.map(p => ({
         value: p.name,
         label: p.name,
@@ -159,7 +177,7 @@ export default function HomePage() {
           </div>
 
           {/* Team badge visual from the redesign */}
-          <div className="hidden w-[390px] lg:block">
+          <div className="hidden w-[340px] xl:w-[360px] lg:block">
             <PcEmblem className="border-[3px] border-outline-variant shadow-[8px_8px_0_var(--color-outline-variant)]" />
           </div>
         </div>
@@ -210,18 +228,19 @@ export default function HomePage() {
                 <div className="grid grid-cols-6 gap-3">
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {(isLogged && lastMatch?.opponent_team_data ? lastMatch.opponent_team_data : trends.slice(0, 6)).map((p: any, idx: number) => {
-                    const name = p.name || p.pokemon_name || "Unknown";
-                    // Attempt to find ID for matchup opponents to show correct art
-                    const found = pokemonOptions.find(o => o.label.toLowerCase() === name.toLowerCase());
-                    const id = p.id || (found ? Number(found.value) : 0);
+                    const name = typeof p === "string" ? p : p.name || p.pokemon_name || "Unknown";
+                    const explicitId = typeof p === "string" ? null : coercePokemonId(p.pokemon_id ?? p.id);
+                    const resolvedId = explicitId ?? pokemonIdByName.get(normalizePokemonName(name));
+                    const id = resolvedId ?? 1;
                     
                     return (
                       <div key={idx} className="group relative aspect-square rounded-[2px] border-2 border-outline-variant bg-surface p-1 transition-all hover:shadow-[3px_3px_0_var(--color-primary)]">
                         <Image
-                          src={id ? pokeArt(id) : pokeArt(1)} 
+                          src={pokeArt(id)} 
                           alt={name}
                           fill
                           unoptimized
+                          sizes="80px"
                           className="object-contain p-1 drop-shadow-2xl"
                         />
                         <div className="absolute -bottom-1 -right-1 flex h-5 items-center justify-center rounded-[2px] border border-outline-variant bg-surface-lowest px-1.5 font-mono text-[0.5rem] font-bold opacity-0 transition-opacity group-hover:opacity-100">
@@ -259,7 +278,16 @@ export default function HomePage() {
                    {/* Recommendation slots */}
                    {trends.slice(0, 2).map(t => (
                      <div key={t.id} className="group relative cursor-pointer overflow-hidden rounded-[2px] border-2 border-outline-variant bg-accent/30 p-4 transition-all hover:shadow-[3px_3px_0_var(--color-outline-variant)]">
-                        <Image src={pokeArt(t.id)} alt="" fill unoptimized className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10 group-hover:opacity-25 transition-opacity" />
+                        <div className="pointer-events-none absolute -right-5 -bottom-5 h-28 w-28 opacity-10 transition-opacity group-hover:opacity-25">
+                          <Image
+                            src={pokeArt(t.id)}
+                            alt=""
+                            fill
+                            unoptimized
+                            sizes="112px"
+                            className="object-contain"
+                          />
+                        </div>
                         <div className="relative">
                           <div className="text-[0.6rem] font-mono uppercase text-accent tracking-tighter mb-1">Top Tier Pillar</div>
                           <div className="text-lg font-display font-bold text-on-surface">{t.pokemon_name}</div>
@@ -296,7 +324,7 @@ export default function HomePage() {
                           width={40} 
                           height={40} 
                           unoptimized 
-                          className="image-rendering-pixelated mb-2"
+                          className="image-rendering-pixelated mb-2 h-10 w-10 object-contain"
                         />
                          <span className="text-[0.6rem] font-display font-bold text-on-surface truncate w-full">{p.pokemon_name || pokemonNameById.get(p.pokemon_id) || "Pokemon"}</span>
                       </div>
@@ -323,7 +351,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {loadingTrends ? <div className="col-span-full h-40 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> : trends.map(t => (
             <Link key={t.id} href={`/pokemon/${t.id}`} className="card-interactive group relative min-h-[140px] overflow-hidden p-4">
-               <Image src={pokeArt(t.id)} alt="" width={80} height={80} unoptimized className="absolute -right-3 -top-2 opacity-15 group-hover:opacity-30 transition-opacity" />
+               <Image src={pokeArt(t.id)} alt="" width={80} height={80} unoptimized className="absolute -right-3 -top-2 h-20 w-20 object-contain opacity-15 transition-opacity group-hover:opacity-30" />
                <div className="relative h-full flex flex-col">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-display font-bold text-sm text-on-surface">{t.pokemon_name}</span>
