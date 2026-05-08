@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const KOFI_URL = "https://ko-fi.com/pokecompapp";
 
 export default function SupportPage() {
@@ -58,10 +60,18 @@ export default function SupportPage() {
             rel="noopener noreferrer"
             className="btn-primary h-14 px-10 font-display text-sm font-medium uppercase tracking-wider inline-flex items-center gap-3"
           >
-            Support on Ko-fi
+            <Image
+              src="/sprites/items/potion.png"
+              alt=""
+              width={22}
+              height={22}
+              className="image-rendering-pixelated"
+              unoptimized
+            />
+            Buy me a Potion on Ko-fi
           </a>
           <p className="font-body text-xs text-on-surface-muted">
-            One-time or monthly -- any amount helps
+            One-time tips help; monthly supporters get the perks below
           </p>
         </div>
       </div>
@@ -77,20 +87,20 @@ export default function SupportPage() {
         </p>
         <ul className="font-body text-sm text-on-surface leading-relaxed flex flex-col gap-2">
           <li>
-            <span className="text-tertiary">&bull;</span> Ad-free experience
+            <span className="text-tertiary">&bull;</span>{" "}Ad-free experience
             across the whole site
           </li>
           <li>
-            <span className="text-tertiary">&bull;</span> 30 AI analyses per
+            <span className="text-tertiary">&bull;</span>{" "}30 AI analyses per
             day (vs 3 for free accounts)
           </li>
           <li>
-            <span className="text-tertiary">&bull;</span> 600-per-month
+            <span className="text-tertiary">&bull;</span>{" "}600-per-month
             fair-use soft cap; email if you hit it through legitimate use and
             we&apos;ll discuss a reset
           </li>
           <li>
-            <span className="text-tertiary">&bull;</span> Supporter badge on
+            <span className="text-tertiary">&bull;</span>{" "}Supporter badge on
             your trainer card and public profile
           </li>
         </ul>
