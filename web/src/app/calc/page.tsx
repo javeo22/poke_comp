@@ -19,7 +19,7 @@ import type { Move } from "@/types/move";
 import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import { NATURES } from "@/types/user-pokemon";
-import { calcFinalSpeed } from "@/utils/stats";
+import { calcFinalStats, type StatTable } from "@/utils/stats";
 import Image from "next/image";
 
 type Weather = "none" | "sun" | "rain" | "snow" | "sand";
@@ -252,6 +252,14 @@ export default function CalcPage() {
   const activeDefenderPokemon = getActivePokemon(defender);
   const attackerCalcPokemonId = attacker.megaPokemonId || attacker.pokemonId;
   const defenderCalcPokemonId = defender.megaPokemonId || defender.pokemonId;
+  const attackerFinalStats = useMemo(
+    () => calcFinalStats(activeAttackerPokemon?.base_stats, attacker.statPoints, attacker.nature),
+    [activeAttackerPokemon?.base_stats, attacker.nature, attacker.statPoints]
+  );
+  const defenderFinalStats = useMemo(
+    () => calcFinalStats(activeDefenderPokemon?.base_stats, defender.statPoints, defender.nature),
+    [activeDefenderPokemon?.base_stats, defender.nature, defender.statPoints]
+  );
 
   const pokemonOptions: DropdownOption[] = useMemo(
     () =>
@@ -486,6 +494,16 @@ export default function CalcPage() {
 
         {/* MIDDLE: Results & Field */}
         <div className="lg:col-span-4 flex flex-col gap-4">
+          <StatComparison
+            attackerName={activeAttackerPokemon?.name ?? "Attacker"}
+            defenderName={activeDefenderPokemon?.name ?? "Defender"}
+            attackerTypes={activeAttackerPokemon?.types ?? []}
+            defenderTypes={activeDefenderPokemon?.types ?? []}
+            attackerStats={attackerFinalStats}
+            defenderStats={defenderFinalStats}
+            ready={!!activeAttackerPokemon && !!activeDefenderPokemon}
+          />
+
           <div className="card p-6 bg-surface-lowest border-accent/20 flex flex-col items-center text-center">
              <div className="mb-6 font-mono text-[0.65rem] uppercase tracking-[0.22em] text-accent">◆ CALCULATION</div>
              
@@ -531,43 +549,6 @@ export default function CalcPage() {
                     {result.is_ohko_chance && !result.is_guaranteed_ohko && (
                       <div className="bg-accent/10 text-accent text-[0.6rem] font-mono uppercase tracking-widest py-1 rounded border border-accent/20">OHKO Chance</div>
                     )}
-
-                    {/* Speed Comparison */}
-                    {(() => {
-                      const atkSpeed = calcFinalSpeed(
-                        activeAttackerPokemon?.base_stats?.speed ?? 0,
-                        attacker.statPoints.speed || 0,
-                        attacker.nature
-                      );
-                      const defSpeed = calcFinalSpeed(
-                        activeDefenderPokemon?.base_stats?.speed ?? 0,
-                        defender.statPoints.speed || 0,
-                        defender.nature
-                      );
-                      const isFaster = atkSpeed > defSpeed;
-                      const isTie = atkSpeed === defSpeed;
-
-                      return (
-                        <div className="mt-2 bg-surface-mid/50 rounded p-2 border border-outline-variant/30">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">Speed Comparison</span>
-                            <span className={`font-mono text-[0.55rem] font-bold ${isFaster ? 'text-primary' : isTie ? 'text-accent' : 'text-tertiary'}`}>
-                              {isFaster ? 'ATTACKER FASTER' : isTie ? 'SPEED TIE' : 'DEFENDER FASTER'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between font-mono text-xs">
-                            <div className="flex flex-col items-start">
-                              <span className="text-[0.5rem] uppercase text-on-surface-muted">Atk</span>
-                              <span className={isFaster ? 'text-primary font-bold' : ''}>{atkSpeed}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[0.5rem] uppercase text-on-surface-muted">Def</span>
-                              <span className={!isFaster && !isTie ? 'text-tertiary font-bold' : ''}>{defSpeed}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
                  </div>
 
                  <button 
@@ -709,6 +690,170 @@ export default function CalcPage() {
 function getActivePokemon(side: SideState): PokemonDetail | null {
   if (!side.megaPokemonId) return side.pokemon;
   return side.megaPokemon ?? side.pokemon;
+}
+
+function StatComparison({
+  attackerName,
+  defenderName,
+  attackerTypes,
+  defenderTypes,
+  attackerStats,
+  defenderStats,
+  ready,
+}: {
+  attackerName: string;
+  defenderName: string;
+  attackerTypes: string[];
+  defenderTypes: string[];
+  attackerStats: StatTable;
+  defenderStats: StatTable;
+  ready: boolean;
+}) {
+  const speedDelta = attackerStats.speed - defenderStats.speed;
+  const speedVerdict =
+    speedDelta > 0
+      ? "Attacker outspeeds"
+      : speedDelta < 0
+        ? "Defender outspeeds"
+        : "Speed tie";
+
+  return (
+    <div className="card p-5 border-outline-variant/70 bg-surface-lowest">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-on-surface-muted">
+          ◆ FINAL STATS
+        </span>
+        {ready && (
+          <span
+            className={`rounded-md border px-2 py-1 font-mono text-[0.55rem] uppercase tracking-wider ${
+              speedDelta > 0
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : speedDelta < 0
+                  ? "border-accent/30 bg-accent/10 text-accent"
+                  : "border-outline-variant bg-surface-low text-on-surface-muted"
+            }`}
+          >
+            {speedVerdict}
+          </span>
+        )}
+      </div>
+
+      {!ready ? (
+        <div className="rounded-lg border border-dashed border-outline-variant bg-surface-low p-5 text-center">
+          <p className="font-body text-sm text-on-surface-muted">
+            Pick both Pokemon to compare Level 50 stats.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] items-start gap-2">
+            <PokemonStatHeader name={attackerName} types={attackerTypes} tone="primary" />
+            <div />
+            <PokemonStatHeader name={defenderName} types={defenderTypes} tone="accent" align="right" />
+          </div>
+
+          <div className="space-y-1.5">
+            {STAT_KEYS.map((key) => {
+              const attackerValue = attackerStats[key];
+              const defenderValue = defenderStats[key];
+              const delta = attackerValue - defenderValue;
+              const isSpeed = key === "speed";
+
+              return (
+                <div
+                  key={key}
+                  className={`grid min-h-10 grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-2 rounded-lg px-2 py-1.5 ${
+                    isSpeed ? "bg-surface-mid/60" : "bg-surface-low/80"
+                  }`}
+                >
+                  <StatValue
+                    value={attackerValue}
+                    isLeader={delta > 0}
+                    tone="primary"
+                    align="left"
+                  />
+                  <div className="text-center">
+                    <span className="block font-display text-[0.58rem] uppercase tracking-wider text-on-surface-muted">
+                      {STAT_LABELS[key]}
+                    </span>
+                    <span
+                      className={`block font-mono text-[0.55rem] ${
+                        delta === 0
+                          ? "text-on-surface-muted"
+                          : delta > 0
+                            ? "text-primary"
+                            : "text-accent"
+                      }`}
+                    >
+                      {delta === 0 ? "Tie" : delta > 0 ? `+${delta}` : `${delta}`}
+                    </span>
+                  </div>
+                  <StatValue
+                    value={defenderValue}
+                    isLeader={delta < 0}
+                    tone="accent"
+                    align="right"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PokemonStatHeader({
+  name,
+  types,
+  tone,
+  align = "left",
+}: {
+  name: string;
+  types: string[];
+  tone: "primary" | "accent";
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0"}>
+      <p
+        className={`truncate font-display text-sm font-bold ${
+          tone === "primary" ? "text-primary" : "text-accent"
+        }`}
+      >
+        {name}
+      </p>
+      <p className="truncate font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+        {types.join(" / ")}
+      </p>
+    </div>
+  );
+}
+
+function StatValue({
+  value,
+  isLeader,
+  tone,
+  align,
+}: {
+  value: number;
+  isLeader: boolean;
+  tone: "primary" | "accent";
+  align: "left" | "right";
+}) {
+  const leaderClass = tone === "primary" ? "text-primary" : "text-accent";
+  return (
+    <div className={align === "right" ? "text-right" : "text-left"}>
+      <span
+        className={`font-mono text-lg font-bold ${
+          isLeader ? leaderClass : "text-on-surface"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }
 
 function MegaFormSelector({
