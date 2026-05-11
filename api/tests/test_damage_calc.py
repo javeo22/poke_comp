@@ -204,6 +204,50 @@ def test_damage_boost_items_apply_to_attacker():
     assert "Life Orb: damage x1.3" in with_life_orb["applied_modifiers"]
     assert "Expert Belt: super-effective damage x1.2" in with_expert_belt["applied_modifiers"]
 
+def test_type_boost_item_requires_matching_move_type():
+    attacker = CalcPokemon(
+        name="Fire Attacker",
+        types=["fire"],
+        hp=150,
+        attack=90,
+        defense=90,
+        sp_attack=120,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Neutral Defender",
+        types=["normal"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    flamethrower = CalcMove(name="Flamethrower", type="fire", category="special", power=90)
+
+    no_item = calculate_damage(attacker, flamethrower, defender, is_doubles=False)
+    with_charcoal = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        attacker_item_name="Charcoal",
+    )
+    with_black_belt = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        attacker_item_name="Black Belt",
+    )
+
+    assert with_charcoal["max"] > no_item["max"]
+    assert "Charcoal: fire damage x1.2" in with_charcoal["applied_modifiers"]
+    assert with_black_belt["max"] == no_item["max"]
+    assert with_black_belt["applied_modifiers"] == []
+
 def test_resist_berry_halves_super_effective_damage():
     attacker = CalcPokemon(
         name="Fire Attacker",

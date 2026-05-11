@@ -86,6 +86,27 @@ _RESIST_BERRY_TYPES: dict[str, str] = {
     "Yache Berry": "ice",
 }
 
+_TYPE_BOOST_ITEM_TYPES: dict[str, str] = {
+    "Black Belt": "fighting",
+    "Black Glasses": "dark",
+    "Charcoal": "fire",
+    "Dragon Fang": "dragon",
+    "Fairy Feather": "fairy",
+    "Hard Stone": "rock",
+    "Magnet": "electric",
+    "Metal Coat": "steel",
+    "Miracle Seed": "grass",
+    "Mystic Water": "water",
+    "Never-melt Ice": "ice",
+    "Poison Barb": "poison",
+    "Sharp Beak": "flying",
+    "Silk Scarf": "normal",
+    "Silver Powder": "bug",
+    "Soft Sand": "ground",
+    "Spell Tag": "ghost",
+    "Twisted Spoon": "psychic",
+}
+
 
 @dataclass(frozen=True)
 class CalcPokemon:
@@ -223,6 +244,11 @@ def _item_damage_modifier(
     elif attacker_item_name == "Expert Belt" and type_mult > 1:
         modifier *= 1.2
         notes.append("Expert Belt: super-effective damage x1.2")
+
+    boosted_type = _TYPE_BOOST_ITEM_TYPES.get(attacker_item_name or "")
+    if boosted_type == move.type:
+        modifier *= 1.2
+        notes.append(f"{attacker_item_name}: {move.type} damage x1.2")
 
     berry_type = _RESIST_BERRY_TYPES.get(defender_item_name or "")
     berry_applies = berry_type == move.type and (
