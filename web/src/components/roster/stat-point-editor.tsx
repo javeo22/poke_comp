@@ -117,7 +117,7 @@ export function StatPointEditor({ value, onChange, baseStats, nature }: StatPoin
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleChange(key, invested - 2)}
+                    onClick={() => handleChange(key, invested - 1)}
                     disabled={invested === 0}
                     className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
                   >
@@ -128,7 +128,7 @@ export function StatPointEditor({ value, onChange, baseStats, nature }: StatPoin
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleChange(key, invested + 2)}
+                    onClick={() => handleChange(key, invested + 1)}
                     disabled={invested >= MAX_PER_STAT || remaining <= 0}
                     className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-mid text-[0.6rem] text-on-surface-muted hover:bg-surface-high disabled:opacity-30"
                   >

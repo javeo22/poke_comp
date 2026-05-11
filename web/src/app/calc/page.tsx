@@ -328,7 +328,7 @@ export default function CalcPage() {
                   <div key={key} className="flex items-center gap-3">
                     <span className="w-8 font-mono text-[0.6rem] text-on-surface-muted uppercase">{STAT_LABELS[key]}</span>
                     <input 
-                      type="range" min="0" max="32" step="2"
+                      type="range" min="0" max="32" step="1"
                       value={attacker.statPoints[key] || 0}
                       onChange={(e) => updateStat("attacker", key, parseInt(e.target.value))}
                       className="flex-1 accent-primary h-1.5 rounded-full bg-surface-high appearance-none cursor-pointer"
@@ -549,7 +549,7 @@ export default function CalcPage() {
                   <div key={key} className="flex items-center gap-3">
                     <span className="w-8 font-mono text-[0.6rem] text-on-surface-muted uppercase">{STAT_LABELS[key]}</span>
                     <input 
-                      type="range" min="0" max="32" step="2"
+                      type="range" min="0" max="32" step="1"
                       value={defender.statPoints[key] || 0}
                       onChange={(e) => updateStat("defender", key, parseInt(e.target.value))}
                       className="flex-1 accent-accent h-1.5 rounded-full bg-surface-high appearance-none cursor-pointer"
