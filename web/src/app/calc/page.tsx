@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  fetchItems,
   fetchMoves,
   fetchPokemonBasic,
   fetchPokemonDetail,
@@ -15,11 +16,12 @@ import {
   type DropdownOption,
 } from "@/components/ui/searchable-dropdown";
 import { friendlyError } from "@/lib/errors";
+import type { Item } from "@/types/item";
 import type { Move } from "@/types/move";
 import type { PokemonBasic, PokemonDetail } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import { NATURES } from "@/types/user-pokemon";
-import { calcFinalStats, type StatTable } from "@/utils/stats";
+import { calcFinalStats, type StatMultipliers, type StatTable } from "@/utils/stats";
 import Image from "next/image";
 
 type Weather = "none" | "sun" | "rain" | "snow" | "sand";
@@ -47,6 +49,7 @@ interface SideState {
   pokemon: PokemonDetail | null;
   megaPokemonId: string;
   megaPokemon: PokemonDetail | null;
+  itemId: string;
   statPoints: Record<string, number>;
   nature: string;
 }
@@ -60,6 +63,20 @@ const DEFAULT_STATS = {
   speed: 0,
 };
 
+const CALC_ITEM_MODIFIERS: Record<
+  string,
+  { statMultipliers: StatMultipliers; summary: string }
+> = {
+  "Choice Scarf": {
+    statMultipliers: { speed: 1.5 },
+    summary: "SPE x1.5",
+  },
+  "Iron Ball": {
+    statMultipliers: { speed: 0.5 },
+    summary: "SPE x0.5",
+  },
+};
+
 export default function CalcPage() {
   const searchParams = useSearchParams();
   const initialAttacker = searchParams.get("attacker") || "";
@@ -67,6 +84,7 @@ export default function CalcPage() {
 
   const [allPokemon, setAllPokemon] = useState<PokemonBasic[]>([]);
   const [allMoves, setAllMoves] = useState<Move[]>([]);
+  const [allItems, setAllItems] = useState<Item[]>([]);
   const [rosterBuilds, setRosterBuilds] = useState<UserPokemon[]>([]);
 
   const [attacker, setAttacker] = useState<SideState>({
@@ -74,6 +92,7 @@ export default function CalcPage() {
     pokemon: null,
     megaPokemonId: "",
     megaPokemon: null,
+    itemId: "",
     statPoints: { ...DEFAULT_STATS },
     nature: "Hardy",
   });
@@ -83,6 +102,7 @@ export default function CalcPage() {
     pokemon: null,
     megaPokemonId: "",
     megaPokemon: null,
+    itemId: "",
     statPoints: { ...DEFAULT_STATS },
     nature: "Hardy",
   });
@@ -108,6 +128,7 @@ export default function CalcPage() {
       pokemon: null,
       megaPokemonId: "",
       megaPokemon: null,
+      itemId: "",
       statPoints: { ...DEFAULT_STATS },
       nature: "Hardy",
     });
@@ -116,6 +137,7 @@ export default function CalcPage() {
       pokemon: null,
       megaPokemonId: "",
       megaPokemon: null,
+      itemId: "",
       statPoints: { ...DEFAULT_STATS },
       nature: "Hardy",
     });
@@ -138,6 +160,9 @@ export default function CalcPage() {
     fetchMoves({ champions_only: true, limit: 1500 }).then((res) =>
       setAllMoves(res.data)
     );
+    fetchItems({ champions_only: true, category: "held", limit: 1000 })
+      .then((res) => setAllItems(res.data))
+      .catch(() => setAllItems([]));
     fetchUserPokemon({ limit: 500 })
       .then((res) => setRosterBuilds(res.data))
       .catch(() => {});
@@ -252,13 +277,29 @@ export default function CalcPage() {
   const activeDefenderPokemon = getActivePokemon(defender);
   const attackerCalcPokemonId = attacker.megaPokemonId || attacker.pokemonId;
   const defenderCalcPokemonId = defender.megaPokemonId || defender.pokemonId;
+  const attackerItem = getSelectedItem(allItems, attacker.itemId);
+  const defenderItem = getSelectedItem(allItems, defender.itemId);
   const attackerFinalStats = useMemo(
-    () => calcFinalStats(activeAttackerPokemon?.base_stats, attacker.statPoints, attacker.nature),
-    [activeAttackerPokemon?.base_stats, attacker.nature, attacker.statPoints]
+    () =>
+      calcFinalStats(
+        activeAttackerPokemon?.base_stats,
+        attacker.statPoints,
+        attacker.nature,
+        50,
+        getItemStatMultipliers(attackerItem)
+      ),
+    [activeAttackerPokemon?.base_stats, attacker.nature, attacker.statPoints, attackerItem]
   );
   const defenderFinalStats = useMemo(
-    () => calcFinalStats(activeDefenderPokemon?.base_stats, defender.statPoints, defender.nature),
-    [activeDefenderPokemon?.base_stats, defender.nature, defender.statPoints]
+    () =>
+      calcFinalStats(
+        activeDefenderPokemon?.base_stats,
+        defender.statPoints,
+        defender.nature,
+        50,
+        getItemStatMultipliers(defenderItem)
+      ),
+    [activeDefenderPokemon?.base_stats, defender.nature, defender.statPoints, defenderItem]
   );
 
   const pokemonOptions: DropdownOption[] = useMemo(
@@ -296,6 +337,18 @@ export default function CalcPage() {
     }));
   }, [allPokemon, rosterBuilds]);
 
+  const itemOptions: DropdownOption[] = useMemo(
+    () =>
+      allItems
+        .filter((item) => CALC_ITEM_MODIFIERS[item.name])
+        .map((item) => ({
+          value: String(item.id),
+          label: item.name,
+          sublabel: CALC_ITEM_MODIFIERS[item.name].summary,
+        })),
+    [allItems]
+  );
+
   const extraModifier = useMemo(() => {
     let modifier = customModifier;
     if (burnModifier) modifier *= 0.5;
@@ -321,6 +374,7 @@ export default function CalcPage() {
       pokemon: null,
       megaPokemonId: "",
       megaPokemon: null,
+      itemId: getSupportedItemId(allItems, build.item_id),
       statPoints: { ...DEFAULT_STATS, ...(build.stat_points ?? {}) },
       nature: build.nature ?? "Hardy",
     };
@@ -433,6 +487,17 @@ export default function CalcPage() {
                 setAttacker((p) => ({ ...p, megaPokemonId, megaPokemon: null }))
               }
             />
+            {itemOptions.length > 0 && (
+              <div className="mt-3">
+                <SearchableDropdown
+                  label="Held Item"
+                  placeholder="No speed item..."
+                  value={attacker.itemId}
+                  onChange={(itemId) => setAttacker((p) => ({ ...p, itemId }))}
+                  options={itemOptions}
+                />
+              </div>
+            )}
             {rosterBuildOptions.length > 0 && (
               <div className="mt-3">
                 <SearchableDropdown
@@ -501,6 +566,8 @@ export default function CalcPage() {
             defenderTypes={activeDefenderPokemon?.types ?? []}
             attackerStats={attackerFinalStats}
             defenderStats={defenderFinalStats}
+            attackerItem={attackerItem}
+            defenderItem={defenderItem}
             ready={!!activeAttackerPokemon && !!activeDefenderPokemon}
           />
 
@@ -641,6 +708,17 @@ export default function CalcPage() {
                 setDefender((p) => ({ ...p, megaPokemonId, megaPokemon: null }))
               }
             />
+            {itemOptions.length > 0 && (
+              <div className="mt-3">
+                <SearchableDropdown
+                  label="Held Item"
+                  placeholder="No speed item..."
+                  value={defender.itemId}
+                  onChange={(itemId) => setDefender((p) => ({ ...p, itemId }))}
+                  options={itemOptions}
+                />
+              </div>
+            )}
             {rosterBuildOptions.length > 0 && (
               <div className="mt-3">
                 <SearchableDropdown
@@ -692,6 +770,22 @@ function getActivePokemon(side: SideState): PokemonDetail | null {
   return side.megaPokemon ?? side.pokemon;
 }
 
+function getSelectedItem(items: Item[], itemId: string): Item | null {
+  if (!itemId) return null;
+  return items.find((item) => item.id === Number(itemId)) ?? null;
+}
+
+function getSupportedItemId(items: Item[], itemId: number | null): string {
+  if (!itemId) return "";
+  const item = items.find((entry) => entry.id === itemId);
+  return item && CALC_ITEM_MODIFIERS[item.name] ? String(item.id) : "";
+}
+
+function getItemStatMultipliers(item: Item | null): StatMultipliers {
+  if (!item) return {};
+  return CALC_ITEM_MODIFIERS[item.name]?.statMultipliers ?? {};
+}
+
 function StatComparison({
   attackerName,
   defenderName,
@@ -699,6 +793,8 @@ function StatComparison({
   defenderTypes,
   attackerStats,
   defenderStats,
+  attackerItem,
+  defenderItem,
   ready,
 }: {
   attackerName: string;
@@ -707,6 +803,8 @@ function StatComparison({
   defenderTypes: string[];
   attackerStats: StatTable;
   defenderStats: StatTable;
+  attackerItem: Item | null;
+  defenderItem: Item | null;
   ready: boolean;
 }) {
   const speedDelta = attackerStats.speed - defenderStats.speed;
@@ -747,9 +845,20 @@ function StatComparison({
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] items-start gap-2">
-            <PokemonStatHeader name={attackerName} types={attackerTypes} tone="primary" />
+            <PokemonStatHeader
+              name={attackerName}
+              types={attackerTypes}
+              item={attackerItem}
+              tone="primary"
+            />
             <div />
-            <PokemonStatHeader name={defenderName} types={defenderTypes} tone="accent" align="right" />
+            <PokemonStatHeader
+              name={defenderName}
+              types={defenderTypes}
+              item={defenderItem}
+              tone="accent"
+              align="right"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -807,14 +916,18 @@ function StatComparison({
 function PokemonStatHeader({
   name,
   types,
+  item,
   tone,
   align = "left",
 }: {
   name: string;
   types: string[];
+  item: Item | null;
   tone: "primary" | "accent";
   align?: "left" | "right";
 }) {
+  const itemSummary = item ? CALC_ITEM_MODIFIERS[item.name]?.summary : null;
+
   return (
     <div className={align === "right" ? "min-w-0 text-right" : "min-w-0"}>
       <p
@@ -827,6 +940,15 @@ function PokemonStatHeader({
       <p className="truncate font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
         {types.join(" / ")}
       </p>
+      {item && itemSummary && (
+        <p
+          className={`truncate font-mono text-[0.55rem] uppercase tracking-wider ${
+            tone === "primary" ? "text-primary" : "text-accent"
+          }`}
+        >
+          {item.name} · {itemSummary}
+        </p>
+      )}
     </div>
   );
 }

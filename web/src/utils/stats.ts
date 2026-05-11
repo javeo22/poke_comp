@@ -25,12 +25,14 @@ export const STAT_KEYS = ["hp", "attack", "defense", "sp_attack", "sp_defense", 
 
 export type StatKey = (typeof STAT_KEYS)[number];
 export type StatTable = Record<StatKey, number>;
+export type StatMultipliers = Partial<Record<StatKey, number>>;
 
 export function calcFinalStats(
   baseStats: Partial<StatTable> | null | undefined,
   investment: Partial<StatTable> | null | undefined = {},
   nature?: string | null,
-  level: number = 50
+  level: number = 50,
+  statMultipliers: StatMultipliers = {}
 ): StatTable {
   const natureMap = nature ? NATURE_EFFECTS[nature] ?? {} : {};
 
@@ -39,14 +41,16 @@ export function calcFinalStats(
     if (base <= 0) return 0;
     const naked = Math.floor(((2 * base + 31) * level) / 100) + 5;
     const withInvestment = naked + (investment?.[key] ?? 0);
-    return Math.floor(withInvestment * (natureMap[key] ?? 1));
+    const withNature = Math.floor(withInvestment * (natureMap[key] ?? 1));
+    return Math.floor(withNature * (statMultipliers[key] ?? 1));
   };
 
   const hpBase = baseStats?.hp ?? 0;
-  const hp =
+  const hpBeforeMultiplier =
     hpBase > 0
       ? Math.floor(((2 * hpBase + 31) * level) / 100) + level + 10 + (investment?.hp ?? 0)
       : 0;
+  const hp = Math.floor(hpBeforeMultiplier * (statMultipliers.hp ?? 1));
 
   return {
     hp,
@@ -62,7 +66,10 @@ export function calcFinalSpeed(
   base: number,
   investment: number,
   nature?: string | null,
-  level: number = 50
+  level: number = 50,
+  speedMultiplier: number = 1
 ): number {
-  return calcFinalStats({ speed: base }, { speed: investment }, nature, level).speed;
+  return calcFinalStats({ speed: base }, { speed: investment }, nature, level, {
+    speed: speedMultiplier,
+  }).speed;
 }
