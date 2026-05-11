@@ -45,6 +45,8 @@ const STAT_LABELS: Record<string, string> = {
 interface SideState {
   pokemonId: string;
   pokemon: PokemonDetail | null;
+  megaPokemonId: string;
+  megaPokemon: PokemonDetail | null;
   statPoints: Record<string, number>;
   nature: string;
 }
@@ -70,6 +72,8 @@ export default function CalcPage() {
   const [attacker, setAttacker] = useState<SideState>({
     pokemonId: initialAttacker,
     pokemon: null,
+    megaPokemonId: "",
+    megaPokemon: null,
     statPoints: { ...DEFAULT_STATS },
     nature: "Hardy",
   });
@@ -77,6 +81,8 @@ export default function CalcPage() {
   const [defender, setDefender] = useState<SideState>({
     pokemonId: initialDefender,
     pokemon: null,
+    megaPokemonId: "",
+    megaPokemon: null,
     statPoints: { ...DEFAULT_STATS },
     nature: "Hardy",
   });
@@ -97,8 +103,22 @@ export default function CalcPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleReset = () => {
-    setAttacker({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
-    setDefender({ pokemonId: "", pokemon: null, statPoints: { ...DEFAULT_STATS }, nature: "Hardy" });
+    setAttacker({
+      pokemonId: "",
+      pokemon: null,
+      megaPokemonId: "",
+      megaPokemon: null,
+      statPoints: { ...DEFAULT_STATS },
+      nature: "Hardy",
+    });
+    setDefender({
+      pokemonId: "",
+      pokemon: null,
+      megaPokemonId: "",
+      megaPokemon: null,
+      statPoints: { ...DEFAULT_STATS },
+      nature: "Hardy",
+    });
     setMoveId("");
     setWeather("none");
     setBurnModifier(false);
@@ -125,20 +145,113 @@ export default function CalcPage() {
 
   // Fetch details when IDs change
   useEffect(() => {
-    if (attacker.pokemonId) {
-      fetchPokemonDetail(Number(attacker.pokemonId)).then((res) =>
-        setAttacker((prev) => ({ ...prev, pokemon: res }))
-      );
+    if (!attacker.pokemonId) {
+      setAttacker((prev) => ({
+        ...prev,
+        pokemon: null,
+        megaPokemonId: "",
+        megaPokemon: null,
+      }));
+      return;
     }
+
+    const currentId = attacker.pokemonId;
+    let ignore = false;
+    fetchPokemonDetail(Number(currentId)).then((res) => {
+      if (ignore) return;
+      setAttacker((prev) => {
+        if (prev.pokemonId !== currentId) return prev;
+        const megaIds = res.mega_evolution_ids ?? [];
+        const keepMega =
+          prev.megaPokemonId !== "" && megaIds.includes(Number(prev.megaPokemonId));
+        return {
+          ...prev,
+          pokemon: res,
+          megaPokemonId: keepMega ? prev.megaPokemonId : "",
+          megaPokemon: keepMega ? prev.megaPokemon : null,
+        };
+      });
+    });
+    return () => {
+      ignore = true;
+    };
   }, [attacker.pokemonId]);
 
   useEffect(() => {
-    if (defender.pokemonId) {
-      fetchPokemonDetail(Number(defender.pokemonId)).then((res) =>
-        setDefender((prev) => ({ ...prev, pokemon: res }))
-      );
+    if (!defender.pokemonId) {
+      setDefender((prev) => ({
+        ...prev,
+        pokemon: null,
+        megaPokemonId: "",
+        megaPokemon: null,
+      }));
+      return;
     }
+
+    const currentId = defender.pokemonId;
+    let ignore = false;
+    fetchPokemonDetail(Number(currentId)).then((res) => {
+      if (ignore) return;
+      setDefender((prev) => {
+        if (prev.pokemonId !== currentId) return prev;
+        const megaIds = res.mega_evolution_ids ?? [];
+        const keepMega =
+          prev.megaPokemonId !== "" && megaIds.includes(Number(prev.megaPokemonId));
+        return {
+          ...prev,
+          pokemon: res,
+          megaPokemonId: keepMega ? prev.megaPokemonId : "",
+          megaPokemon: keepMega ? prev.megaPokemon : null,
+        };
+      });
+    });
+    return () => {
+      ignore = true;
+    };
   }, [defender.pokemonId]);
+
+  useEffect(() => {
+    if (!attacker.megaPokemonId) {
+      setAttacker((prev) => (prev.megaPokemon ? { ...prev, megaPokemon: null } : prev));
+      return;
+    }
+
+    const currentId = attacker.megaPokemonId;
+    let ignore = false;
+    fetchPokemonDetail(Number(currentId)).then((res) => {
+      if (ignore) return;
+      setAttacker((prev) =>
+        prev.megaPokemonId === currentId ? { ...prev, megaPokemon: res } : prev
+      );
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [attacker.megaPokemonId]);
+
+  useEffect(() => {
+    if (!defender.megaPokemonId) {
+      setDefender((prev) => (prev.megaPokemon ? { ...prev, megaPokemon: null } : prev));
+      return;
+    }
+
+    const currentId = defender.megaPokemonId;
+    let ignore = false;
+    fetchPokemonDetail(Number(currentId)).then((res) => {
+      if (ignore) return;
+      setDefender((prev) =>
+        prev.megaPokemonId === currentId ? { ...prev, megaPokemon: res } : prev
+      );
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [defender.megaPokemonId]);
+
+  const activeAttackerPokemon = getActivePokemon(attacker);
+  const activeDefenderPokemon = getActivePokemon(defender);
+  const attackerCalcPokemonId = attacker.megaPokemonId || attacker.pokemonId;
+  const defenderCalcPokemonId = defender.megaPokemonId || defender.pokemonId;
 
   const pokemonOptions: DropdownOption[] = useMemo(
     () =>
@@ -151,7 +264,9 @@ export default function CalcPage() {
   );
 
   const moveOptions: DropdownOption[] = useMemo(() => {
-    const movepool = attacker.pokemon?.movepool ? new Set(attacker.pokemon.movepool) : null;
+    const movepool = activeAttackerPokemon?.movepool
+      ? new Set(activeAttackerPokemon.movepool)
+      : null;
     return allMoves
       .filter((m) => (allMovesToggle || !movepool ? true : movepool.has(m.name)))
       .filter((m) => m.category !== "status" && (m.power ?? 0) > 0)
@@ -160,7 +275,7 @@ export default function CalcPage() {
         label: m.name,
         sublabel: `${m.type} · ${m.category} · ${m.power}bp`,
       }));
-  }, [allMoves, attacker.pokemon, allMovesToggle]);
+  }, [allMoves, activeAttackerPokemon, allMovesToggle]);
 
   const rosterBuildOptions: DropdownOption[] = useMemo(() => {
     const nameById = new Map(allPokemon.map((p) => [p.id, p.name]));
@@ -196,6 +311,8 @@ export default function CalcPage() {
     const nextState: SideState = {
       pokemonId: String(build.pokemon_id),
       pokemon: null,
+      megaPokemonId: "",
+      megaPokemon: null,
       statPoints: { ...DEFAULT_STATS, ...(build.stat_points ?? {}) },
       nature: build.nature ?? "Hardy",
     };
@@ -211,13 +328,13 @@ export default function CalcPage() {
   };
 
   const handleRun = async () => {
-    if (!attacker.pokemonId || !defender.pokemonId || !moveId) return;
+    if (!attackerCalcPokemonId || !defenderCalcPokemonId || !moveId) return;
     setRunning(true);
     setError(null);
     try {
       const res = await runCalc({
-        attacker_id: Number(attacker.pokemonId),
-        defender_id: Number(defender.pokemonId),
+        attacker_id: Number(attackerCalcPokemonId),
+        defender_id: Number(defenderCalcPokemonId),
         move_id: Number(moveId),
         attacker_stat_points: attacker.statPoints,
         defender_stat_points: defender.statPoints,
@@ -286,8 +403,8 @@ export default function CalcPage() {
                 <span className="font-mono text-[0.6rem] text-on-surface-muted">
                   {Object.values(attacker.statPoints).reduce((a, b) => a + b, 0)} / 66
                 </span>
-                {attacker.pokemon?.sprite_url && (
-                  <Image src={attacker.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+                {activeAttackerPokemon?.sprite_url && (
+                  <Image src={activeAttackerPokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
                 )}
               </div>
             </div>
@@ -296,8 +413,17 @@ export default function CalcPage() {
               label="Pokemon"
               placeholder="Pick attacker..."
               value={attacker.pokemonId}
-              onChange={(v) => setAttacker(p => ({ ...p, pokemonId: v }))}
+              onChange={(v) =>
+                setAttacker(p => ({ ...p, pokemonId: v, megaPokemonId: "", megaPokemon: null }))
+              }
               options={pokemonOptions}
+            />
+            <MegaFormSelector
+              side={attacker}
+              tone="primary"
+              onChange={(megaPokemonId) =>
+                setAttacker((p) => ({ ...p, megaPokemonId, megaPokemon: null }))
+              }
             />
             {rosterBuildOptions.length > 0 && (
               <div className="mt-3">
@@ -366,12 +492,12 @@ export default function CalcPage() {
              {!result ? (
                <div className="py-12 flex flex-col items-center gap-4">
                  <div className="h-16 w-16 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center">
-                   <span className="text-on-surface-muted text-xs">VS</span>
+                  <span className="text-on-surface-muted text-xs">VS</span>
                  </div>
                  <p className="text-on-surface-muted font-body text-sm">Select Pokemon and a move<br/>to see damage rolls</p>
                  <button
                   onClick={handleRun}
-                  disabled={!attacker.pokemonId || !defender.pokemonId || !moveId || running}
+                  disabled={!attackerCalcPokemonId || !defenderCalcPokemonId || !moveId || running}
                   className="mt-4 btn-primary px-8 py-3 font-display text-sm uppercase tracking-widest disabled:opacity-30"
                 >
                   {running ? "Analyzing..." : "Execute Calc"}
@@ -384,6 +510,11 @@ export default function CalcPage() {
                  </div>
                  <div className="text-xs font-mono text-on-surface-muted mb-6">
                     {result.min} - {result.max} HP damage
+                 </div>
+                 <div className="mb-6 rounded-lg bg-surface-mid/50 p-2 font-body text-xs text-on-surface-muted">
+                   <span className="text-on-surface">{result.attacker_name}</span>
+                   <span className="px-2">→</span>
+                   <span className="text-on-surface">{result.defender_name}</span>
                  </div>
 
                  <div className="h-3 w-full bg-surface-high rounded-full overflow-hidden mb-6">
@@ -404,12 +535,12 @@ export default function CalcPage() {
                     {/* Speed Comparison */}
                     {(() => {
                       const atkSpeed = calcFinalSpeed(
-                        attacker.pokemon?.base_stats?.speed ?? 0,
+                        activeAttackerPokemon?.base_stats?.speed ?? 0,
                         attacker.statPoints.speed || 0,
                         attacker.nature
                       );
                       const defSpeed = calcFinalSpeed(
-                        defender.pokemon?.base_stats?.speed ?? 0,
+                        activeDefenderPokemon?.base_stats?.speed ?? 0,
                         defender.statPoints.speed || 0,
                         defender.nature
                       );
@@ -507,8 +638,8 @@ export default function CalcPage() {
                 <span className="font-mono text-[0.6rem] text-on-surface-muted">
                   {Object.values(defender.statPoints).reduce((a, b) => a + b, 0)} / 66
                 </span>
-                {defender.pokemon?.sprite_url && (
-                  <Image src={defender.pokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
+                {activeDefenderPokemon?.sprite_url && (
+                  <Image src={activeDefenderPokemon.sprite_url} alt="" width={40} height={40} className="image-rendering-pixelated" unoptimized />
                 )}
               </div>
             </div>
@@ -517,8 +648,17 @@ export default function CalcPage() {
               label="Pokemon"
               placeholder="Pick defender..."
               value={defender.pokemonId}
-              onChange={(v) => setDefender(p => ({ ...p, pokemonId: v }))}
+              onChange={(v) =>
+                setDefender(p => ({ ...p, pokemonId: v, megaPokemonId: "", megaPokemon: null }))
+              }
               options={pokemonOptions}
+            />
+            <MegaFormSelector
+              side={defender}
+              tone="accent"
+              onChange={(megaPokemonId) =>
+                setDefender((p) => ({ ...p, megaPokemonId, megaPokemon: null }))
+              }
             />
             {rosterBuildOptions.length > 0 && (
               <div className="mt-3">
@@ -561,6 +701,75 @@ export default function CalcPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function getActivePokemon(side: SideState): PokemonDetail | null {
+  if (!side.megaPokemonId) return side.pokemon;
+  return side.megaPokemon ?? side.pokemon;
+}
+
+function MegaFormSelector({
+  side,
+  tone,
+  onChange,
+}: {
+  side: SideState;
+  tone: "primary" | "accent";
+  onChange: (megaPokemonId: string) => void;
+}) {
+  const forms = side.pokemon?.mega_evolution_ids.map((id, index) => ({
+    id: String(id),
+    name: side.pokemon?.mega_evolution_names[index] ?? `Mega Form ${index + 1}`,
+  })) ?? [];
+
+  if (forms.length === 0) return null;
+
+  const activeClass =
+    tone === "primary"
+      ? "border-primary bg-primary/15 text-primary"
+      : "border-accent bg-accent/15 text-accent";
+  const inactiveClass =
+    "border-outline-variant bg-surface-low text-on-surface-muted hover:bg-surface-mid";
+
+  return (
+    <div className="mt-3 rounded-lg bg-surface-lowest p-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+          Form
+        </span>
+        {side.megaPokemonId && side.megaPokemon && (
+          <span className="font-mono text-[0.55rem] uppercase text-on-surface-muted">
+            {side.megaPokemon.types.join(" / ")}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-pressed={!side.megaPokemonId}
+          className={`min-h-9 flex-1 rounded-md border px-2 py-1.5 text-center font-display text-[0.58rem] uppercase leading-tight tracking-wider transition-colors ${
+            !side.megaPokemonId ? activeClass : inactiveClass
+          }`}
+        >
+          Base
+        </button>
+        {forms.map((form) => (
+          <button
+            key={form.id}
+            type="button"
+            onClick={() => onChange(form.id)}
+            aria-pressed={side.megaPokemonId === form.id}
+            className={`min-h-9 flex-[2_1_8rem] rounded-md border px-2 py-1.5 text-center font-display text-[0.58rem] uppercase leading-tight tracking-wider transition-colors break-words ${
+              side.megaPokemonId === form.id ? activeClass : inactiveClass
+            }`}
+          >
+            {form.name}
+          </button>
+        ))}
       </div>
     </div>
   );
