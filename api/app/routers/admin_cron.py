@@ -63,24 +63,49 @@ def _persist_run(
     error: str | None = None,
 ) -> None:
     """Insert one row in cron_runs. Best-effort -- never raises."""
+    payload = {
+        "source": source,
+        "started_at": _ms_to_iso(started_at_ms),
+        "finished_at": _ms_to_iso(finished_at_ms),
+        "duration_ms": finished_at_ms - started_at_ms,
+        "status": status,
+        "rows_inserted": rows_inserted,
+        "rows_updated": rows_updated,
+        "rows_staged": rows_staged,
+        "rows_skipped": rows_skipped,
+        "warnings": warnings or [],
+        "error": error,
+    }
     try:
-        supabase.table("cron_runs").insert(
-            {
-                "source": source,
-                "started_at": _ms_to_iso(started_at_ms),
-                "finished_at": _ms_to_iso(finished_at_ms),
-                "duration_ms": finished_at_ms - started_at_ms,
-                "status": status,
-                "rows_inserted": rows_inserted,
-                "rows_updated": rows_updated,
-                "rows_staged": rows_staged,
-                "rows_skipped": rows_skipped,
-                "warnings": warnings or [],
-                "error": error,
-            }
-        ).execute()
+        supabase.table("cron_runs").insert(payload).execute()
     except Exception as exc:  # noqa: BLE001 -- audit log must not mask the real error
+        if _is_missing_rows_staged_error(exc):
+            legacy_payload = {key: value for key, value in payload.items() if key != "rows_staged"}
+            try:
+                supabase.table("cron_runs").insert(legacy_payload).execute()
+                logger.warning(
+                    "cron.persist_legacy source=%s missing_column=rows_staged rows_staged=%d",
+                    source,
+                    rows_staged,
+                )
+                return
+            except Exception as legacy_exc:  # noqa: BLE001 -- best-effort audit retry
+                logger.error(
+                    "cron.persist_failed source=%s exc=%s legacy_exc=%s",
+                    source,
+                    exc,
+                    legacy_exc,
+                )
+                return
         logger.error("cron.persist_failed source=%s exc=%s", source, exc)
+
+
+def _is_missing_rows_staged_error(exc: Exception) -> bool:
+    """Detect PostgREST schema-cache errors from prod missing the rows_staged migration."""
+    message = str(exc).lower()
+    return "rows_staged" in message and (
+        "column" in message or "schema cache" in message or "could not find" in message
+    )
 
 
 def _ms_to_iso(ms: int) -> str:
