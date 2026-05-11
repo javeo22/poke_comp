@@ -38,6 +38,8 @@ class CalcRequest(BaseModel):
     # Nature name (e.g. "Adamant", "Timid").
     attacker_nature: str | None = None
     defender_nature: str | None = None
+    attacker_item_name: str | None = Field(None, description="Supported held item name")
+    defender_item_name: str | None = Field(None, description="Supported held item name")
     weather: Literal["none", "sun", "rain", "snow", "sand"] = "none"
     is_doubles: bool = True
     extra_modifier: float = Field(1.0, ge=0.1, le=10.0)
@@ -58,6 +60,7 @@ class CalcResponseShape(BaseModel):
     is_ohko_chance: bool
     is_guaranteed_ohko: bool
     skipped_reason: str | None
+    applied_modifiers: list[str] = Field(default_factory=list)
     formatted: str
     attacker_name: str
     defender_name: str
@@ -137,6 +140,8 @@ def run_calc(req: CalcRequest) -> CalcResponseShape:
         weather=weather,
         is_doubles=req.is_doubles,
         extra_modifier=req.extra_modifier,
+        attacker_item_name=req.attacker_item_name,
+        defender_item_name=req.defender_item_name,
     )
     return CalcResponseShape(
         **result,

@@ -251,6 +251,8 @@ export interface CalcRequest {
   defender_stat_points?: Record<string, number>;
   attacker_nature?: string;
   defender_nature?: string;
+  attacker_item_name?: string;
+  defender_item_name?: string;
   weather?: "none" | "sun" | "rain" | "snow" | "sand";
   is_doubles?: boolean;
   extra_modifier?: number;
@@ -267,6 +269,7 @@ export interface CalcResponse {
   is_ohko_chance: boolean;
   is_guaranteed_ohko: boolean;
   skipped_reason: string | null;
+  applied_modifiers: string[];
   formatted: string;
   attacker_name: string;
   defender_name: string;

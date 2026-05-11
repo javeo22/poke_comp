@@ -63,18 +63,52 @@ const DEFAULT_STATS = {
   speed: 0,
 };
 
-const CALC_ITEM_MODIFIERS: Record<
-  string,
-  { statMultipliers: StatMultipliers; summary: string }
-> = {
+type CalcItemModifier = {
+  statMultipliers?: StatMultipliers;
+  summary: string;
+};
+
+const CALC_ITEM_MODIFIERS: Record<string, CalcItemModifier> = {
+  "Assault Vest": {
+    statMultipliers: { sp_defense: 1.5 },
+    summary: "SPD x1.5",
+  },
+  "Babiri Berry": { summary: "Steel damage x0.5" },
+  "Charti Berry": { summary: "Rock damage x0.5" },
+  "Chilan Berry": { summary: "Normal damage x0.5" },
+  "Choice Band": {
+    statMultipliers: { attack: 1.5 },
+    summary: "ATK x1.5",
+  },
   "Choice Scarf": {
     statMultipliers: { speed: 1.5 },
     summary: "SPE x1.5",
   },
+  "Choice Specs": {
+    statMultipliers: { sp_attack: 1.5 },
+    summary: "SPA x1.5",
+  },
+  "Chople Berry": { summary: "Fighting damage x0.5" },
+  "Coba Berry": { summary: "Flying damage x0.5" },
+  "Colbur Berry": { summary: "Dark damage x0.5" },
+  "Expert Belt": { summary: "SE damage x1.2" },
+  "Haban Berry": { summary: "Dragon damage x0.5" },
   "Iron Ball": {
     statMultipliers: { speed: 0.5 },
     summary: "SPE x0.5",
   },
+  "Kasib Berry": { summary: "Ghost damage x0.5" },
+  "Kebia Berry": { summary: "Poison damage x0.5" },
+  "Life Orb": { summary: "Damage x1.3" },
+  "Occa Berry": { summary: "Fire damage x0.5" },
+  "Passho Berry": { summary: "Water damage x0.5" },
+  "Payapa Berry": { summary: "Psychic damage x0.5" },
+  "Rindo Berry": { summary: "Grass damage x0.5" },
+  "Roseli Berry": { summary: "Fairy damage x0.5" },
+  "Shuca Berry": { summary: "Ground damage x0.5" },
+  "Tanga Berry": { summary: "Bug damage x0.5" },
+  "Wacan Berry": { summary: "Electric damage x0.5" },
+  "Yache Berry": { summary: "Ice damage x0.5" },
 };
 
 export default function CalcPage() {
@@ -160,7 +194,7 @@ export default function CalcPage() {
     fetchMoves({ champions_only: true, limit: 1500 }).then((res) =>
       setAllMoves(res.data)
     );
-    fetchItems({ champions_only: true, category: "held", limit: 1000 })
+    fetchItems({ champions_only: true, limit: 1000 })
       .then((res) => setAllItems(res.data))
       .catch(() => setAllItems([]));
     fetchUserPokemon({ limit: 500 })
@@ -402,6 +436,8 @@ export default function CalcPage() {
         defender_stat_points: defender.statPoints,
         attacker_nature: attacker.nature,
         defender_nature: defender.nature,
+        attacker_item_name: attackerItem?.name,
+        defender_item_name: defenderItem?.name,
         weather,
         is_doubles: isDoubles,
         extra_modifier: extraModifier,
@@ -437,7 +473,7 @@ export default function CalcPage() {
         </h1>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-2xl font-body text-sm text-on-surface-muted">
-            VGC-grade deterministic engine. Models STAB, type effectiveness, doubles spread, and weather. 
+            VGC-grade deterministic engine. Models STAB, type effectiveness, doubles spread, weather, and selected held items. 
             Use the 66-point stat sliders to match Champions builds.
           </p>
           <button 
@@ -491,7 +527,7 @@ export default function CalcPage() {
               <div className="mt-3">
                 <SearchableDropdown
                   label="Held Item"
-                  placeholder="No speed item..."
+                  placeholder="No calc item..."
                   value={attacker.itemId}
                   onChange={(itemId) => setAttacker((p) => ({ ...p, itemId }))}
                   options={itemOptions}
@@ -601,6 +637,19 @@ export default function CalcPage() {
                    <span className="px-2">→</span>
                    <span className="text-on-surface">{result.defender_name}</span>
                  </div>
+
+                 {(result.applied_modifiers ?? []).length > 0 && (
+                   <div className="mb-6 flex flex-wrap justify-center gap-2">
+                     {(result.applied_modifiers ?? []).map((modifier) => (
+                       <span
+                         key={modifier}
+                         className="rounded-md border border-outline-variant bg-surface-low px-2 py-1 font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted"
+                       >
+                         {modifier}
+                       </span>
+                     ))}
+                   </div>
+                 )}
 
                  <div className="h-3 w-full bg-surface-high rounded-full overflow-hidden mb-6">
                     <div 
@@ -712,7 +761,7 @@ export default function CalcPage() {
               <div className="mt-3">
                 <SearchableDropdown
                   label="Held Item"
-                  placeholder="No speed item..."
+                  placeholder="No calc item..."
                   value={defender.itemId}
                   onChange={(itemId) => setDefender((p) => ({ ...p, itemId }))}
                   options={itemOptions}

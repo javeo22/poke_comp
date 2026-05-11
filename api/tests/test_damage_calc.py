@@ -1,4 +1,3 @@
-import pytest
 from app.services.damage_calc import (
     CalcMove,
     CalcPokemon,
@@ -7,6 +6,7 @@ from app.services.damage_calc import (
     from_base_stats,
     type_multiplier,
 )
+
 
 def test_super_effective_combos():
     # Ice on Dragon/Flying = 4x
@@ -124,6 +124,193 @@ def test_stab_doubles_calc():
     # Doubles spread should reduce vs singles
     result_singles = calculate_damage(garchomp, eq, incineroar, is_doubles=False)
     assert result_singles["max"] > result["max"]
+
+def test_choice_specs_boosts_special_damage():
+    attacker = CalcPokemon(
+        name="Special Attacker",
+        types=["psychic"],
+        hp=150,
+        attack=80,
+        defense=90,
+        sp_attack=120,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Neutral Defender",
+        types=["normal"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    psychic = CalcMove(name="Psychic", type="psychic", category="special", power=90)
+
+    no_item = calculate_damage(attacker, psychic, defender, is_doubles=False)
+    with_specs = calculate_damage(
+        attacker,
+        psychic,
+        defender,
+        is_doubles=False,
+        attacker_item_name="Choice Specs",
+    )
+
+    assert with_specs["max"] > no_item["max"]
+    assert "Choice Specs: sp attack x1.5" in with_specs["applied_modifiers"]
+
+def test_damage_boost_items_apply_to_attacker():
+    attacker = CalcPokemon(
+        name="Fire Attacker",
+        types=["fire"],
+        hp=150,
+        attack=90,
+        defense=90,
+        sp_attack=120,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Grass Defender",
+        types=["grass"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    flamethrower = CalcMove(name="Flamethrower", type="fire", category="special", power=90)
+
+    no_item = calculate_damage(attacker, flamethrower, defender, is_doubles=False)
+    with_life_orb = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        attacker_item_name="Life Orb",
+    )
+    with_expert_belt = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        attacker_item_name="Expert Belt",
+    )
+
+    assert with_life_orb["max"] > no_item["max"]
+    assert with_expert_belt["max"] > no_item["max"]
+    assert "Life Orb: damage x1.3" in with_life_orb["applied_modifiers"]
+    assert "Expert Belt: super-effective damage x1.2" in with_expert_belt["applied_modifiers"]
+
+def test_resist_berry_halves_super_effective_damage():
+    attacker = CalcPokemon(
+        name="Fire Attacker",
+        types=["fire"],
+        hp=150,
+        attack=90,
+        defense=90,
+        sp_attack=120,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Grass Defender",
+        types=["grass"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    flamethrower = CalcMove(name="Flamethrower", type="fire", category="special", power=90)
+
+    no_item = calculate_damage(attacker, flamethrower, defender, is_doubles=False)
+    with_berry = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        defender_item_name="Occa Berry",
+    )
+
+    assert no_item["type_effectiveness"] == 2.0
+    assert with_berry["max"] <= no_item["max"] // 2 + 1
+    assert "Occa Berry: fire damage x0.5" in with_berry["applied_modifiers"]
+
+def test_resist_berry_requires_matching_super_effective_type():
+    attacker = CalcPokemon(
+        name="Fire Attacker",
+        types=["fire"],
+        hp=150,
+        attack=90,
+        defense=90,
+        sp_attack=120,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Fire Defender",
+        types=["fire"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    flamethrower = CalcMove(name="Flamethrower", type="fire", category="special", power=90)
+
+    no_item = calculate_damage(attacker, flamethrower, defender, is_doubles=False)
+    with_berry = calculate_damage(
+        attacker,
+        flamethrower,
+        defender,
+        is_doubles=False,
+        defender_item_name="Occa Berry",
+    )
+
+    assert no_item["type_effectiveness"] == 0.5
+    assert with_berry["max"] == no_item["max"]
+    assert with_berry["applied_modifiers"] == []
+
+def test_chilan_berry_halves_normal_damage():
+    attacker = CalcPokemon(
+        name="Normal Attacker",
+        types=["normal"],
+        hp=150,
+        attack=120,
+        defense=90,
+        sp_attack=90,
+        sp_defense=90,
+        speed=100,
+    )
+    defender = CalcPokemon(
+        name="Neutral Defender",
+        types=["normal"],
+        hp=170,
+        attack=90,
+        defense=100,
+        sp_attack=90,
+        sp_defense=100,
+        speed=80,
+    )
+    body_slam = CalcMove(name="Body Slam", type="normal", category="physical", power=85)
+
+    no_item = calculate_damage(attacker, body_slam, defender, is_doubles=False)
+    with_berry = calculate_damage(
+        attacker,
+        body_slam,
+        defender,
+        is_doubles=False,
+        defender_item_name="Chilan Berry",
+    )
+
+    assert no_item["type_effectiveness"] == 1.0
+    assert with_berry["max"] <= no_item["max"] // 2 + 1
+    assert "Chilan Berry: normal damage x0.5" in with_berry["applied_modifiers"]
 
 def test_immunity_returns_zero():
     # Ground move vs Flying defender = 0 damage

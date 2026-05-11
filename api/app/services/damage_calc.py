@@ -6,18 +6,19 @@ and what set assumption); this module computes the actual range.
 
 Scope: Gen 9+ formula, level 50, doubles-aware (spread reduction). Covers
 the modifiers that change damage by >5%: STAB, type effectiveness, doubles
-spread, weather (sun/rain), and the standard 0.85-1.00 random roll.
+spread, weather (sun/rain), selected held items, and the standard 0.85-1.00
+random roll.
 
-NOT covered (intentional, MVP scope): items (Life Orb, Choice Specs),
-abilities (Tinted Lens, Fluffy, Multiscale), crits, burn, screens, terrain,
-Tera. These can be layered in later via `extra_modifier` if scenario_note
-documents them. Better to return a deterministic but slightly-conservative
-range than to have the AI invent numbers.
+NOT covered (intentional, MVP scope): abilities (Tinted Lens, Fluffy,
+Multiscale), crits, burn, screens, terrain, Tera. These can be layered in
+later via `extra_modifier` if scenario_note documents them. Better to return
+a deterministic but slightly-conservative range than to have the AI invent
+numbers.
 
 References: https://bulbapedia.bulbagarden.net/wiki/Damage
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import floor
 from typing import Literal
 
@@ -57,6 +58,33 @@ _SPREAD_TARGETS = {
 }
 
 Weather = Literal["none", "sun", "rain", "snow", "sand"]
+
+_STAT_ITEM_MULTIPLIERS: dict[str, dict[str, float]] = {
+    "Choice Band": {"attack": 1.5},
+    "Choice Specs": {"sp_attack": 1.5},
+    "Assault Vest": {"sp_defense": 1.5},
+}
+
+_RESIST_BERRY_TYPES: dict[str, str] = {
+    "Babiri Berry": "steel",
+    "Charti Berry": "rock",
+    "Chilan Berry": "normal",
+    "Chople Berry": "fighting",
+    "Coba Berry": "flying",
+    "Colbur Berry": "dark",
+    "Haban Berry": "dragon",
+    "Kasib Berry": "ghost",
+    "Kebia Berry": "poison",
+    "Occa Berry": "fire",
+    "Passho Berry": "water",
+    "Payapa Berry": "psychic",
+    "Rindo Berry": "grass",
+    "Roseli Berry": "fairy",
+    "Shuca Berry": "ground",
+    "Tanga Berry": "bug",
+    "Wacan Berry": "electric",
+    "Yache Berry": "ice",
+}
 
 
 @dataclass(frozen=True)
@@ -161,6 +189,52 @@ def type_multiplier(attack_type: str, defender_types: list[str]) -> float:
     return mult
 
 
+def _apply_stat_item(pokemon: CalcPokemon, item_name: str | None) -> tuple[CalcPokemon, list[str]]:
+    """Apply battle stat item modifiers that affect damage calculations."""
+    if not item_name:
+        return pokemon, []
+
+    multipliers = _STAT_ITEM_MULTIPLIERS.get(item_name)
+    if not multipliers:
+        return pokemon, []
+
+    updates: dict[str, int] = {}
+    notes: list[str] = []
+    for stat, multiplier in multipliers.items():
+        current = getattr(pokemon, stat)
+        updates[stat] = floor(current * multiplier)
+        notes.append(f"{item_name}: {stat.replace('_', ' ')} x{multiplier:g}")
+    return replace(pokemon, **updates), notes
+
+
+def _item_damage_modifier(
+    attacker_item_name: str | None,
+    defender_item_name: str | None,
+    move: CalcMove,
+    type_mult: float,
+) -> tuple[float, list[str]]:
+    """Damage multipliers from supported held items."""
+    modifier = 1.0
+    notes: list[str] = []
+
+    if attacker_item_name == "Life Orb":
+        modifier *= 1.3
+        notes.append("Life Orb: damage x1.3")
+    elif attacker_item_name == "Expert Belt" and type_mult > 1:
+        modifier *= 1.2
+        notes.append("Expert Belt: super-effective damage x1.2")
+
+    berry_type = _RESIST_BERRY_TYPES.get(defender_item_name or "")
+    berry_applies = berry_type == move.type and (
+        type_mult > 1 or defender_item_name == "Chilan Berry"
+    )
+    if berry_applies:
+        modifier *= 0.5
+        notes.append(f"{defender_item_name}: {move.type} damage x0.5")
+
+    return modifier, notes
+
+
 def calculate_damage(
     attacker: CalcPokemon,
     move: CalcMove,
@@ -170,6 +244,8 @@ def calculate_damage(
     weather: Weather = "none",
     is_doubles: bool = True,
     extra_modifier: float = 1.0,
+    attacker_item_name: str | None = None,
+    defender_item_name: str | None = None,
 ) -> dict:
     """Run the damage formula and return a structured result.
 
@@ -185,8 +261,13 @@ def calculate_damage(
             "is_ohko_chance": bool,      # True if max >= defender HP
             "is_guaranteed_ohko": bool,  # True if min >= defender HP
             "skipped_reason": str | None,  # set if calc was skipped (status move, immune)
+            "applied_modifiers": list[str],
         }
     """
+    attacker, attacker_item_notes = _apply_stat_item(attacker, attacker_item_name)
+    defender, defender_item_notes = _apply_stat_item(defender, defender_item_name)
+    applied_modifiers = [*attacker_item_notes, *defender_item_notes]
+
     base_result = {
         "min": 0,
         "max": 0,
@@ -198,6 +279,7 @@ def calculate_damage(
         "is_ohko_chance": False,
         "is_guaranteed_ohko": False,
         "skipped_reason": None,
+        "applied_modifiers": applied_modifiers,
     }
 
     if move.category == "status" or move.power <= 0:
@@ -234,7 +316,17 @@ def calculate_damage(
     stab = move.type in attacker.types
     stab_mult = 1.5 if stab else 1.0
 
-    fixed_modifiers = spread * weather_mult * stab_mult * type_mult * extra_modifier
+    item_damage_mult, item_damage_notes = _item_damage_modifier(
+        attacker_item_name,
+        defender_item_name,
+        move,
+        type_mult,
+    )
+    applied_modifiers.extend(item_damage_notes)
+
+    fixed_modifiers = (
+        spread * weather_mult * stab_mult * type_mult * item_damage_mult * extra_modifier
+    )
 
     min_dmg = floor(base * 0.85 * fixed_modifiers)
     max_dmg = floor(base * 1.00 * fixed_modifiers)
@@ -250,6 +342,7 @@ def calculate_damage(
         "is_ohko_chance": max_dmg >= defender.hp,
         "is_guaranteed_ohko": min_dmg >= defender.hp,
         "skipped_reason": None,
+        "applied_modifiers": applied_modifiers,
     }
 
 
