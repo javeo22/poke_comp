@@ -1,5 +1,8 @@
 """Strategy notes CRUD -- admin-curated competitive content."""
 
+from collections import Counter
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -38,6 +41,145 @@ class StrategyNoteResponse(BaseModel):
     updated_at: str
 
 
+class StrategySuggestion(BaseModel):
+    id: str
+    title: str
+    category: str
+    content: str
+    tags: list[str]
+    format: str
+    source: str
+    source_label: str
+    snapshot_date: str | None = None
+
+
+def _entry_names(entries: Any, limit: int = 3) -> list[str]:
+    """Extract display names from pokemon_usage JSON arrays."""
+    if not isinstance(entries, list):
+        return []
+    out: list[str] = []
+    for entry in entries:
+        if isinstance(entry, dict):
+            name = (
+                entry.get("name")
+                or entry.get("pokemon")
+                or entry.get("item")
+                or entry.get("move")
+            )
+            if name:
+                out.append(str(name))
+        elif isinstance(entry, str):
+            out.append(entry)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _sentence_list(values: list[str], fallback: str = "not enough detail") -> str:
+    return ", ".join(values) if values else fallback
+
+
+def _latest_usage_rows(format: str, limit: int = 80) -> list[dict[str, Any]]:
+    rows: list[dict] = (
+        supabase.table("pokemon_usage")
+        .select(
+            "pokemon_name, format, snapshot_date, usage_percent, "
+            "moves, items, teammates, source"
+        )
+        .eq("format", format)
+        .order("snapshot_date", desc=True)
+        .limit(limit)
+        .execute()
+        .data  # type: ignore[assignment]
+        or []
+    )
+    if not rows:
+        return []
+    latest = max((r.get("snapshot_date") or "") for r in rows)
+    latest_rows = [r for r in rows if r.get("snapshot_date") == latest]
+    return sorted(latest_rows, key=lambda r: float(r.get("usage_percent") or 0), reverse=True)
+
+
+def _usage_suggestions(strategy_format: str, usage_format: str) -> list[StrategySuggestion]:
+    suggestions: list[StrategySuggestion] = []
+    for row in _latest_usage_rows(usage_format)[:4]:
+        name = str(row.get("pokemon_name") or "Unknown")
+        snapshot = str(row.get("snapshot_date") or "")
+        source = str(row.get("source") or "online usage")
+        usage = float(row.get("usage_percent") or 0)
+        moves = _entry_names(row.get("moves"))
+        items = _entry_names(row.get("items"))
+        teammates = _entry_names(row.get("teammates"))
+
+        suggestions.append(
+            StrategySuggestion(
+                id=f"usage:{strategy_format}:{snapshot}:{name}",
+                title=f"Online read: {name} at {usage:.1f}% usage",
+                category="matchup",
+                content=(
+                    f"Latest {source} snapshot ({snapshot}) has {name} at {usage:.1f}% usage. "
+                    f"Common moves: {_sentence_list(moves)}. "
+                    f"Common items: {_sentence_list(items)}. "
+                    f"Frequent partners: {_sentence_list(teammates)}. "
+                    "Use this as scouting context when building leads and damage assumptions."
+                ),
+                tags=[
+                    "agent",
+                    "online",
+                    source.lower(),
+                    name.lower().replace(" ", "-"),
+                ],
+                format=strategy_format,
+                source="usage",
+                source_label=source.title(),
+                snapshot_date=snapshot or None,
+            )
+        )
+    return suggestions
+
+
+def _tournament_suggestions(strategy_format: str) -> list[StrategySuggestion]:
+    rows: list[dict] = (
+        supabase.table("tournament_teams")
+        .select("tournament_name, placement, pokemon_ids, archetype, source, created_at")
+        .order("created_at", desc=True)
+        .limit(80)
+        .execute()
+        .data  # type: ignore[assignment]
+        or []
+    )
+    archetypes = Counter(
+        str(row.get("archetype"))
+        for row in rows
+        if row.get("archetype") and str(row.get("archetype")).lower() != "unknown"
+    )
+    if not archetypes:
+        return []
+
+    top = archetypes.most_common(4)
+    latest_created = str(rows[0].get("created_at") or "") if rows else ""
+    source = str(rows[0].get("source") or "Limitless") if rows else "Limitless"
+    mix = ", ".join(f"{name} ({count})" for name, count in top)
+    leader = top[0][0]
+
+    return [
+        StrategySuggestion(
+            id=f"tournaments:{strategy_format}:{latest_created}:{leader}",
+            title=f"Online tournament read: {leader} leads recent archetypes",
+            category="archetype",
+            content=(
+                f"Recent {source} tournament teams show this archetype mix: {mix}. "
+                "Use this as a scouting note for lead selection, matchup tags, and prep priorities."
+            ),
+            tags=["agent", "online", "limitless", "archetype", leader.lower().replace(" ", "-")],
+            format=strategy_format,
+            source="tournaments",
+            source_label=source,
+            snapshot_date=latest_created[:10] or None,
+        )
+    ]
+
+
 @router.get("", response_model=list[StrategyNoteResponse])
 def list_notes(
     category: str | None = Query(None),
@@ -56,6 +198,20 @@ def list_notes(
 
     result = query.order("updated_at", desc=True).execute()
     return [StrategyNoteResponse.model_validate(row) for row in result.data]
+
+
+@router.get("/agent-suggestions", response_model=list[StrategySuggestion])
+def agent_suggestions(
+    format: str = Query("vgc2026"),
+    _: str = Depends(get_admin_user),
+):
+    """Suggest strategy notes from online-ingested usage and tournament data."""
+    usage_format = "doubles" if format.startswith("vgc") else format
+    suggestions = [
+        *_usage_suggestions(format, usage_format),
+        *_tournament_suggestions(format),
+    ]
+    return suggestions[:8]
 
 
 @router.post("", response_model=StrategyNoteResponse, status_code=201)

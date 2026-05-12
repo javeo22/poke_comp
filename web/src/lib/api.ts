@@ -859,11 +859,31 @@ export interface StrategyNote {
   updated_at: string;
 }
 
+export interface StrategySuggestion {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  tags: string[];
+  format: string;
+  source: string;
+  source_label: string;
+  snapshot_date: string | null;
+}
+
 export async function fetchStrategyNotes(
   includeInactive = false
 ): Promise<StrategyNote[]> {
   const params = includeInactive ? "?include_inactive=true" : "";
   return apiFetch<StrategyNote[]>(`/strategy${params}`);
+}
+
+export async function fetchStrategySuggestions(
+  format = "vgc2026"
+): Promise<StrategySuggestion[]> {
+  return apiFetch<StrategySuggestion[]>("/strategy/agent-suggestions", {
+    params: { format },
+  });
 }
 
 export async function createStrategyNote(
@@ -911,6 +931,23 @@ export interface DataHealthReport {
   overall: string;
   total_issues: number;
   checks: { name: string; status: string; details: string[] }[];
+  oldest_data_age_days?: number | null;
+  stale_warnings?: string[];
+  latest_pokemon_usage_per_format?: Record<string, { date: string; days_old: number | null }>;
+  latest_meta_snapshot_per_format?: Record<string, { date: string; days_old: number | null }>;
+  tournament_teams_age_days?: number | null;
+  last_cron_runs?: {
+    source: string;
+    status: string | null;
+    started_at: string | null;
+    duration_ms: number | null;
+    rows_inserted: number;
+    rows_updated: number;
+    rows_staged: number;
+    rows_skipped: number;
+    warnings_count: number;
+    error: string | null;
+  }[];
 }
 
 export interface DataFreshness {

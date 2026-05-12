@@ -15,6 +15,7 @@ import {
   fetchAdminMetaSnapshots,
   triggerAdminIngest,
   fetchStrategyNotes,
+  fetchStrategySuggestions,
   createStrategyNote,
   updateStrategyNote,
   deleteStrategyNote,
@@ -22,14 +23,14 @@ import {
   approveReview,
   rejectReview,
 } from "@/lib/api";
-import type { StrategyNote, ReviewQueueItem } from "@/lib/api";
+import type { StrategyNote, StrategySuggestion, ReviewQueueItem } from "@/lib/api";
 import type {
   AdminStats,
   AdminAiCosts,
   DataHealthReport,
   DataFreshness,
 } from "@/lib/api";
-import { ChevronDown, ChevronUp, Check, X, Zap } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, X, Zap, Sparkles, RefreshCw } from "lucide-react";
 
 // ── Tabs ──
 
@@ -230,10 +231,15 @@ function DashboardTab({
       {/* Data Health */}
       {health && (
         <div className="rounded-[1rem] bg-surface-low p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-              Data Health
-            </h3>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+                Data Health
+              </h3>
+              <p className="mt-1 font-body text-xs text-on-surface-muted">
+                Usage freshness, validation checks, and latest ingest results.
+              </p>
+            </div>
             <span
               className={`rounded-full px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider ${
                 health.overall === "healthy"
@@ -244,6 +250,34 @@ function DashboardTab({
               {health.overall}
             </span>
           </div>
+          {health.stale_warnings && health.stale_warnings.length > 0 && (
+            <div className="mb-4 rounded-xl border border-tertiary/30 bg-tertiary/10 p-3">
+              <p className="font-display text-[0.6rem] uppercase tracking-wider text-tertiary">
+                Why this is flagged
+              </p>
+              <ul className="mt-2 space-y-1">
+                {health.stale_warnings.map((warning) => (
+                  <li key={warning} className="font-body text-xs text-on-surface">
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {health.latest_pokemon_usage_per_format && (
+            <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(health.latest_pokemon_usage_per_format).map(([format, info]) => (
+                <div key={format} className="rounded-lg bg-surface-mid px-3 py-2">
+                  <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                    Usage: {format}
+                  </span>
+                  <p className="font-body text-xs text-on-surface">
+                    {info.date} {info.days_old !== null ? `(${info.days_old}d old)` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             {health.checks.map((check, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -261,6 +295,36 @@ function DashboardTab({
               </div>
             ))}
           </div>
+          {health.last_cron_runs && health.last_cron_runs.length > 0 && (
+            <div className="mt-5 overflow-hidden rounded-xl border border-outline-variant">
+              <div className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] bg-surface-mid px-3 py-2 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                <span>Source</span>
+                <span>Status</span>
+                <span>Rows</span>
+                <span>Started</span>
+              </div>
+              {health.last_cron_runs.slice(0, 5).map((run) => {
+                const rowsTouched = run.rows_inserted + run.rows_updated + run.rows_staged;
+                return (
+                  <div
+                    key={`${run.source}-${run.started_at}`}
+                    className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] gap-2 border-t border-outline-variant px-3 py-2 font-body text-xs text-on-surface"
+                  >
+                    <span className="truncate">{run.source}</span>
+                    <span className={run.status === "fail" ? "text-tertiary" : "text-secondary"}>
+                      {run.status ?? "--"}
+                    </span>
+                    <span className="text-on-surface-muted">
+                      {rowsTouched} touched / {run.rows_skipped} skipped
+                    </span>
+                    <span className="truncate text-on-surface-muted">
+                      {run.started_at ? new Date(run.started_at).toLocaleString() : "--"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -545,6 +609,7 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -565,9 +630,12 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
   const handleApprove = async (id: string) => {
     if (processingId) return;
     setProcessingId(id);
+    onError(null);
+    setNotice(null);
     try {
       await approveReview(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
+      setNotice("Approved and applied to production data.");
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to approve item");
     } finally {
@@ -578,9 +646,12 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
   const handleReject = async (id: string) => {
     if (processingId) return;
     setProcessingId(id);
+    onError(null);
+    setNotice(null);
     try {
       await rejectReview(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
+      setNotice("Rejected and removed from the pending queue.");
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to reject item");
     } finally {
@@ -597,6 +668,8 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
     if (!confirm(`Approve ${highConfidenceItems.length} items with >90% confidence?`)) return;
 
     setLoading(true);
+    onError(null);
+    setNotice(null);
     try {
       for (const item of highConfidenceItems) {
         await approveReview(item.id);
@@ -604,6 +677,7 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
       setItems((prev) =>
         prev.filter((item) => !highConfidenceItems.some((h) => h.id === item.id))
       );
+      setNotice(`Approved ${highConfidenceItems.length} high-confidence items.`);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to bulk approve items");
       loadItems();
@@ -615,6 +689,10 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
   const highConfidenceCount = items.filter(
     (item) => (item.metadata?.confidence ?? 0) > 0.9
   ).length;
+  const sourceCounts = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.source] = (acc[item.source] ?? 0) + 1;
+    return acc;
+  }, {});
 
   if (loading && items.length === 0) {
     return (
@@ -628,19 +706,46 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-          Pending Reviews ({items.length})
-        </h3>
-        {highConfidenceCount > 0 && (
-          <button
-            onClick={handleBulkApprove}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-display text-[0.65rem] font-bold uppercase tracking-wider text-on-primary transition-all hover:brightness-110 disabled:opacity-50"
-          >
-            <Zap size={12} className="fill-current" />
-            Bulk Approve ({highConfidenceCount})
-          </button>
+      <div className="rounded-[1rem] border border-outline-variant bg-surface-low p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              Pending Reviews ({items.length})
+            </h3>
+            <p className="mt-1 font-body text-xs text-on-surface-muted">
+              Approving applies staged scraper rows into production tables. Duplicates refresh existing records.
+            </p>
+          </div>
+          {highConfidenceCount > 0 && (
+            <button
+              onClick={handleBulkApprove}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-display text-[0.65rem] font-bold uppercase tracking-wider text-on-primary transition-all hover:brightness-110 disabled:opacity-50"
+            >
+              <Zap size={12} className="fill-current" />
+              Bulk Approve ({highConfidenceCount})
+            </button>
+          )}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {Object.entries(sourceCounts).map(([source, count]) => (
+            <span
+              key={source}
+              className="rounded-full bg-surface-mid px-3 py-1 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted"
+            >
+              {source}: {count}
+            </span>
+          ))}
+          {highConfidenceCount > 0 && (
+            <span className="rounded-full bg-secondary/10 px-3 py-1 font-display text-[0.6rem] uppercase tracking-wider text-secondary">
+              {highConfidenceCount} high confidence
+            </span>
+          )}
+        </div>
+        {notice && (
+          <div className="mt-4 rounded-xl bg-secondary/10 p-3 font-body text-xs text-secondary">
+            {notice}
+          </div>
         )}
       </div>
 
@@ -654,96 +759,195 @@ function ReviewTab({ onError }: { onError: (msg: string | null) => void }) {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className={`rounded-[1rem] border bg-surface-low transition-colors ${
-                expandedId === item.id ? "border-primary/40" : "border-outline-variant"
-              }`}
-            >
-              <div className="flex items-center justify-between p-4">
-                <div className="flex flex-1 items-center gap-6">
-                  <div className="flex flex-col">
-                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Source</span>
-                    <span className="font-display text-sm font-bold text-on-surface">
-                      {item.source}
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Category</span>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.6rem] uppercase tracking-wider text-primary">
-                        {item.metadata?.category || "Unknown"}
+          {items.map((item) => {
+            const summary = summarizeReviewItem(item);
+            return (
+              <div
+                key={item.id}
+                className={`rounded-[1rem] border bg-surface-low transition-colors ${
+                  expandedId === item.id ? "border-primary/40" : "border-outline-variant"
+                }`}
+              >
+                <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="truncate font-display text-sm font-bold text-on-surface">
+                        {summary.title}
+                      </h4>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
+                        {summary.category}
                       </span>
                       {item.metadata?.confidence !== undefined && (
-                        <span className={`font-display text-[0.65rem] font-bold ${
-                          item.metadata.confidence > 0.9 ? "text-secondary" : "text-on-surface-muted"
-                        }`}>
-                          {Math.round(item.metadata.confidence * 100)}%
+                        <span
+                          className={`font-display text-[0.6rem] font-bold ${
+                            item.metadata.confidence > 0.9
+                              ? "text-secondary"
+                              : "text-on-surface-muted"
+                          }`}
+                        >
+                          {Math.round(item.metadata.confidence * 100)}% confidence
                         </span>
                       )}
                     </div>
+                    <p className="max-w-3xl font-body text-xs text-on-surface-muted">
+                      {summary.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {summary.chips.map((chip) => (
+                        <span
+                          key={chip}
+                          className="rounded-md bg-surface-mid px-2 py-1 font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-6">
+                      <div className="flex flex-col">
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          Source
+                        </span>
+                        <span className="font-display text-sm font-bold text-on-surface">
+                          {item.source}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          Created
+                        </span>
+                        <span className="font-body text-xs text-on-surface-muted">
+                          {new Date(item.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="hidden flex-1 flex-col lg:flex">
+                        <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                          Reason
+                        </span>
+                        <span className="max-w-md truncate font-body text-xs text-on-surface-muted">
+                          {summary.reason}
+                        </span>
+                      </div>
+                    </div>
+                    {processingId === item.id && (
+                      <span className="font-body text-xs text-primary">
+                        Applying review action...
+                      </span>
+                    )}
                   </div>
 
-                  <div className="hidden lg:flex flex-col flex-1">
-                    <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">Reason</span>
-                    <span className="font-body text-xs text-on-surface-muted truncate max-w-xs">
-                      {item.metadata?.reason || "--"}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleApprove(item.id)}
+                      disabled={!!processingId}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary transition-colors hover:bg-secondary hover:text-on-secondary disabled:opacity-30"
+                      title="Approve"
+                    >
+                      <Check size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleReject(item.id)}
+                      disabled={!!processingId}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-tertiary/10 text-tertiary transition-colors hover:bg-tertiary hover:text-on-tertiary disabled:opacity-30"
+                      title="Reject"
+                    >
+                      <X size={18} />
+                    </button>
+                    <button
+                      onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-mid text-on-surface-muted transition-colors hover:text-on-surface"
+                      title={expandedId === item.id ? "Hide details" : "Show details"}
+                    >
+                      {expandedId === item.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleApprove(item.id)}
-                    disabled={!!processingId}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary transition-colors hover:bg-secondary hover:text-on-secondary disabled:opacity-30"
-                    title="Approve"
-                  >
-                    <Check size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleReject(item.id)}
-                    disabled={!!processingId}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-tertiary/10 text-tertiary transition-colors hover:bg-tertiary hover:text-on-tertiary disabled:opacity-30"
-                    title="Reject"
-                  >
-                    <X size={18} />
-                  </button>
-                  <button
-                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-mid text-on-surface-muted transition-colors hover:text-on-surface"
-                  >
-                    {expandedId === item.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </button>
-                </div>
+                {expandedId === item.id && (
+                  <div className="border-t border-outline-variant bg-surface-mid/20 p-4">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div>
+                        <h4 className="mb-2 font-display text-[0.6rem] uppercase tracking-wider text-primary">
+                          Payload Data
+                        </h4>
+                        <pre className="max-h-96 overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted">
+                          {JSON.stringify(item.payload, null, 2)}
+                        </pre>
+                      </div>
+                      <div>
+                        <h4 className="mb-2 font-display text-[0.6rem] uppercase tracking-wider text-secondary">
+                          Full Metadata
+                        </h4>
+                        <pre className="max-h-96 overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted">
+                          {JSON.stringify(item.metadata, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {expandedId === item.id && (
-                <div className="border-t border-outline-variant p-4 bg-surface-mid/20">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-display text-[0.6rem] uppercase tracking-wider text-primary mb-2">Payload Data</h4>
-                      <pre className="overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted max-h-96">
-                        {JSON.stringify(item.payload, null, 2)}
-                      </pre>
-                    </div>
-                    <div>
-                      <h4 className="font-display text-[0.6rem] uppercase tracking-wider text-secondary mb-2">Full Metadata</h4>
-                      <pre className="overflow-auto rounded-lg bg-surface-low p-4 font-mono text-[0.7rem] text-on-surface-muted max-h-96">
-                        {JSON.stringify(item.metadata, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function summarizeReviewItem(item: ReviewQueueItem): {
+  title: string;
+  category: string;
+  description: string;
+  chips: string[];
+  reason: string;
+} {
+  const payload = item.payload;
+  const metadata = item.metadata ?? {};
+
+  if (item.source === "pikalytics") {
+    const name = String(payload.pokemon_name ?? "Pokemon usage row");
+    const usage = typeof payload.usage_percent === "number" ? `${payload.usage_percent}%` : null;
+    const snapshot = typeof payload.snapshot_date === "string" ? payload.snapshot_date : null;
+    const moves = Array.isArray(payload.moves) ? payload.moves.length : 0;
+    const items = Array.isArray(payload.items) ? payload.items.length : 0;
+    return {
+      title: name,
+      category: "Usage",
+      description: `Stage latest Pikalytics usage details${usage ? ` at ${usage}` : ""}.`,
+      chips: [snapshot ? `Snapshot ${snapshot}` : null, usage, `${moves} moves`, `${items} items`].filter(
+        Boolean
+      ) as string[],
+      reason: String(metadata.reason ?? "Scraped from Pikalytics and waiting for approval."),
+    };
+  }
+
+  if (item.source === "limitless") {
+    const tournament = String(payload.tournament_name ?? "Tournament team");
+    const placement = payload.placement ? `#${payload.placement}` : null;
+    const teamNames = Array.isArray(metadata.team_names)
+      ? metadata.team_names.map(String).slice(0, 6)
+      : [];
+    const archetype = typeof payload.archetype === "string" ? payload.archetype : null;
+    return {
+      title: `${tournament}${placement ? ` · ${placement}` : ""}`,
+      category: "Tournament Team",
+      description:
+        teamNames.length > 0
+          ? teamNames.join(" / ")
+          : "Stage a Limitless tournament team into the tournament-team table.",
+      chips: [archetype, placement, item.external_id ? `ID ${item.external_id}` : null].filter(
+        Boolean
+      ) as string[],
+      reason: String(metadata.reason ?? "Scraped from Limitless and waiting for approval."),
+    };
+  }
+
+  return {
+    title: item.external_id ?? item.source,
+    category: String(metadata.category ?? "Review"),
+    description: "Review the staged payload before applying it to production data.",
+    chips: [item.external_id ? `ID ${item.external_id}` : null].filter(Boolean) as string[],
+    reason: String(metadata.reason ?? "No reason provided."),
+  };
 }
 
 // ── Pokemon Tab ──
@@ -870,8 +1074,11 @@ const CATEGORIES = ["archetype", "matchup", "general", "tip"] as const;
 
 function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
   const [notes, setNotes] = useState<StrategyNote[]>([]);
+  const [suggestions, setSuggestions] = useState<StrategySuggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "manual" | "agent">("all");
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>("general");
@@ -880,10 +1087,18 @@ function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
+    setLoading(true);
+    setSuggestionsLoading(true);
     fetchStrategyNotes(true)
       .then(setNotes)
       .catch((err) => onError(err instanceof Error ? err.message : "Failed"))
       .finally(() => setLoading(false));
+    fetchStrategySuggestions("vgc2026")
+      .then(setSuggestions)
+      .catch((err) =>
+        onError(err instanceof Error ? err.message : "Failed to load agent suggestions")
+      )
+      .finally(() => setSuggestionsLoading(false));
   }, [onError]);
 
   useEffect(() => { load(); }, [load]);
@@ -913,10 +1128,100 @@ function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
     } finally { setSaving(false); }
   };
 
+  const handleCreateFromSuggestion = async (suggestion: StrategySuggestion) => {
+    setSaving(true);
+    onError(null);
+    try {
+      await createStrategyNote({
+        title: suggestion.title,
+        category: suggestion.category,
+        content: suggestion.content,
+        tags: Array.from(new Set([...suggestion.tags, "agent", "online"])),
+        format: suggestion.format,
+      });
+      load();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to save agent suggestion");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <div className="h-48 animate-pulse rounded-[1rem] bg-surface-low" />;
+
+  const filteredNotes = notes.filter((note) => {
+    const isAgent = note.tags.some((tag) => ["agent", "online"].includes(tag.toLowerCase()));
+    if (filter === "agent") return isAgent;
+    if (filter === "manual") return !isAgent;
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="rounded-[1rem] border border-primary/20 bg-surface-low p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" />
+              <h3 className="font-display text-xs uppercase tracking-wider text-on-surface-muted">
+                Agent Suggestions From Online Data
+              </h3>
+            </div>
+            <p className="mt-1 font-body text-xs text-on-surface-muted">
+              Draft notes generated from online-ingested usage and tournament-team data.
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={suggestionsLoading}
+            className="flex items-center gap-2 rounded-xl bg-surface-mid px-3 py-2 font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted transition-colors hover:text-on-surface disabled:opacity-50"
+          >
+            <RefreshCw size={12} />
+            Refresh
+          </button>
+        </div>
+        {suggestionsLoading ? (
+          <div className="h-24 animate-pulse rounded-xl bg-surface-mid" />
+        ) : suggestions.length === 0 ? (
+          <p className="rounded-xl bg-surface-mid p-4 font-body text-sm text-on-surface-muted">
+            No online suggestions available yet. Run Pikalytics or Limitless ingest first.
+          </p>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {suggestions.slice(0, 6).map((suggestion) => (
+              <div
+                key={suggestion.id}
+                className="rounded-xl border border-outline-variant bg-surface-mid/60 p-4"
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
+                    {suggestion.source_label}
+                  </span>
+                  {suggestion.snapshot_date && (
+                    <span className="font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                      {suggestion.snapshot_date}
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-display text-sm font-bold text-on-surface">
+                  {suggestion.title}
+                </h4>
+                <p className="mt-1 line-clamp-3 font-body text-xs text-on-surface-muted">
+                  {suggestion.content}
+                </p>
+                <button
+                  onClick={() => handleCreateFromSuggestion(suggestion)}
+                  disabled={saving}
+                  className="mt-3 rounded-lg bg-primary px-3 py-2 font-display text-[0.6rem] uppercase tracking-wider text-on-primary transition-colors hover:brightness-110 disabled:opacity-50"
+                >
+                  Add as Note
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Form */}
       <div className="rounded-[1rem] border border-outline-variant bg-surface-low p-5">
         <h3 className="mb-4 font-display text-xs uppercase tracking-wider text-on-surface-muted">
@@ -949,8 +1254,32 @@ function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
       </div>
 
       {/* Notes list */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-display text-xs uppercase tracking-wider text-on-surface-muted">
+          Saved Notes ({filteredNotes.length})
+        </h3>
+        <div className="flex rounded-xl bg-surface-low p-1">
+          {(["all", "manual", "agent"] as const).map((value) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`rounded-lg px-3 py-1.5 font-display text-[0.6rem] uppercase tracking-wider transition-colors ${
+                filter === value
+                  ? "bg-primary text-on-primary"
+                  : "text-on-surface-muted hover:text-on-surface"
+              }`}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col gap-3">
-        {notes.map((note) => (
+        {filteredNotes.map((note) => {
+          const agentNote = note.tags.some((tag) =>
+            ["agent", "online"].includes(tag.toLowerCase())
+          );
+          return (
           <div key={note.id} className={`rounded-[1rem] border bg-surface-low p-4 ${
             note.is_active ? "border-outline-variant" : "border-outline-variant/30 opacity-50"
           }`}>
@@ -961,6 +1290,11 @@ function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
                   <span className="rounded-full bg-primary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary shrink-0">
                     {note.category}
                   </span>
+                  {agentNote && (
+                    <span className="rounded-full bg-secondary/10 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-secondary shrink-0">
+                      Agent
+                    </span>
+                  )}
                   {!note.is_active && (
                     <span className="rounded-full bg-tertiary-container/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-tertiary shrink-0">
                       Inactive
@@ -987,8 +1321,9 @@ function StrategyTab({ onError }: { onError: (msg: string | null) => void }) {
               </div>
             </div>
           </div>
-        ))}
-        {notes.length === 0 && (
+          );
+        })}
+        {filteredNotes.length === 0 && (
           <p className="py-8 text-center text-sm text-on-surface-muted">No strategy notes yet. Create one above.</p>
         )}
       </div>

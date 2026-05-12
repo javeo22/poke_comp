@@ -112,7 +112,7 @@ def _last_cron_runs_per_source() -> list[dict[str, Any]]:
             supabase.table("cron_runs")
             .select(
                 "source, started_at, finished_at, duration_ms, status, "
-                "rows_inserted, rows_updated, rows_skipped, warnings, error"
+                "rows_inserted, rows_updated, rows_staged, rows_skipped, warnings, error"
             )
             .order("started_at", desc=True)
             .limit(200)
@@ -137,6 +137,7 @@ def _last_cron_runs_per_source() -> list[dict[str, Any]]:
                 "duration_ms": r.get("duration_ms"),
                 "rows_inserted": r.get("rows_inserted", 0),
                 "rows_updated": r.get("rows_updated", 0),
+                "rows_staged": r.get("rows_staged", 0),
                 "rows_skipped": r.get("rows_skipped", 0),
                 "warnings_count": len(warnings) if isinstance(warnings, list) else 0,
                 "error": r.get("error"),
@@ -162,7 +163,11 @@ def _stale_warnings(
             err = r.get("error") or "unknown error"
             out.append(f"{r['source']} last run FAILED: {err}")
         elif r.get("status") == "warn":
-            touched = r.get("rows_inserted", 0) + r.get("rows_updated", 0)
+            touched = (
+                r.get("rows_inserted", 0)
+                + r.get("rows_updated", 0)
+                + r.get("rows_staged", 0)
+            )
             if touched == 0:
                 out.append(f"{r['source']} last run produced zero rows")
     return out

@@ -49,20 +49,36 @@ class ReviewService:
         source = item["source"]
         payload = item["payload"]
 
-        # 2. Move to production table
-        if source == "limitless":
-            # Map payload to tournament_teams
-            # Expected payload: { "tournament_name": "...", "placement": 1,
-            # "pokemon_ids": [...], "archetype": "..." }
-            supabase.table("tournament_teams").insert(payload).execute()
-        elif source == "pikalytics":
-            # Map payload to pokemon_usage
-            # Expected payload: { "pokemon_name": "...", "format": "...",
-            # "usage_percent": ..., ... }
-            supabase.table("pokemon_usage").upsert(payload).execute()
-
-        else:
-            raise ValueError(f"Unknown source for review approval: {source}")
+        # 2. Move to production table. Use explicit conflict targets so approving
+        # a duplicate staged row refreshes the existing production record instead
+        # of surfacing a generic database conflict to the admin UI.
+        target_table = ""
+        try:
+            if source == "limitless":
+                target_table = "tournament_teams"
+                # Expected payload: { "tournament_name": "...", "placement": 1,
+                # "pokemon_ids": [...], "archetype": "..." }
+                supabase.table(target_table).upsert(
+                    payload,
+                    on_conflict="tournament_name,placement",
+                ).execute()
+            elif source == "pikalytics":
+                target_table = "pokemon_usage"
+                # Expected payload: { "pokemon_name": "...", "format": "...",
+                # "usage_percent": ..., "snapshot_date": ... }
+                supabase.table(target_table).upsert(
+                    payload,
+                    on_conflict="pokemon_name,format,snapshot_date",
+                ).execute()
+            else:
+                raise ValueError(f"Unknown source for review approval: {source}")
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError(
+                f"Could not apply {source} review item to "
+                f"{target_table or 'production table'}: {exc}"
+            ) from exc
 
         # 3. Mark as APPROVED
         update_data = {
