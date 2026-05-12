@@ -50,6 +50,7 @@ export interface MoveDetail {
 export interface AbilityDetail {
   name: string;
   effect_text: string | null;
+  champions_available: boolean | null;
 }
 
 export interface PokemonUsageSummary {

@@ -1,16 +1,18 @@
 """Champions data validation agent.
 
-Runs 7 integrity checks against the database and reports issues.
+Runs integrity checks against the database and reports issues.
 Can optionally quarantine or fix problems.
 
 Checks:
   1. Pokemon roster -- expected Champions roster count
-  2. Item legality -- all pokemon_usage items exist in Champions shop
-  3. Move legality -- all pokemon_usage moves exist in the moves table
-  4. Ability legality -- all pokemon_usage abilities belong to Champions Pokemon
-  5. Source URL verification -- meta_snapshots source_urls are reachable
-  6. Cross-source drift -- usage % variance between sources for same Pokemon
-  7. Format column integrity -- no invalid format values in pokemon_usage
+  2. Pokemon form guardrails -- base/regional form data is not mixed together
+  3. Item legality -- all pokemon_usage items exist in Champions shop
+  4. Move legality -- all pokemon_usage moves exist in the moves table
+  5. Ability legality -- all pokemon_usage abilities belong to Champions Pokemon
+  6. Source URL verification -- meta_snapshots source_urls are reachable
+  7. Cross-source drift -- usage % variance between sources for same Pokemon
+  8. Format column integrity -- no invalid format values in pokemon_usage
+  9. Meta snapshot names -- tier list names exist in Champions roster
 
 Modes:
   --check   (default) Report issues without modifying data
@@ -25,6 +27,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from typing import Any
 
 import httpx
 from postgrest.types import CountMethod
@@ -37,6 +40,149 @@ EXPECTED_ROSTER_MAX = 300
 VALID_FORMATS = {"doubles", "singles"}
 VALID_SOURCES = {"smogon", "pikalytics", "manual"}
 DRIFT_THRESHOLD_PCT = 20.0  # Flag if sources differ by more than 20%
+REGIONAL_FORM_MARKERS = ("Alola", "Galar", "Hisui", "Paldea")
+
+
+@dataclass(frozen=True)
+class PokemonFormGuardrail:
+    name: str
+    types: tuple[str, ...]
+    base_stats: dict[str, int]
+    abilities: tuple[str, ...]
+
+
+CANONICAL_POKEMON_FORM_GUARDRAILS: dict[int, PokemonFormGuardrail] = {
+    26: PokemonFormGuardrail(
+        name="Raichu",
+        types=("electric",),
+        base_stats={
+            "hp": 60,
+            "attack": 90,
+            "defense": 55,
+            "sp_attack": 90,
+            "sp_defense": 80,
+            "speed": 110,
+        },
+        abilities=("Static", "Lightning Rod"),
+    ),
+    10100: PokemonFormGuardrail(
+        name="Raichu Alola",
+        types=("electric", "psychic"),
+        base_stats={
+            "hp": 60,
+            "attack": 85,
+            "defense": 50,
+            "sp_attack": 95,
+            "sp_defense": 85,
+            "speed": 110,
+        },
+        abilities=("Surge Surfer",),
+    ),
+    59: PokemonFormGuardrail(
+        name="Arcanine",
+        types=("fire",),
+        base_stats={
+            "hp": 90,
+            "attack": 110,
+            "defense": 80,
+            "sp_attack": 100,
+            "sp_defense": 80,
+            "speed": 95,
+        },
+        abilities=("Intimidate", "Flash Fire", "Justified"),
+    ),
+    10230: PokemonFormGuardrail(
+        name="Arcanine Hisui",
+        types=("fire", "rock"),
+        base_stats={
+            "hp": 95,
+            "attack": 115,
+            "defense": 80,
+            "sp_attack": 95,
+            "sp_defense": 80,
+            "speed": 90,
+        },
+        abilities=("Intimidate", "Flash Fire", "Rock Head"),
+    ),
+    157: PokemonFormGuardrail(
+        name="Typhlosion",
+        types=("fire",),
+        base_stats={
+            "hp": 78,
+            "attack": 84,
+            "defense": 78,
+            "sp_attack": 109,
+            "sp_defense": 85,
+            "speed": 100,
+        },
+        abilities=("Blaze", "Flash Fire"),
+    ),
+    10233: PokemonFormGuardrail(
+        name="Typhlosion Hisui",
+        types=("fire", "ghost"),
+        base_stats={
+            "hp": 73,
+            "attack": 84,
+            "defense": 78,
+            "sp_attack": 119,
+            "sp_defense": 85,
+            "speed": 95,
+        },
+        abilities=("Blaze", "Frisk"),
+    ),
+    503: PokemonFormGuardrail(
+        name="Samurott",
+        types=("water",),
+        base_stats={
+            "hp": 95,
+            "attack": 100,
+            "defense": 85,
+            "sp_attack": 108,
+            "sp_defense": 70,
+            "speed": 70,
+        },
+        abilities=("Torrent", "Shell Armor"),
+    ),
+    10236: PokemonFormGuardrail(
+        name="Samurott Hisui",
+        types=("water", "dark"),
+        base_stats={
+            "hp": 90,
+            "attack": 108,
+            "defense": 80,
+            "sp_attack": 100,
+            "sp_defense": 65,
+            "speed": 85,
+        },
+        abilities=("Torrent", "Sharpness"),
+    ),
+    713: PokemonFormGuardrail(
+        name="Avalugg",
+        types=("ice",),
+        base_stats={
+            "hp": 95,
+            "attack": 117,
+            "defense": 184,
+            "sp_attack": 44,
+            "sp_defense": 46,
+            "speed": 28,
+        },
+        abilities=("Own Tempo", "Ice Body", "Sturdy"),
+    ),
+    10243: PokemonFormGuardrail(
+        name="Avalugg Hisui",
+        types=("ice", "rock"),
+        base_stats={
+            "hp": 95,
+            "attack": 127,
+            "defense": 184,
+            "sp_attack": 34,
+            "sp_defense": 36,
+            "speed": 38,
+        },
+        abilities=("Strong Jaw", "Ice Body", "Sturdy"),
+    ),
+}
 
 
 # =============================================================================
@@ -134,7 +280,165 @@ def check_roster(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 2: Item legality
+# Check 2: Pokemon form guardrails
+# =============================================================================
+
+
+def _normalize_names(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(v).strip().lower() for v in value if str(v).strip()]
+
+
+def _regional_base_name(name: str) -> str | None:
+    for marker in REGIONAL_FORM_MARKERS:
+        token = f" {marker}"
+        if token in name:
+            return name.split(token, 1)[0]
+    return None
+
+
+def _canonical_form_guardrail_issues(rows: list[dict[str, Any]]) -> dict[int, list[str]]:
+    rows_by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
+    issues_by_id: dict[int, list[str]] = {}
+
+    for pokemon_id, expected in CANONICAL_POKEMON_FORM_GUARDRAILS.items():
+        row = rows_by_id.get(pokemon_id)
+        if row is None:
+            issues_by_id[pokemon_id] = [f"{expected.name} (id {pokemon_id}) is missing"]
+            continue
+
+        issues: list[str] = []
+        actual_name = str(row.get("name") or "")
+        if actual_name != expected.name:
+            issues.append(f"{expected.name}: stored as {actual_name!r}")
+
+        actual_types = _normalize_names(row.get("types"))
+        expected_types = list(expected.types)
+        if actual_types != expected_types:
+            issues.append(f"{expected.name}: expected types {expected_types}, found {actual_types}")
+
+        actual_stats = row.get("base_stats") or {}
+        if not isinstance(actual_stats, dict):
+            issues.append(f"{expected.name}: base_stats is not an object")
+        else:
+            mismatched_stats = [
+                f"{stat}={actual_stats.get(stat)!r} expected {value}"
+                for stat, value in expected.base_stats.items()
+                if actual_stats.get(stat) != value
+            ]
+            if mismatched_stats:
+                issues.append(f"{expected.name}: stat mismatch ({', '.join(mismatched_stats)})")
+
+        actual_abilities = [str(a) for a in row.get("abilities") or [] if str(a).strip()]
+        actual_ability_keys = {a.lower() for a in actual_abilities}
+        expected_ability_keys = {a.lower() for a in expected.abilities}
+        missing = [a for a in expected.abilities if a.lower() not in actual_ability_keys]
+        extra = [a for a in actual_abilities if a.lower() not in expected_ability_keys]
+        if missing:
+            issues.append(f"{expected.name}: missing abilities {missing}")
+        if extra:
+            issues.append(f"{expected.name}: unexpected abilities {extra}")
+
+        if issues:
+            issues_by_id[pokemon_id] = issues
+
+    return issues_by_id
+
+
+def _regional_form_separation_issues(
+    rows: list[dict[str, Any]], skip_base_ids: set[int] | None = None
+) -> list[str]:
+    skip_base_ids = skip_base_ids or set()
+    rows_by_name = {str(row.get("name")): row for row in rows if row.get("name")}
+    issues: list[str] = []
+
+    for regional_row in rows:
+        regional_name = str(regional_row.get("name") or "")
+        base_name = _regional_base_name(regional_name)
+        if not base_name:
+            continue
+
+        base_row = rows_by_name.get(base_name)
+        if not base_row:
+            continue
+
+        base_id = int(base_row.get("id") or 0)
+        if base_id in skip_base_ids:
+            continue
+
+        base_types = _normalize_names(base_row.get("types"))
+        regional_types = _normalize_names(regional_row.get("types"))
+        if base_types and regional_types and base_types == regional_types:
+            issues.append(
+                f"{base_name} shares regional typing with {regional_name}: "
+                f"{', '.join(regional_types)}"
+            )
+
+    return issues
+
+
+def check_pokemon_form_guardrails(sb: Client, fix: bool = False) -> CheckResult:
+    """Catch base/regional form data contamination.
+
+    The deterministic Raichu guardrail fixes the user-reported corruption where
+    base Raichu picked up Alolan Raichu's Psychic typing and Surge Surfer. The
+    generic separation check catches the same type of mistake on other regional
+    form pairs without relying on network calls during admin data health checks.
+    """
+    result = (
+        sb.table("pokemon")
+        .select("id, name, types, base_stats, abilities")
+        .eq("champions_eligible", True)
+        .execute()
+    )
+    rows: list[dict[str, Any]] = result.data  # type: ignore[assignment]
+
+    canonical_issues = _canonical_form_guardrail_issues(rows)
+    separation_issues = _regional_form_separation_issues(rows, set(canonical_issues))
+    present_ids = {int(row["id"]) for row in rows if row.get("id") is not None}
+
+    fixed = 0
+    if fix and canonical_issues:
+        for pokemon_id in canonical_issues:
+            if pokemon_id not in present_ids:
+                continue
+            expected = CANONICAL_POKEMON_FORM_GUARDRAILS[pokemon_id]
+            update_data = {
+                "name": expected.name,
+                "types": list(expected.types),
+                "base_stats": dict(expected.base_stats),
+                "abilities": list(expected.abilities),
+            }
+            try:
+                sb.table("pokemon").update(update_data).eq("id", pokemon_id).execute()
+                fixed += 1
+            except Exception as exc:  # noqa: BLE001 -- surface remediation failure in details
+                canonical_issues[pokemon_id].append(
+                    f"{expected.name}: fix failed ({type(exc).__name__}: {exc})"
+                )
+
+    details = [
+        issue for issues in canonical_issues.values() for issue in issues
+    ] + separation_issues
+    if details:
+        return CheckResult(
+            name="pokemon_form_guardrails",
+            status="fail",
+            message=f"{len(details)} Pokemon form data issue(s)",
+            details=details,
+            fixed=fixed,
+        )
+
+    return CheckResult(
+        name="pokemon_form_guardrails",
+        status="pass",
+        message="Base and regional form data are separated",
+    )
+
+
+# =============================================================================
+# Check 3: Item legality
 # =============================================================================
 
 
@@ -188,7 +492,7 @@ def check_item_legality(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 3: Move legality
+# Check 4: Move legality
 # =============================================================================
 
 
@@ -250,7 +554,7 @@ def check_move_legality(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 4: Ability legality
+# Check 5: Ability legality
 # =============================================================================
 
 
@@ -311,7 +615,7 @@ def check_ability_legality(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 5: Source URL verification
+# Check 6: Source URL verification
 # =============================================================================
 
 
@@ -358,7 +662,7 @@ def check_source_urls(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 6: Cross-source drift
+# Check 7: Cross-source drift
 # =============================================================================
 
 
@@ -406,7 +710,7 @@ def check_cross_source_drift(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 7: Format column integrity
+# Check 8: Format column integrity
 # =============================================================================
 
 
@@ -450,7 +754,7 @@ def check_format_integrity(sb: Client, fix: bool = False) -> CheckResult:
 
 
 # =============================================================================
-# Check 8: Meta snapshot roster integrity
+# Check 9: Meta snapshot roster integrity
 # =============================================================================
 
 
@@ -510,6 +814,7 @@ def check_meta_snapshot_names(sb: Client, fix: bool = False) -> CheckResult:
 
 ALL_CHECKS = [
     ("Pokemon Roster", check_roster),
+    ("Pokemon Form Guardrails", check_pokemon_form_guardrails),
     ("Item Legality", check_item_legality),
     ("Move Legality", check_move_legality),
     ("Ability Legality", check_ability_legality),
@@ -526,7 +831,7 @@ def _probe_connectivity(sb: Client) -> CheckResult | None:
     Catches DNS / network / auth issues that would otherwise turn every
     downstream check into an `error` row with the same root cause -- the
     2026-04-17 weekly run logged `[Errno 8] nodename nor servname provided`
-    on all 8 checks, which is what motivated this probe.
+    on every check, which is what motivated this probe.
 
     Returns ``None`` on success, or an ``error``-status CheckResult that
     the caller should add to the report and use as a kill-switch.

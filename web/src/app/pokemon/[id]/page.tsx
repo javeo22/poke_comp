@@ -20,6 +20,14 @@ const CATEGORY_STYLES: Record<string, string> = {
   status: "bg-on-surface-muted/20 text-on-surface-muted",
 };
 
+type AbilityCardData = {
+  name: string;
+  effectText: string | null;
+  championsAvailable: boolean | null;
+  slotLabel: string;
+  usageFormats: string[];
+};
+
 export default function PokemonDetailPage() {
   const params = useParams();
   const pokemonId = Number(params.id);
@@ -77,6 +85,8 @@ export default function PokemonDetailPage() {
     const catMatch = moveCategoryFilter === "all" || m.category === moveCategoryFilter;
     return nameMatch && catMatch;
   });
+  const abilityCards = buildAbilityCards(pokemon);
+  const describedAbilityCount = abilityCards.filter((a) => Boolean(a.effectText)).length;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -192,26 +202,53 @@ export default function PokemonDetailPage() {
       <div className="grid gap-6 lg:grid-cols-2 mb-6">
         {/* Abilities */}
         <div className="card p-6">
-          <h2 className="mb-4 font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
-            Abilities ({pokemon.ability_details.length})
-          </h2>
-          {pokemon.ability_details.length > 0 ? (
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="font-display text-xs font-medium uppercase tracking-wider text-on-surface-muted">
+              Abilities ({abilityCards.length})
+            </h2>
+            {abilityCards.length > 0 && (
+              <span className="font-display text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+                {describedAbilityCount}/{abilityCards.length} described
+              </span>
+            )}
+          </div>
+          {abilityCards.length > 0 ? (
             <div className="space-y-3">
-              {pokemon.ability_details.map((a) => (
-                <div key={a.name} className="rounded-lg bg-surface-lowest p-3 border border-outline-variant">
-                  <p className="font-display text-sm font-semibold text-on-surface">{a.name}</p>
-                  {a.effect_text && (
-                    <p className="mt-1 text-xs leading-relaxed text-on-surface-muted">
-                      {a.effect_text}
-                    </p>
-                  )}
+              {abilityCards.map((a) => (
+                <div
+                  key={a.name}
+                  className="rounded-lg bg-surface-lowest p-3 border border-outline-variant"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-display text-sm font-semibold text-on-surface">{a.name}</p>
+                    <span className="rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+                      {a.slotLabel}
+                    </span>
+                    {a.championsAvailable && (
+                      <span className="rounded-full border border-secondary/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-secondary">
+                        Champions
+                      </span>
+                    )}
+                    {a.usageFormats.length > 0 && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
+                        {a.usageFormats.join(" / ")} usage
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className={`mt-2 text-xs leading-relaxed ${
+                      a.effectText ? "text-on-surface-muted" : "italic text-on-surface-muted/70"
+                    }`}
+                  >
+                    {a.effectText || "Description not available yet."}
+                  </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-on-surface-muted">
-              Ability data from: {pokemon.abilities.join(", ")}
-            </p>
+            <div className="rounded-lg bg-surface-lowest p-4 border border-outline-variant text-center">
+              <p className="text-sm text-on-surface-muted">No ability data available yet.</p>
+            </div>
           )}
         </div>
 
@@ -339,6 +376,44 @@ export default function PokemonDetailPage() {
   );
 }
 
+function buildAbilityCards(pokemon: PokemonDetail): AbilityCardData[] {
+  const detailsByName = new Map(
+    pokemon.ability_details.map((ability) => [abilityKey(ability.name), ability])
+  );
+  const abilityNames =
+    pokemon.abilities.length > 0
+      ? pokemon.abilities
+      : pokemon.ability_details.map((ability) => ability.name);
+  const seen = new Set<string>();
+
+  return abilityNames.flatMap((name, index) => {
+    const key = abilityKey(name);
+    if (!key || seen.has(key)) {
+      return [];
+    }
+    seen.add(key);
+
+    const detail = detailsByName.get(key);
+    const usageFormats = pokemon.usage
+      .filter((usage) => usage.top_abilities.some((ability) => abilityKey(ability) === key))
+      .map((usage) => usage.format);
+
+    return [
+      {
+        name,
+        effectText: detail?.effect_text ?? null,
+        championsAvailable: detail?.champions_available ?? null,
+        slotLabel: abilityNames.length > 1 ? `Ability ${index + 1}` : "Ability",
+        usageFormats,
+      },
+    ];
+  });
+}
+
+function abilityKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 function MoveRow({ move, pokemonTypes }: { move: MoveDetail; pokemonTypes: string[] }) {
   const isSTAB = pokemonTypes.includes(move.type);
   const catStyle = CATEGORY_STYLES[move.category] || "";
@@ -383,4 +458,3 @@ function UsageRow({ label, items }: { label: string; items: string[] }) {
     </div>
   );
 }
-

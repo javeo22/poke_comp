@@ -296,7 +296,10 @@ def get_pokemon_detail(pokemon_id: int):
     abilities = poke_row.get("abilities") or []
     if abilities:
         ab_result = (
-            supabase.table("abilities").select("name, effect_text").in_("name", abilities).execute()
+            supabase.table("abilities")
+            .select("name, effect_text, champions_available")
+            .in_("name", abilities)
+            .execute()
         )
         ab_rows: list[dict[str, Any]] = ab_result.data  # type: ignore[assignment]
         ability_details = [AbilityDetail.model_validate(a) for a in ab_rows]
