@@ -61,10 +61,7 @@ def _entry_names(entries: Any, limit: int = 3) -> list[str]:
     for entry in entries:
         if isinstance(entry, dict):
             name = (
-                entry.get("name")
-                or entry.get("pokemon")
-                or entry.get("item")
-                or entry.get("move")
+                entry.get("name") or entry.get("pokemon") or entry.get("item") or entry.get("move")
             )
             if name:
                 out.append(str(name))
@@ -83,8 +80,7 @@ def _latest_usage_rows(format: str, limit: int = 80) -> list[dict[str, Any]]:
     rows: list[dict] = (
         supabase.table("pokemon_usage")
         .select(
-            "pokemon_name, format, snapshot_date, usage_percent, "
-            "moves, items, teammates, source"
+            "pokemon_name, format, snapshot_date, usage_percent, moves, items, teammates, source"
         )
         .eq("format", format)
         .order("snapshot_date", desc=True)

@@ -163,11 +163,7 @@ def _stale_warnings(
             err = r.get("error") or "unknown error"
             out.append(f"{r['source']} last run FAILED: {err}")
         elif r.get("status") == "warn":
-            touched = (
-                r.get("rows_inserted", 0)
-                + r.get("rows_updated", 0)
-                + r.get("rows_staged", 0)
-            )
+            touched = r.get("rows_inserted", 0) + r.get("rows_updated", 0) + r.get("rows_staged", 0)
             if touched == 0:
                 out.append(f"{r['source']} last run produced zero rows")
     return out
