@@ -70,7 +70,6 @@ class AbilityDetail(BaseModel):
 
     name: str
     effect_text: str | None = None
-    champions_available: bool | None = None
 
 
 class PokemonUsageSummary(BaseModel):

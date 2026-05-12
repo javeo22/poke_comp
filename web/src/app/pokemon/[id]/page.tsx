@@ -23,7 +23,6 @@ const CATEGORY_STYLES: Record<string, string> = {
 type AbilityCardData = {
   name: string;
   effectText: string | null;
-  championsAvailable: boolean | null;
   slotLabel: string;
   usageFormats: string[];
 };
@@ -224,11 +223,6 @@ export default function PokemonDetailPage() {
                     <span className="rounded-full bg-surface-high px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
                       {a.slotLabel}
                     </span>
-                    {a.championsAvailable && (
-                      <span className="rounded-full border border-secondary/30 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-secondary">
-                        Champions
-                      </span>
-                    )}
                     {a.usageFormats.length > 0 && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-[0.55rem] uppercase tracking-wider text-primary">
                         {a.usageFormats.join(" / ")} usage
@@ -402,7 +396,6 @@ function buildAbilityCards(pokemon: PokemonDetail): AbilityCardData[] {
       {
         name,
         effectText: detail?.effect_text ?? null,
-        championsAvailable: detail?.champions_available ?? null,
         slotLabel: abilityNames.length > 1 ? `Ability ${index + 1}` : "Ability",
         usageFormats,
       },
