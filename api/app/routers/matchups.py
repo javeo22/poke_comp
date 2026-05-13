@@ -251,8 +251,7 @@ def get_insights(user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("matchup_log")
         .select(
-            "outcome, my_team_id, opponent_team_data, tags, loss_reason, "
-            "adjustment_note, played_at"
+            "outcome, my_team_id, opponent_team_data, tags, loss_reason, adjustment_note, played_at"
         )
         .eq("user_id", user_id)
         .order("played_at", desc=True)
