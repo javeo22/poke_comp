@@ -3,6 +3,8 @@ interface PcMarkProps {
   size?: number;
 }
 
+const svgCoord = (value: number) => value.toFixed(3);
+
 export function PcMark({ className = "", size = 32 }: PcMarkProps) {
   return (
     <svg
@@ -42,11 +44,11 @@ export function PcEmblem({ className = "" }: { className?: string }) {
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden="true">
           {Array.from({ length: 24 }).map((_, index) => {
             const angle = (index / 24) * Math.PI * 2;
-            const x1 = 100 + Math.cos(angle) * 78;
-            const y1 = 100 + Math.sin(angle) * 78;
+            const x1 = svgCoord(100 + Math.cos(angle) * 78);
+            const y1 = svgCoord(100 + Math.sin(angle) * 78);
             const radius = index % 6 === 0 ? 70 : 74;
-            const x2 = 100 + Math.cos(angle) * radius;
-            const y2 = 100 + Math.sin(angle) * radius;
+            const x2 = svgCoord(100 + Math.cos(angle) * radius);
+            const y2 = svgCoord(100 + Math.sin(angle) * radius);
 
             return (
               <line

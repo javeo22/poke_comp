@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { PokemonUsage } from "@/types/usage";
+import { SourceBadge } from "@/components/meta/source-badge";
 
 interface UsageListProps {
   data: PokemonUsage[];
@@ -44,9 +45,12 @@ export function UsageList({ data, onPokemonClick }: UsageListProps) {
           {/* Name + usage bar */}
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="font-display text-sm font-semibold text-on-surface">
-                {entry.pokemon_name}
-              </span>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="font-display text-sm font-semibold text-on-surface">
+                  {entry.pokemon_name}
+                </span>
+                <SourceBadge source={entry.source} date={entry.snapshot_date} />
+              </div>
               <span className="font-display text-xs font-bold text-primary">
                 {entry.usage_percent.toFixed(1)}%
               </span>

@@ -6,6 +6,7 @@ import type { ItemListResponse } from "@/types/item";
 import type {
   Matchup,
   MatchupCreate,
+  MatchupInsights,
   MatchupListResponse,
   MatchupStats,
   MatchupUpdate,
@@ -533,6 +534,10 @@ export async function fetchMatchups(filters: MatchupFilters = {}) {
 
 export async function fetchMatchupStats() {
   return apiFetch<MatchupStats>("/matchups/stats");
+}
+
+export async function fetchMatchupInsights() {
+  return apiFetch<MatchupInsights>("/matchups/insights");
 }
 
 export async function createMatchup(body: MatchupCreate) {

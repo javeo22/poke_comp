@@ -9,20 +9,29 @@ import {
   fetchMetaTrends,
   fetchUserPokemon,
   fetchMatchups,
-  fetchPokemonBasic
+  fetchPokemonBasic,
+  fetchTeams,
+  fetchTeamBenchmark,
+  fetchMatchupInsights,
+  resolvePokemonNames,
+  type TeamBenchmarkResponse
 } from "@/lib/api";
 import type { PublicStats } from "@/lib/api";
 import type { MetaTrend } from "@/types/meta";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Matchup } from "@/types/matchup";
+import type { MatchupInsights } from "@/types/matchup";
+import type { Team } from "@/types/team";
 import { pokeArt, pokeSprite } from "@/lib/sprites";
 import { createClient } from "@/utils/supabase/client";
 import { SearchableDropdown, type DropdownOption } from "@/components/ui/searchable-dropdown";
-import { ChevronRight, Play } from "lucide-react";
+import { ChevronRight, Play, Target } from "lucide-react";
 import { LabDashboard } from "@/components/ui/lab-dashboard";
 import { BASELINE_TRENDS } from "@/features/meta/baseline-trends";
 import { DataFreshness } from "@/components/data-freshness";
 import { PcEmblem } from "@/components/pc-mark";
+import { TeamBenchmarkPanel } from "@/components/teams/team-benchmark-panel";
+import { SourceBadge } from "@/components/meta/source-badge";
 
 const normalizePokemonName = (name: string) =>
   name
@@ -42,13 +51,24 @@ export default function HomePage() {
   const router = useRouter();
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [trends, setTrends] = useState<MetaTrend[]>(BASELINE_TRENDS);
+  const [usingBaselineTrends, setUsingBaselineTrends] = useState(true);
   const [loadingTrends, setLoadingTrends] = useState(true);
   const [userPokemon, setUserPokemon] = useState<UserPokemon[]>([]);
   const [lastMatch, setMatch] = useState<Matchup | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [benchmark, setBenchmark] = useState<TeamBenchmarkResponse | null>(null);
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<MatchupInsights | null>(null);
   const [pokemonOptions, setPokemonOptions] = useState<DropdownOption[]>([]);
   const [pokemonNameById, setPokemonNameById] = useState<Map<number, string>>(new Map());
   const [pokemonIdByName, setPokemonIdByName] = useState<Map<string, number>>(new Map());
   const [quickDraftPokemon, setQuickDraftPokemon] = useState("");
+  const [opponentPaste, setOpponentPaste] = useState("");
+  const [opponentPreview, setOpponentPreview] = useState<string[]>([]);
+  const [opponentError, setOpponentError] = useState<string | null>(null);
+  const [resolvingOpponents, setResolvingOpponents] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
 
@@ -59,9 +79,12 @@ export default function HomePage() {
       .then(res => {
         if (res && res.length > 0) {
           setTrends(res);
+          setUsingBaselineTrends(false);
         }
       })
-      .catch((err) => console.error("Failed to fetch trends:", err))
+      .catch(() => {
+        setUsingBaselineTrends(true);
+      })
       .finally(() => setLoadingTrends(false));
 
     // 2. Search options
@@ -84,12 +107,19 @@ export default function HomePage() {
         if (user) {
           setIsLogged(true);
           setLoadingUser(true);
-          Promise.all([
+          Promise.allSettled([
             fetchUserPokemon({ limit: 14 }),
-            fetchMatchups({ limit: 1 })
-          ]).then(([up, m]) => {
-            setUserPokemon(up.data);
-            if (m.data.length > 0) setMatch(m.data[0]);
+            fetchMatchups({ limit: 1 }),
+            fetchTeams({ limit: 50 }),
+            fetchMatchupInsights(),
+          ]).then(([up, m, t, i]) => {
+            if (up.status === "fulfilled") setUserPokemon(up.value.data);
+            if (m.status === "fulfilled" && m.value.data.length > 0) setMatch(m.value.data[0]);
+            if (t.status === "fulfilled") {
+              setTeams(t.value.data);
+              setSelectedTeamId((current) => current || t.value.data[0]?.id || "");
+            }
+            if (i.status === "fulfilled") setInsights(i.value);
           }).catch(() => {})
           .finally(() => setLoadingUser(false));
         }
@@ -97,10 +127,105 @@ export default function HomePage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!selectedTeamId) {
+      setBenchmark(null);
+      setBenchmarkError(null);
+      return;
+    }
+    const team = teams.find((entry) => entry.id === selectedTeamId);
+    let alive = true;
+    setBenchmarkLoading(true);
+    setBenchmarkError(null);
+    fetchTeamBenchmark(selectedTeamId, { format: team?.format ?? "doubles", limit: 12 })
+      .then((data) => {
+        if (!alive) return;
+        setBenchmark(data);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setBenchmark(null);
+        setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed");
+      })
+      .finally(() => {
+        if (alive) setBenchmarkLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selectedTeamId, teams]);
+
   const handleQuickDraft = (name: string) => {
     if (!name) return;
-    router.push(`/draft?opp=${encodeURIComponent(name)}`);
+    const params = new URLSearchParams();
+    if (selectedTeamId) params.set("team", selectedTeamId);
+    params.set("opp", name);
+    router.push(`/draft?${params.toString()}`);
   };
+
+  const resolveOpponentPaste = async (raw: string[]) => {
+    const exactByLabel = new Map(pokemonOptions.map((option) => [option.label.toLowerCase(), option.value]));
+    const exact: string[] = [];
+    const needsApi: string[] = [];
+
+    for (const name of raw) {
+      const match = exactByLabel.get(name.toLowerCase());
+      if (match) {
+        exact.push(match);
+      } else {
+        needsApi.push(name);
+      }
+    }
+
+    if (needsApi.length === 0) return { resolved: exact, unresolved: [] };
+    const apiResolved = await resolvePokemonNames(needsApi);
+    return {
+      resolved: [...exact, ...apiResolved.resolved.map((item) => item.name)],
+      unresolved: apiResolved.unresolved,
+    };
+  };
+
+  const handlePrepAnalyze = async () => {
+    if (!selectedTeamId) return;
+    const rawNames = opponentPaste
+      .split(/[,;\n]/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    const namesToUse = rawNames.length > 0 ? rawNames : opponentPreview;
+    if (namesToUse.length === 0) return;
+
+    setResolvingOpponents(true);
+    setOpponentError(null);
+    try {
+      const { resolved, unresolved } = await resolveOpponentPaste(namesToUse);
+      const deduped = [...new Set(resolved)].slice(0, 6);
+      setOpponentPreview(deduped);
+      if (unresolved.length > 0) {
+        setOpponentError(`Couldn't match: ${unresolved.join(", ")}`);
+      }
+      const params = new URLSearchParams();
+      params.set("team", selectedTeamId);
+      params.set("opp", deduped.length > 0 ? deduped.join(",") : namesToUse.join(","));
+      router.push(`/draft?${params.toString()}`);
+    } catch {
+      const params = new URLSearchParams();
+      params.set("team", selectedTeamId);
+      params.set("opp", namesToUse.join(","));
+      setOpponentError("Using pasted names without alias resolution.");
+      router.push(`/draft?${params.toString()}`);
+    } finally {
+      setResolvingOpponents(false);
+    }
+  };
+
+  const selectedTeam = teams.find((entry) => entry.id === selectedTeamId);
+  const teamOptions: DropdownOption[] = teams.map((team) => ({
+    value: team.id,
+    label: team.name,
+    sublabel: team.format,
+  }));
+  const hasOpponentInput = opponentPaste.trim().length > 0 || opponentPreview.length > 0;
 
   return (
     <LabDashboard>
@@ -182,6 +307,141 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {isLogged && (
+        <section className="mx-auto max-w-[82rem] px-6 py-8 sm:px-9">
+          <div className="border-2 border-outline-variant bg-surface-lowest shadow-[6px_6px_0_var(--color-outline-variant)]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-outline-variant bg-on-surface px-6 py-4 text-surface">
+              <div>
+                <div className="mb-1 flex items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.24em] text-accent">
+                  <Target size={14} />
+                  Prep Cockpit
+                </div>
+                <h2 className="font-display text-2xl font-bold uppercase tracking-[0.08em]">
+                  Next match read
+                </h2>
+              </div>
+              <DataFreshness format={selectedTeam?.format ?? "doubles"} className="text-surface" />
+            </div>
+
+            <div className="grid grid-cols-1 border-b-2 border-outline-variant lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+              <div className="border-b-2 border-outline-variant p-6 lg:border-b-0 lg:border-r-2">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block font-mono text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                      Saved team
+                    </label>
+                    <SearchableDropdown
+                      value={selectedTeamId}
+                      onChange={setSelectedTeamId}
+                      options={teamOptions}
+                      placeholder={teams.length > 0 ? "Select team..." : "No saved teams yet"}
+                      disabled={teams.length === 0}
+                    />
+                    {selectedTeam && (
+                      <p className="mt-2 font-body text-xs text-on-surface-muted">
+                        {selectedTeam.format.toUpperCase()}
+                        {selectedTeam.archetype_tag ? ` · ${selectedTeam.archetype_tag}` : ""}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block font-mono text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                      Opponent preview
+                    </label>
+                    <textarea
+                      value={opponentPaste}
+                      onChange={(event) => setOpponentPaste(event.target.value)}
+                      placeholder="Paste 1-6 names, comma or line separated"
+                      rows={3}
+                      className="input-field w-full resize-none rounded-[2px] px-3 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
+                    />
+                    {opponentError && (
+                      <p className="mt-2 font-body text-xs text-primary">{opponentError}</p>
+                    )}
+                  </div>
+                </div>
+
+                {opponentPreview.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {opponentPreview.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-[2px] border border-outline-variant bg-surface px-2 py-1 font-mono text-[0.6rem] uppercase tracking-wider text-on-surface-muted"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePrepAnalyze}
+                    disabled={!selectedTeamId || !hasOpponentInput || resolvingOpponents}
+                    className="btn-primary h-11 px-6 font-display text-xs uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {resolvingOpponents ? "Resolving..." : "Analyze Preview"}
+                  </button>
+                  <Link
+                    href={selectedTeamId ? `/draft?team=${selectedTeamId}` : "/draft"}
+                    className="btn-ghost flex h-11 items-center px-5 font-display text-xs uppercase tracking-wider"
+                  >
+                    Open Draft
+                  </Link>
+                  <Link
+                    href="/teams"
+                    className="font-mono text-[0.65rem] uppercase tracking-wider text-on-surface-muted hover:text-primary"
+                  >
+                    Manage teams
+                  </Link>
+                </div>
+              </div>
+
+              <PrepNotesPanel insights={insights} loading={loadingUser} />
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-primary">
+                    ◆ Team vs Meta
+                  </p>
+                  <h3 className="mt-1 font-display text-xl font-bold text-on-surface">
+                    Benchmark summary
+                  </h3>
+                </div>
+                {selectedTeam && (
+                  <Link
+                    href={`/teams`}
+                    className="font-mono text-[0.65rem] uppercase tracking-wider text-on-surface-muted hover:text-primary"
+                  >
+                    Full team audit
+                  </Link>
+                )}
+              </div>
+              <TeamBenchmarkPanel
+                data={benchmark}
+                loading={benchmarkLoading}
+                error={benchmarkError}
+                compact
+                onRetry={() => {
+                  if (!selectedTeamId) return;
+                  const team = teams.find((entry) => entry.id === selectedTeamId);
+                  setBenchmarkLoading(true);
+                  setBenchmarkError(null);
+                  fetchTeamBenchmark(selectedTeamId, { format: team?.format ?? "doubles", limit: 12 })
+                    .then(setBenchmark)
+                    .catch((err) => setBenchmarkError(err instanceof Error ? err.message : "Benchmark failed"))
+                    .finally(() => setBenchmarkLoading(false));
+                }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* DYNAMIC LIVE BOARD */}
       <section className="mx-auto max-w-[82rem] px-6 py-12 sm:px-9">
@@ -344,7 +604,14 @@ export default function HomePage() {
       {/* META MOVERS (COMPACT) */}
       <section className="mx-auto max-w-[82rem] px-6 py-12 sm:px-9">
         <div className="flex items-baseline justify-between mb-8">
-          <h2 className="font-display text-3xl font-bold text-on-surface">Trending Mooves.</h2>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h2 className="font-display text-3xl font-bold text-on-surface">Trending Mooves.</h2>
+            {!loadingTrends && usingBaselineTrends ? (
+              <SourceBadge fallback source="baseline" />
+            ) : !loadingTrends ? (
+              <DataFreshness format="doubles" />
+            ) : null}
+          </div>
           <Link href="/meta" className="font-mono text-xs text-primary hover:text-accent uppercase tracking-widest">View All</Link>
         </div>
         
@@ -411,6 +678,132 @@ function StatItem({ value, label }: { value: number; label: string }) {
       <div className="font-mono text-[0.7rem] uppercase tracking-[0.25em] text-on-surface-dim">
         {label}
       </div>
+    </div>
+  );
+}
+
+function PrepNotesPanel({
+  insights,
+  loading,
+}: {
+  insights: MatchupInsights | null;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="h-5 w-40 animate-pulse rounded-[2px] bg-surface-high" />
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-16 animate-pulse rounded-[2px] bg-surface-high" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const recent = insights?.recent;
+
+  return (
+    <div className="p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-primary">
+            ◆ Prep Notes
+          </p>
+          <h3 className="mt-1 font-display text-xl font-bold text-on-surface">
+            Match log signal
+          </h3>
+        </div>
+        {recent && (
+          <span className="rounded-[2px] border border-outline-variant bg-surface px-2 py-1 font-mono text-[0.6rem] uppercase tracking-wider text-on-surface-muted">
+            {recent.wins}-{recent.losses} last {recent.total}
+          </span>
+        )}
+      </div>
+
+      {!insights || insights.total_matches === 0 ? (
+        <div className="rounded-[2px] border-2 border-dashed border-outline-variant bg-surface-low p-4">
+          <p className="font-body text-sm text-on-surface-muted">
+            Log match outcomes to unlock matchup-specific prep notes.
+          </p>
+          <Link
+            href="/matches"
+            className="mt-3 inline-flex font-mono text-[0.65rem] uppercase tracking-wider text-primary"
+          >
+            Open match log
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {insights.prep_actions.slice(0, 3).map((action) => (
+            <Link
+              key={`${action.action}-${action.label}`}
+              href={action.action === "benchmark_team" ? "/teams" : "/matches"}
+              className="block rounded-[2px] border-2 border-outline-variant bg-surface-lowest p-3 transition-colors hover:bg-surface-low"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-display text-sm font-bold text-on-surface">
+                    {action.label}
+                  </p>
+                  <p className="mt-1 font-body text-xs leading-relaxed text-on-surface-muted">
+                    {action.detail}
+                  </p>
+                </div>
+                <span className="rounded-[2px] bg-primary px-2 py-1 font-mono text-[0.55rem] uppercase tracking-wider text-surface">
+                  {action.action.replace(/_/g, " ")}
+                </span>
+              </div>
+            </Link>
+          ))}
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <InsightMiniList
+              title="Worst opponents"
+              items={insights.worst_opponents.map((stat) => ({
+                label: stat.label,
+                value: `${stat.win_rate.toFixed(1)}% · ${stat.total}`,
+              }))}
+            />
+            <InsightMiniList
+              title="Loss tags"
+              items={(insights.common_loss_tags.length > 0
+                ? insights.common_loss_tags
+                : insights.common_loss_reasons
+              ).map((item) => ({ label: item.label, value: String(item.count) }))}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InsightMiniList({
+  title,
+  items,
+}: {
+  title: string;
+  items: { label: string; value: string }[];
+}) {
+  return (
+    <div className="rounded-[2px] border border-outline-variant bg-surface p-3">
+      <p className="mb-2 font-mono text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="font-body text-xs text-on-surface-muted">Not enough data yet.</p>
+      ) : (
+        <div className="space-y-1">
+          {items.slice(0, 3).map((item) => (
+            <div key={item.label} className="flex items-center justify-between gap-2">
+              <span className="truncate font-body text-xs text-on-surface">{item.label}</span>
+              <span className="font-mono text-[0.6rem] text-on-surface-muted">{item.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

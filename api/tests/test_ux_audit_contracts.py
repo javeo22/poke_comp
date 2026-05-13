@@ -8,6 +8,7 @@ with patch("supabase.create_client") as mock_create:
 
 from fastapi.testclient import TestClient
 
+from app.auth import get_current_user
 from app.models.draft import DraftAnalysis
 from app.models.matchup import MatchupCreate
 from app.models.team import TeamBenchmarkResponse
@@ -220,6 +221,60 @@ def test_matchup_create_requires_saved_or_actual_team():
                 "outcome": "loss",
             }
         )
+
+
+@patch("app.routers.matchups.supabase")
+def test_matchup_insights_returns_deterministic_prep_notes(mock_supabase):
+    app.dependency_overrides[get_current_user] = lambda: "user-1"
+    mock_supabase.table.side_effect = _FakeSupabase(
+        {
+            "matchup_log": [
+                _Response(
+                    [
+                        {
+                            "outcome": "loss",
+                            "my_team_id": "team-1",
+                            "opponent_team_data": [{"name": "Rotom-Wash"}, {"name": "Kingambit"}],
+                            "tags": ["rain"],
+                            "loss_reason": "speed control",
+                            "played_at": "2026-05-07T10:00:00Z",
+                        },
+                        {
+                            "outcome": "loss",
+                            "my_team_id": "team-1",
+                            "opponent_team_data": [{"name": "Rotom-Wash"}],
+                            "tags": ["rain"],
+                            "loss_reason": "speed control",
+                            "played_at": "2026-05-06T10:00:00Z",
+                        },
+                        {
+                            "outcome": "win",
+                            "my_team_id": "team-2",
+                            "opponent_team_data": [{"name": "Kingambit"}],
+                            "tags": [],
+                            "loss_reason": None,
+                            "played_at": "2026-05-05T10:00:00Z",
+                        },
+                    ]
+                )
+            ],
+            "teams": [_Response([{"id": "team-1", "name": "Rain Check"}])],
+        }
+    ).table
+
+    try:
+        response = client.get("/matchups/insights")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_matches"] == 3
+    assert body["recent"]["wins"] == 1
+    assert body["worst_opponents"][0]["label"] == "Rotom-Wash"
+    assert body["underperforming_teams"][0]["label"] == "Rain Check"
+    assert body["common_loss_reasons"][0] == {"label": "speed control", "count": 2}
+    assert body["prep_actions"][0]["action"] == "benchmark_team"
 
 
 def test_team_benchmark_response_accepts_competitive_sections():

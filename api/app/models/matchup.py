@@ -150,3 +150,24 @@ class MatchupStats(BaseModel):
     by_opponent_pokemon: list[WinRateStat]
     by_format: list[WinRateStat] = Field(default_factory=list)
     by_tag: list[WinRateStat] = Field(default_factory=list)
+
+
+class FrequencyStat(BaseModel):
+    label: str
+    count: int
+
+
+class PrepAction(BaseModel):
+    label: str
+    detail: str
+    action: str
+
+
+class MatchupInsights(BaseModel):
+    total_matches: int
+    recent: WinRateStat
+    worst_opponents: list[WinRateStat]
+    underperforming_teams: list[WinRateStat]
+    common_loss_reasons: list[FrequencyStat]
+    common_loss_tags: list[FrequencyStat]
+    prep_actions: list[PrepAction]

@@ -33,7 +33,7 @@ export function DataFreshness({ format, className }: Props) {
   const days = data.days_old;
   const isStale = data.stale;
   const dotColor = isStale ? "var(--color-primary)" : "var(--color-success)";
-  const labelColor = isStale ? "var(--color-primary)" : "var(--color-on-surface-variant)";
+  const labelColor = isStale ? "var(--color-primary)" : "var(--color-on-surface-muted)";
   const ageLabel =
     days === null
       ? "UNKNOWN"

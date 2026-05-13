@@ -108,3 +108,24 @@ export interface MatchupStats {
   by_format?: WinRateStat[];
   by_tag?: WinRateStat[];
 }
+
+export interface FrequencyStat {
+  label: string;
+  count: number;
+}
+
+export interface PrepAction {
+  label: string;
+  detail: string;
+  action: "benchmark_team" | "review_team" | "review_losses" | "log_match" | string;
+}
+
+export interface MatchupInsights {
+  total_matches: number;
+  recent: WinRateStat;
+  worst_opponents: WinRateStat[];
+  underperforming_teams: WinRateStat[];
+  common_loss_reasons: FrequencyStat[];
+  common_loss_tags: FrequencyStat[];
+  prep_actions: PrepAction[];
+}
