@@ -159,6 +159,8 @@ export default function TeamsPage() {
         pokemon_ids: team.pokemon_ids,
         mega_pokemon_id: team.mega_pokemon_id,
         mega_form_pokemon_id: team.mega_form_pokemon_id,
+        mega_pokemon_ids: team.mega_pokemon_ids ?? [],
+        mega_form_pokemon_ids: team.mega_form_pokemon_ids ?? [],
         notes: team.notes,
         archetype_tag: team.archetype_tag,
       });
@@ -252,6 +254,22 @@ export default function TeamsPage() {
     } catch (err) {
       console.error("Failed to save to roster:", err);
     }
+  };
+
+  const handleCreateWishlist = async (pokemon: Pokemon) => {
+    if (demoMode) {
+      throw new Error("Demo mode is read-only. Sign in to add wishlist Pokemon.");
+    }
+
+    const existingEntry = roster.find((entry) => entry.pokemon_id === pokemon.id);
+    if (!existingEntry) {
+      await createUserPokemon({
+        pokemon_id: pokemon.id,
+        build_status: "wishlist",
+      });
+    }
+
+    await loadData(formatFilter);
   };
 
   const handleImportOpen = () => {
@@ -450,6 +468,7 @@ export default function TeamsPage() {
              setEditingRosterEntry(entry);
              setShowRosterForm(true);
           }}
+          onCreateWishlist={handleCreateWishlist}
         />
       )}
 

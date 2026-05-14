@@ -462,9 +462,33 @@ def _resolve_roster_pokemon_ids(user_id: str, roster_ids: list[str]) -> list[int
     return [found[rid] for rid in roster_ids]
 
 
-def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
-    """Validate that at most one mega is designated and it's in the team."""
-    if mega_pokemon_id and mega_pokemon_id not in pokemon_ids:
+def _normalize_mega_ids(
+    mega_pokemon_id: str | None,
+    mega_pokemon_ids: list[str] | None,
+) -> list[str]:
+    if mega_pokemon_ids is not None:
+        return [mega_id for mega_id in mega_pokemon_ids if mega_id]
+    return [mega_pokemon_id] if mega_pokemon_id else []
+
+
+def _normalize_mega_form_ids(
+    mega_form_pokemon_id: int | None,
+    mega_form_pokemon_ids: list[int] | None,
+) -> list[int]:
+    if mega_form_pokemon_ids is not None:
+        return [form_id for form_id in mega_form_pokemon_ids if form_id]
+    return [mega_form_pokemon_id] if mega_form_pokemon_id else []
+
+
+def _validate_mega(pokemon_ids: list[str], mega_pokemon_ids: list[str]) -> None:
+    """Validate designated Mega roster entries. Champions teams may prep up to two."""
+    if len(mega_pokemon_ids) > 2:
+        raise HTTPException(status_code=400, detail="Teams can designate at most two Mega Pokemon")
+    if len(set(mega_pokemon_ids)) != len(mega_pokemon_ids):
+        raise HTTPException(status_code=400, detail="Mega Pokemon selections must be unique")
+
+    missing = [mega_id for mega_id in mega_pokemon_ids if mega_id not in pokemon_ids]
+    if missing:
         raise HTTPException(
             status_code=400,
             detail="Mega Pokemon must be a member of the team",
@@ -475,9 +499,17 @@ def _validate_mega(pokemon_ids: list[str], mega_pokemon_id: str | None) -> None:
 def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
     species_ids = _resolve_roster_pokemon_ids(user_id, body.pokemon_ids)
     validate_champions_pokemon_batch(species_ids)
-    _validate_mega(body.pokemon_ids, body.mega_pokemon_id)
+    mega_ids = _normalize_mega_ids(body.mega_pokemon_id, body.mega_pokemon_ids)
+    mega_form_ids = _normalize_mega_form_ids(body.mega_form_pokemon_id, body.mega_form_pokemon_ids)
+    if mega_form_ids and len(mega_form_ids) != len(mega_ids):
+        raise HTTPException(status_code=400, detail="Mega form selections must match Mega Pokemon")
+    _validate_mega(body.pokemon_ids, mega_ids)
 
     data = body.model_dump(exclude_none=True)
+    data["mega_pokemon_ids"] = mega_ids
+    data["mega_form_pokemon_ids"] = mega_form_ids
+    data["mega_pokemon_id"] = mega_ids[0] if mega_ids else None
+    data["mega_form_pokemon_id"] = mega_form_ids[0] if mega_form_ids else None
     data["user_id"] = user_id
 
     result = supabase.table("teams").insert(data).execute()
@@ -488,7 +520,7 @@ def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
 
 @router.put("/{team_id}", response_model=TeamResponse)
 def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_current_user)):
-    data = body.model_dump(exclude_none=True)
+    data = body.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
@@ -497,29 +529,51 @@ def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_curre
         species_ids = _resolve_roster_pokemon_ids(user_id, body.pokemon_ids)
         validate_champions_pokemon_batch(species_ids)
 
-    # If updating pokemon_ids or mega, validate mega membership
-    if body.pokemon_ids is not None or body.mega_pokemon_id is not None:
-        # Need current team state if partial update
-        if body.pokemon_ids is None or body.mega_pokemon_id is None:
-            current = (
-                supabase.table("teams")
-                .select("pokemon_ids, mega_pokemon_id")
-                .eq("id", team_id)
-                .eq("user_id", user_id)
-                .single()
-                .execute()
+    mega_fields = {
+        "mega_pokemon_id",
+        "mega_form_pokemon_id",
+        "mega_pokemon_ids",
+        "mega_form_pokemon_ids",
+    }
+    if body.pokemon_ids is not None or (body.model_fields_set & mega_fields):
+        current = (
+            supabase.table("teams")
+            .select(
+                "pokemon_ids, mega_pokemon_id, mega_form_pokemon_id, "
+                "mega_pokemon_ids, mega_form_pokemon_ids"
             )
-            current_row: dict = current.data  # type: ignore[assignment]
-            ids = body.pokemon_ids or current_row["pokemon_ids"]
-            mega = (
-                body.mega_pokemon_id
-                if body.mega_pokemon_id is not None
-                else current_row.get("mega_pokemon_id")
+            .eq("id", team_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+        current_row: dict = current.data  # type: ignore[assignment]
+        ids = body.pokemon_ids if body.pokemon_ids is not None else current_row["pokemon_ids"]
+        mega_ids = _normalize_mega_ids(
+            body.mega_pokemon_id
+            if "mega_pokemon_id" in body.model_fields_set
+            else current_row.get("mega_pokemon_id"),
+            body.mega_pokemon_ids
+            if "mega_pokemon_ids" in body.model_fields_set
+            else current_row.get("mega_pokemon_ids"),
+        )
+        mega_form_ids = _normalize_mega_form_ids(
+            body.mega_form_pokemon_id
+            if "mega_form_pokemon_id" in body.model_fields_set
+            else current_row.get("mega_form_pokemon_id"),
+            body.mega_form_pokemon_ids
+            if "mega_form_pokemon_ids" in body.model_fields_set
+            else current_row.get("mega_form_pokemon_ids"),
+        )
+        if mega_form_ids and len(mega_form_ids) != len(mega_ids):
+            raise HTTPException(
+                status_code=400, detail="Mega form selections must match Mega Pokemon"
             )
-        else:
-            ids = body.pokemon_ids
-            mega = body.mega_pokemon_id
-        _validate_mega(list(ids), mega)
+        _validate_mega(list(ids), mega_ids)
+        data["mega_pokemon_ids"] = mega_ids
+        data["mega_form_pokemon_ids"] = mega_form_ids
+        data["mega_pokemon_id"] = mega_ids[0] if mega_ids else None
+        data["mega_form_pokemon_id"] = mega_form_ids[0] if mega_form_ids else None
 
     result = supabase.table("teams").update(data).eq("id", team_id).eq("user_id", user_id).execute()
     if not result.data:

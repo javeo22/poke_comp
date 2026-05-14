@@ -23,7 +23,7 @@ const TOUR_STEPS = [
   {
     title: "Create Teams",
     description:
-      "Assemble your team of 6 from your roster. Designate a Mega, tag your archetype, and view type coverage at a glance.",
+      "Assemble your team of 6 from your roster. Designate up to two Mega options, tag your archetype, and view type coverage at a glance.",
     href: "/teams",
     tag: "My Collection",
   },

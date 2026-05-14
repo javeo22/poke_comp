@@ -206,6 +206,7 @@ def _fetch_team_pokemon(team_id: str, user_id: str) -> dict:
         "team_name": team_row["name"],
         "format": team_row["format"],
         "mega_pokemon_id": team_row.get("mega_pokemon_id"),
+        "mega_pokemon_ids": team_row.get("mega_pokemon_ids") or [],
         "pokemon": pokemon_list,
     }
 
@@ -503,8 +504,12 @@ def _build_prompt(
         )
 
     mega_note = ""
-    if my_team.get("mega_pokemon_id"):
-        mega_note = f"\nMy designated Mega: Pokemon ID {my_team['mega_pokemon_id']}"
+    mega_ids = my_team.get("mega_pokemon_ids") or (
+        [my_team["mega_pokemon_id"]] if my_team.get("mega_pokemon_id") else []
+    )
+    if mega_ids:
+        label = "options" if len(mega_ids) > 1 else "option"
+        mega_note = f"\nMy designated Mega {label}: {', '.join(str(mid) for mid in mega_ids)}"
 
     if usage_age_days is None:
         freshness_line = (

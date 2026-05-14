@@ -131,6 +131,8 @@ export const DEMO_TEAMS: Team[] = [
     pokemon_ids: DEMO_ROSTER.map((p) => p.id),
     mega_pokemon_id: null,
     mega_form_pokemon_id: null,
+    mega_pokemon_ids: [],
+    mega_form_pokemon_ids: [],
     notes: "Balanced demo squad for exploring draft, cheatsheet, and match-log flows.",
     archetype_tag: "balance",
     created_at: now,

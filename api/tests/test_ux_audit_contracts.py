@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.auth import get_current_user
 from app.models.draft import DraftAnalysis
 from app.models.matchup import MatchupCreate
-from app.models.team import TeamBenchmarkResponse
+from app.models.team import TeamBenchmarkResponse, TeamCreate, TeamResponse
 
 client = TestClient(app)
 
@@ -337,3 +337,33 @@ def test_team_benchmark_response_accepts_competitive_sections():
     assert response.threat_count == 1
     assert response.defensive_dangers[0].severity == "danger"
     assert response.offensive_answers[0].reliability == "strong"
+
+
+def test_team_models_support_two_mega_options_with_legacy_defaults():
+    create = TeamCreate.model_validate(
+        {
+            "name": "Double Mega Prep",
+            "format": "doubles",
+            "pokemon_ids": ["slot-a", "slot-b", "slot-c"],
+            "mega_pokemon_ids": ["slot-a", "slot-b"],
+            "mega_form_pokemon_ids": [10034, 10058],
+        }
+    )
+    assert create.mega_pokemon_ids == ["slot-a", "slot-b"]
+    assert create.mega_form_pokemon_ids == [10034, 10058]
+
+    response = TeamResponse.model_validate(
+        {
+            "id": "team-1",
+            "user_id": "user-1",
+            "name": "Legacy Team",
+            "format": "doubles",
+            "pokemon_ids": ["slot-a"],
+            "mega_pokemon_id": "slot-a",
+            "mega_form_pokemon_id": 10034,
+            "created_at": "2026-05-14T00:00:00Z",
+            "updated_at": "2026-05-14T00:00:00Z",
+        }
+    )
+    assert response.mega_pokemon_ids == []
+    assert response.mega_form_pokemon_ids == []

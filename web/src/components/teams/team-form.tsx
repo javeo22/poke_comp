@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import type { Pokemon } from "@/features/pokemon/types";
 import type { UserPokemon } from "@/types/user-pokemon";
 import type { Team, TeamCreate, TeamUpdate } from "@/types/team";
 import { FORMATS } from "@/types/team";
 import { TypeCoverage } from "./type-coverage";
+import { TeamBuilderAssistant } from "./team-builder-assistant";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 interface TeamFormProps {
@@ -18,6 +19,52 @@ interface TeamFormProps {
   onClose: () => void;
   onAddToRoster?: () => void;
   onEditRosterEntry?: (entry: UserPokemon) => void;
+  onCreateWishlist?: (pokemon: Pokemon) => Promise<void>;
+}
+
+interface MegaSelection {
+  rosterId: string;
+  formId: number;
+}
+
+interface RoleCheck {
+  label: string;
+  active: boolean;
+}
+
+const ARCHETYPE_SUGGESTIONS = [
+  "balance",
+  "rain",
+  "sun",
+  "trick-room",
+  "tailwind",
+  "hyper-offense",
+  "bulky-offense",
+  "stall",
+];
+
+function getInitialMegaSelections(team: Team | null): MegaSelection[] {
+  if (!team) return [];
+  const rosterIds =
+    team.mega_pokemon_ids && team.mega_pokemon_ids.length > 0
+      ? team.mega_pokemon_ids
+      : team.mega_pokemon_id
+        ? [team.mega_pokemon_id]
+        : [];
+  const formIds =
+    team.mega_form_pokemon_ids && team.mega_form_pokemon_ids.length > 0
+      ? team.mega_form_pokemon_ids
+      : team.mega_form_pokemon_id
+        ? [team.mega_form_pokemon_id]
+        : [];
+
+  return rosterIds
+    .map((rosterId, index) => {
+      const formId = formIds[index];
+      return formId ? { rosterId, formId } : null;
+    })
+    .filter((selection): selection is MegaSelection => selection !== null)
+    .slice(0, 2);
 }
 
 export function TeamForm({
@@ -29,22 +76,22 @@ export function TeamForm({
   onClose,
   onAddToRoster,
   onEditRosterEntry,
+  onCreateWishlist,
 }: TeamFormProps) {
   const [name, setName] = useState(editing?.name ?? "");
   const [format, setFormat] = useState<string>(editing?.format ?? "doubles");
   const [selectedIds, setSelectedIds] = useState<string[]>(editing?.pokemon_ids ?? []);
-  const [megaId, setMegaId] = useState<string | null>(editing?.mega_pokemon_id ?? null);
-  const [megaFormId, setMegaFormId] = useState<number | null>(editing?.mega_form_pokemon_id ?? null);
+  const [megaSelections, setMegaSelections] = useState<MegaSelection[]>(
+    getInitialMegaSelections(editing)
+  );
+  const [rosterSearch, setRosterSearch] = useState("");
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [archetypeTag, setArchetypeTag] = useState(editing?.archetype_tag ?? "");
 
   const toggleSlot = (rosterEntryId: string) => {
     if (selectedIds.includes(rosterEntryId)) {
       setSelectedIds(selectedIds.filter((id) => id !== rosterEntryId));
-      if (megaId === rosterEntryId) {
-        setMegaId(null);
-        setMegaFormId(null);
-      }
+      setMegaSelections((prev) => prev.filter((selection) => selection.rosterId !== rosterEntryId));
     } else if (selectedIds.length < 6) {
       setSelectedIds([...selectedIds, rosterEntryId]);
     }
@@ -63,6 +110,7 @@ export function TeamForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || selectedIds.length === 0) return;
+    const firstMega = megaSelections[0];
 
     if (editing) {
       const update: TeamUpdate & { id: string } = {
@@ -70,8 +118,10 @@ export function TeamForm({
         name: name.trim(),
         format: format as TeamCreate["format"],
         pokemon_ids: selectedIds,
-        mega_pokemon_id: megaId,
-        mega_form_pokemon_id: megaFormId,
+        mega_pokemon_id: firstMega?.rosterId ?? null,
+        mega_form_pokemon_id: firstMega?.formId ?? null,
+        mega_pokemon_ids: megaSelections.map((selection) => selection.rosterId),
+        mega_form_pokemon_ids: megaSelections.map((selection) => selection.formId),
         notes: notes.trim() || undefined,
         archetype_tag: archetypeTag.trim() || undefined,
       };
@@ -81,8 +131,10 @@ export function TeamForm({
         name: name.trim(),
         format: format as TeamCreate["format"],
         pokemon_ids: selectedIds,
-        mega_pokemon_id: megaId,
-        mega_form_pokemon_id: megaFormId,
+        mega_pokemon_id: firstMega?.rosterId ?? null,
+        mega_form_pokemon_id: firstMega?.formId ?? null,
+        mega_pokemon_ids: megaSelections.map((selection) => selection.rosterId),
+        mega_form_pokemon_ids: megaSelections.map((selection) => selection.formId),
         notes: notes.trim() || undefined,
         archetype_tag: archetypeTag.trim() || undefined,
       };
@@ -103,6 +155,28 @@ export function TeamForm({
   const selectedEntries = selectedIds
     .map((id) => rosterLookup.get(id))
     .filter((entry): entry is UserPokemon => !!entry);
+  const selectedMembers = selectedEntries
+    .map((entry) => {
+      const pokemon = pokemonMap.get(entry.pokemon_id);
+      return pokemon ? { entry, pokemon } : null;
+    })
+    .filter((member): member is { entry: UserPokemon; pokemon: Pokemon } => member !== null);
+  const assistantPokemon = useMemo(() => Array.from(pokemonMap.values()), [pokemonMap]);
+  const roleChecks = getRoleChecks(selectedEntries);
+  const coveredRoles = roleChecks.filter((check) => check.active).length;
+  const filteredRoster = roster.filter((entry) => {
+    const poke = pokemonMap.get(entry.pokemon_id);
+    const haystack = [
+      poke?.name,
+      entry.ability,
+      entry.build_status,
+      ...(entry.moves ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(rosterSearch.trim().toLowerCase());
+  });
 
   const getMegaForms = (entry: UserPokemon): { formId: number; formName: string }[] => {
     const poke = pokemonMap.get(entry.pokemon_id);
@@ -113,11 +187,28 @@ export function TeamForm({
     }));
   };
 
+  const toggleMegaSelection = (rosterId: string, formId: number) => {
+    setMegaSelections((prev) => {
+      const existing = prev.find(
+        (selection) => selection.rosterId === rosterId && selection.formId === formId
+      );
+      if (existing) {
+        return prev.filter(
+          (selection) => !(selection.rosterId === rosterId && selection.formId === formId)
+        );
+      }
+
+      const withoutSamePokemon = prev.filter((selection) => selection.rosterId !== rosterId);
+      if (withoutSamePokemon.length >= 2) return prev;
+      return [...withoutSamePokemon, { rosterId, formId }];
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 py-4 sm:py-8">
       <form
         onSubmit={handleSubmit}
-        className="card mx-3 w-full max-w-2xl p-4 shadow-2xl sm:mx-4 sm:p-8"
+        className="card mx-3 w-full max-w-4xl p-4 shadow-2xl sm:mx-4 sm:p-8"
       >
         <h2 className="mb-6 font-display text-2xl font-bold text-on-surface">
           {editing ? "Edit Team" : "Create Team"}
@@ -180,12 +271,16 @@ export function TeamForm({
                 );
               }
 
-              const isMega = megaId === entryId;
+              const megaSelection = megaSelections.find(
+                (selection) => selection.rosterId === entryId
+              );
               return (
                 <div
                   key={i}
                   className={`group relative flex flex-col items-center justify-center rounded-lg p-1.5 transition-colors cursor-pointer ${
-                    isMega ? "bg-primary-container/40" : "bg-surface-low hover:bg-surface-mid"
+                    megaSelection
+                      ? "border border-primary bg-primary/15"
+                      : "bg-surface-low hover:bg-surface-mid"
                   }`}
                   onClick={() => onEditRosterEntry?.(entry)}
                   title="Click to edit set"
@@ -203,7 +298,7 @@ export function TeamForm({
                   <span className="truncate text-center font-display text-[0.55rem] text-on-surface">
                     {poke.name}
                   </span>
-                  {isMega && (
+                  {megaSelection && (
                     <span className="font-display text-[0.5rem] uppercase text-primary">
                       Mega
                     </span>
@@ -252,6 +347,17 @@ export function TeamForm({
           </div>
         </div>
 
+        <TeamBuilderAssistant
+          pokemon={assistantPokemon}
+          roster={roster}
+          selectedMembers={selectedMembers}
+          selectedCount={selectedIds.length}
+          archetypeTag={archetypeTag}
+          onArchetypeTagChange={setArchetypeTag}
+          onAddRosterEntry={toggleSlot}
+          onCreateWishlist={onCreateWishlist}
+        />
+
         {/* Pokemon picker from roster */}
         <div className="mb-5">
           <div className="mb-2 flex items-center justify-between">
@@ -268,6 +374,13 @@ export function TeamForm({
               </button>
             )}
           </div>
+          <input
+            type="search"
+            value={rosterSearch}
+            onChange={(e) => setRosterSearch(e.target.value)}
+            placeholder="Search roster by Pokemon, ability, move, or status"
+            className="input-field mb-2 h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
+          />
           <div className="max-h-48 overflow-y-auto rounded-lg bg-surface-lowest p-2">
             {roster.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-4">
@@ -286,7 +399,7 @@ export function TeamForm({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-                {roster.map((entry) => {
+                {filteredRoster.map((entry) => {
                   const poke = pokemonMap.get(entry.pokemon_id);
                   if (!poke) return null;
                   const isSelected = selectedIds.includes(entry.id);
@@ -332,47 +445,73 @@ export function TeamForm({
                     </button>
                   );
                 })}
+                {filteredRoster.length === 0 && (
+                  <div className="col-span-full py-4 text-center font-body text-sm text-on-surface-muted">
+                    No roster entries match that search.
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Mega selector — one option per mega form; Charizard shows X and Y separately */}
+        {/* Mega selector - one option per mega form; supports two designated Mega choices. */}
         {selectedIds.length > 0 && (
           <div className="mb-5">
-            <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-              Mega Evolution
-            </label>
-            <select
-              value={megaId && megaFormId ? `${megaId}:${megaFormId}` : ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (!val) {
-                  setMegaId(null);
-                  setMegaFormId(null);
-                } else {
-                  const [rosterId, formId] = val.split(":");
-                  setMegaId(rosterId);
-                  setMegaFormId(Number(formId));
-                }
-              }}
-              className="input-field h-10 w-full rounded-lg px-3 font-body text-sm text-on-surface appearance-none"
-            >
-              <option value="">None</option>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <label className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+                Mega Evolutions
+              </label>
+              <span className="font-display text-xs text-primary">
+                {megaSelections.length}/2 selected
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
               {selectedIds.flatMap((id) => {
                 const entry = rosterLookup.get(id);
                 const poke = entry ? pokemonMap.get(entry.pokemon_id) : undefined;
                 if (!poke || poke.mega_evolution_ids.length === 0) return [];
                 return poke.mega_evolution_ids.map((formId, i) => {
                   const formName = poke.mega_evolution_names[i] ?? `${poke.name} Mega`;
+                  const isSelected = megaSelections.some(
+                    (selection) => selection.rosterId === id && selection.formId === formId
+                  );
+                  const isDisabled =
+                    !isSelected &&
+                    megaSelections.length >= 2 &&
+                    !megaSelections.some((selection) => selection.rosterId === id);
                   return (
-                    <option key={`${id}:${formId}`} value={`${id}:${formId}`}>
-                      {formName}
-                    </option>
+                    <button
+                      key={`${id}:${formId}`}
+                      type="button"
+                      onClick={() => toggleMegaSelection(id, formId)}
+                      disabled={isDisabled}
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        isSelected
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-outline-variant bg-surface-lowest text-on-surface hover:bg-surface-low"
+                      }`}
+                    >
+                      <span className="font-display text-xs font-semibold uppercase tracking-wider">
+                        {formName}
+                      </span>
+                      <span className="font-display text-[0.58rem] uppercase tracking-wider text-on-surface-muted">
+                        {isSelected ? "Selected" : poke.name}
+                      </span>
+                    </button>
                   );
                 });
               })}
-            </select>
+              {selectedIds.every((id) => {
+                const entry = rosterLookup.get(id);
+                const poke = entry ? pokemonMap.get(entry.pokemon_id) : undefined;
+                return !poke || poke.mega_evolution_ids.length === 0;
+              }) && (
+                <div className="rounded-lg border border-dashed border-outline-variant bg-surface-lowest p-3 font-body text-sm text-on-surface-muted sm:col-span-2">
+                  None of the selected roster entries have Mega forms.
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -389,6 +528,22 @@ export function TeamForm({
               placeholder="e.g. rain, trick room"
               className="input-field h-10 w-full rounded-lg px-4 font-body text-sm text-on-surface placeholder:text-on-surface-muted"
             />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {ARCHETYPE_SUGGESTIONS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setArchetypeTag(tag)}
+                  className={`rounded-lg border px-2 py-1 font-display text-[0.55rem] uppercase tracking-wider transition-colors ${
+                    archetypeTag.trim().toLowerCase() === tag
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-outline-variant bg-surface-lowest text-on-surface-muted hover:bg-surface-low"
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex-1">
             <label className="mb-1 block font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
@@ -407,6 +562,11 @@ export function TeamForm({
         {/* Type coverage analysis */}
         {teamTypes.length > 0 && (
           <div className="mb-6 space-y-4 rounded-lg bg-surface-lowest p-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <TeamBuildMetric label="Pokemon" value={`${selectedIds.length}/6`} />
+              <TeamBuildMetric label="Mega options" value={`${megaSelections.length}/2`} />
+              <TeamBuildMetric label="Role coverage" value={`${coveredRoles}/${roleChecks.length}`} />
+            </div>
             <TypeCoverage teamTypes={teamTypes} />
             <RoleCoverageAudit entries={selectedEntries} />
           </div>
@@ -435,7 +595,51 @@ export function TeamForm({
 }
 
 function RoleCoverageAudit({ entries }: { entries: UserPokemon[] }) {
-  const roleChecks = [
+  const roleChecks = getRoleChecks(entries);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
+          Role Coverage
+        </span>
+        <span className="font-display text-xs text-secondary">
+          {roleChecks.filter((check) => check.active).length}/{roleChecks.length} covered
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {roleChecks.map((check) => (
+          <div
+            key={check.label}
+            className={`rounded-lg border px-2 py-1.5 font-display text-[0.58rem] uppercase tracking-wider ${
+              check.active
+                ? "border-secondary/40 bg-secondary/15 text-secondary"
+                : "border-outline-variant bg-surface text-on-surface-muted"
+            }`}
+          >
+            {check.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TeamBuildMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-outline-variant bg-surface px-3 py-2">
+      <span className="block font-display text-[0.55rem] uppercase tracking-wider text-on-surface-muted">
+        {label}
+      </span>
+      <span className="mt-1 block font-display text-sm font-semibold text-on-surface">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function getRoleChecks(entries: UserPokemon[]): RoleCheck[] {
+  return [
     {
       label: "Speed control",
       active: hasMove(entries, ["tailwind", "icy wind", "thunder wave", "trick room"]),
@@ -500,33 +704,6 @@ function RoleCoverageAudit({ entries }: { entries: UserPokemon[] }) {
       ]),
     },
   ];
-
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-display text-[0.65rem] uppercase tracking-wider text-on-surface-muted">
-          Role Coverage
-        </span>
-        <span className="font-display text-xs text-secondary">
-          {roleChecks.filter((check) => check.active).length}/{roleChecks.length} covered
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-        {roleChecks.map((check) => (
-          <div
-            key={check.label}
-            className={`rounded-lg px-2 py-1.5 font-display text-[0.58rem] uppercase tracking-wider ${
-              check.active
-                ? "bg-secondary-container text-on-surface"
-                : "bg-surface-mid text-on-surface-muted"
-            }`}
-          >
-            {check.label}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function hasMove(entries: UserPokemon[], moves: string[]): boolean {

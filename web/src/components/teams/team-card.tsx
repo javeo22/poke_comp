@@ -25,6 +25,26 @@ const FORMAT_LABEL: Record<string, string> = {
   doubles: "Doubles",
 };
 
+function getTeamMegaSelections(team: Team) {
+  const rosterIds =
+    team.mega_pokemon_ids && team.mega_pokemon_ids.length > 0
+      ? team.mega_pokemon_ids
+      : team.mega_pokemon_id
+        ? [team.mega_pokemon_id]
+        : [];
+  const formIds =
+    team.mega_form_pokemon_ids && team.mega_form_pokemon_ids.length > 0
+      ? team.mega_form_pokemon_ids
+      : team.mega_form_pokemon_id
+        ? [team.mega_form_pokemon_id]
+        : [];
+
+  return rosterIds.map((rosterId, index) => ({
+    rosterId,
+    formId: formIds[index] ?? null,
+  }));
+}
+
 export function TeamCard({
   team,
   rosterLookup,
@@ -47,6 +67,9 @@ export function TeamCard({
     .filter((m): m is { entry: UserPokemon; poke: Pokemon } => m !== null);
 
   const teamTypes = members.map((m) => m.poke.types);
+  const megaSelections = getTeamMegaSelections(team);
+  const isMegaRosterEntry = (rosterId: string) =>
+    megaSelections.some((selection) => selection.rosterId === rosterId);
 
   return (
     <div className="group card-interactive p-5">
@@ -109,10 +132,10 @@ export function TeamCard({
         {members.map(({ entry, poke }) => (
           <div
             key={entry.id}
-            className={`flex flex-col items-center rounded-lg p-1.5 ${
-              team.mega_pokemon_id === entry.id
-                ? "bg-primary-container/30"
-                : "bg-surface-lowest"
+            className={`flex flex-col items-center rounded-lg border p-1.5 ${
+              isMegaRosterEntry(entry.id)
+                ? "border-primary bg-primary/15"
+                : "border-outline-variant bg-surface-lowest"
             }`}
           >
             {poke.sprite_url ? (
@@ -130,17 +153,24 @@ export function TeamCard({
             <span className="max-w-14 truncate text-center font-display text-[0.5rem] text-on-surface-muted">
               {poke.name}
             </span>
-            {team.mega_pokemon_id === entry.id && (() => {
+            {isMegaRosterEntry(entry.id) && (() => {
               let label = "M";
-              if (poke.mega_evolution_ids.length > 1 && team.mega_form_pokemon_id) {
-                const idx = poke.mega_evolution_ids.indexOf(team.mega_form_pokemon_id);
+              const formId = megaSelections.find(
+                (selection) => selection.rosterId === entry.id
+              )?.formId;
+              if (poke.mega_evolution_ids.length > 1 && formId) {
+                const idx = poke.mega_evolution_ids.indexOf(formId);
                 const formName = poke.mega_evolution_names[idx];
                 if (formName) {
                   const suffix = formName.split(" ").at(-1) ?? "";
                   label = suffix.length <= 2 ? `M-${suffix}` : "M";
                 }
               }
-              return <span className="font-display text-[0.45rem] uppercase text-primary">{label}</span>;
+              return (
+                <span className="font-display text-[0.45rem] uppercase text-primary">
+                  {label}
+                </span>
+              );
             })()}
           </div>
         ))}
@@ -157,6 +187,12 @@ export function TeamCard({
 
       {/* Type coverage */}
       {teamTypes.length > 0 && <TypeCoverage teamTypes={teamTypes} />}
+
+      {megaSelections.length > 1 && (
+        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 font-display text-[0.6rem] uppercase tracking-wider text-primary">
+          {megaSelections.length} Mega options saved
+        </div>
+      )}
 
       {/* Notes */}
       {team.notes && (

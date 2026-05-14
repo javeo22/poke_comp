@@ -9,6 +9,8 @@ class TeamCreate(BaseModel):
     pokemon_ids: list[str] = Field(min_length=1, max_length=6)
     mega_pokemon_id: str | None = None
     mega_form_pokemon_id: int | None = None
+    mega_pokemon_ids: list[str] = Field(default_factory=list, max_length=2)
+    mega_form_pokemon_ids: list[int] = Field(default_factory=list, max_length=2)
     notes: str | None = None
     archetype_tag: str | None = None
 
@@ -19,6 +21,8 @@ class TeamUpdate(BaseModel):
     pokemon_ids: list[str] | None = Field(None, min_length=1, max_length=6)
     mega_pokemon_id: str | None = None
     mega_form_pokemon_id: int | None = None
+    mega_pokemon_ids: list[str] | None = Field(None, max_length=2)
+    mega_form_pokemon_ids: list[int] | None = Field(None, max_length=2)
     notes: str | None = None
     archetype_tag: str | None = None
 
@@ -31,6 +35,8 @@ class TeamResponse(BaseModel):
     pokemon_ids: list[str]
     mega_pokemon_id: str | None = None
     mega_form_pokemon_id: int | None = None
+    mega_pokemon_ids: list[str] = Field(default_factory=list)
+    mega_form_pokemon_ids: list[int] = Field(default_factory=list)
     notes: str | None = None
     archetype_tag: str | None = None
     created_at: datetime

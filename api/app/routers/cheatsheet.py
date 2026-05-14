@@ -264,7 +264,7 @@ def _build_roster(
     user_builds: dict[int, dict],
     item_names: dict[int, str],
     move_types: dict[str, str],
-    mega_pokemon_id: int | None,
+    mega_pokemon_ids: set[int] | None,
 ) -> list[RosterEntry]:
     roster: list[RosterEntry] = []
     for pid in team_pokemon_ids:
@@ -287,7 +287,7 @@ def _build_roster(
         item_name = item_names.get(item_id) if item_id else None
 
         is_mega = ("mega" in poke["name"].lower() and poke["name"].lower() != "meganium") or (
-            mega_pokemon_id is not None and pid == mega_pokemon_id
+            mega_pokemon_ids is not None and pid in mega_pokemon_ids
         )
 
         roster.append(
@@ -774,7 +774,7 @@ def generate_selection_cheatsheet(
         user_builds,
         item_names,
         move_types,
-        mega_pokemon_id=None,
+        mega_pokemon_ids=None,
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 
@@ -905,6 +905,9 @@ def generate_cheatsheet(
     team = _fetch_team(team_id, user_id)
     roster_ids: list[str] = team["pokemon_ids"]  # UUIDs of user_pokemon rows
     mega_roster_id: str | None = team.get("mega_pokemon_id")  # UUID or None
+    mega_roster_ids: list[str] = team.get("mega_pokemon_ids") or (
+        [mega_roster_id] if mega_roster_id else []
+    )
 
     # 1b. Resolve user_pokemon UUIDs to species IDs
     roster_result = (
@@ -917,7 +920,7 @@ def generate_cheatsheet(
     roster_rows: list[dict] = roster_result.data  # type: ignore[assignment]
     uuid_to_species = {r["id"]: r["pokemon_id"] for r in roster_rows}
     pokemon_ids = [uuid_to_species[rid] for rid in roster_ids if rid in uuid_to_species]
-    mega_id_int = uuid_to_species.get(mega_roster_id) if mega_roster_id else None
+    mega_ids_int = {uuid_to_species[rid] for rid in mega_roster_ids if rid in uuid_to_species}
 
     # 2. Fetch base data + builds
     pokemon_data = _fetch_pokemon_data(pokemon_ids)
@@ -940,7 +943,7 @@ def generate_cheatsheet(
         user_builds,
         item_names,
         move_types,
-        mega_id_int,
+        mega_ids_int,
     )
     speed_tiers = _build_speed_tiers(pokemon_ids, pokemon_data, user_builds)
 

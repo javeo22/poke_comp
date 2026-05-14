@@ -6,6 +6,8 @@ export interface Team {
   pokemon_ids: string[];
   mega_pokemon_id: string | null;
   mega_form_pokemon_id: number | null;
+  mega_pokemon_ids?: string[];
+  mega_form_pokemon_ids?: number[];
   notes: string | null;
   archetype_tag: string | null;
   created_at: string;
@@ -23,6 +25,8 @@ export interface TeamCreate {
   pokemon_ids: string[];
   mega_pokemon_id?: string | null;
   mega_form_pokemon_id?: number | null;
+  mega_pokemon_ids?: string[];
+  mega_form_pokemon_ids?: number[];
   notes?: string | null;
   archetype_tag?: string | null;
 }
@@ -33,6 +37,8 @@ export interface TeamUpdate {
   pokemon_ids?: string[];
   mega_pokemon_id?: string | null;
   mega_form_pokemon_id?: number | null;
+  mega_pokemon_ids?: string[];
+  mega_form_pokemon_ids?: number[];
   notes?: string | null;
   archetype_tag?: string | null;
 }
