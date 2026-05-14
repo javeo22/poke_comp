@@ -495,6 +495,28 @@ def _validate_mega(pokemon_ids: list[str], mega_pokemon_ids: list[str]) -> None:
         )
 
 
+def _is_missing_dual_mega_column_error(err: Exception) -> bool:
+    message = str(err).lower()
+    mentions_dual_mega = "mega_pokemon_ids" in message or "mega_form_pokemon_ids" in message
+    return mentions_dual_mega and ("column" in message or "schema cache" in message)
+
+
+def _drop_dual_mega_columns_for_legacy_db(
+    data: dict[str, Any],
+    mega_ids: list[str],
+) -> dict[str, Any]:
+    if len(mega_ids) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Two Mega options require the pending team dual-Mega database migration",
+        )
+
+    legacy_data = data.copy()
+    legacy_data.pop("mega_pokemon_ids", None)
+    legacy_data.pop("mega_form_pokemon_ids", None)
+    return legacy_data
+
+
 @router.post("", response_model=TeamResponse, status_code=201)
 def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
     species_ids = _resolve_roster_pokemon_ids(user_id, body.pokemon_ids)
@@ -512,7 +534,13 @@ def create_team(body: TeamCreate, user_id: str = Depends(get_current_user)):
     data["mega_form_pokemon_id"] = mega_form_ids[0] if mega_form_ids else None
     data["user_id"] = user_id
 
-    result = supabase.table("teams").insert(data).execute()
+    try:
+        result = supabase.table("teams").insert(data).execute()
+    except Exception as err:
+        if not _is_missing_dual_mega_column_error(err):
+            raise
+        legacy_data = _drop_dual_mega_columns_for_legacy_db(data, mega_ids)
+        result = supabase.table("teams").insert(legacy_data).execute()
     if not result.data:
         raise HTTPException(status_code=400, detail="Failed to create team")
     return TeamResponse.model_validate(result.data[0])
@@ -538,10 +566,7 @@ def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_curre
     if body.pokemon_ids is not None or (body.model_fields_set & mega_fields):
         current = (
             supabase.table("teams")
-            .select(
-                "pokemon_ids, mega_pokemon_id, mega_form_pokemon_id, "
-                "mega_pokemon_ids, mega_form_pokemon_ids"
-            )
+            .select("*")
             .eq("id", team_id)
             .eq("user_id", user_id)
             .single()
@@ -575,7 +600,21 @@ def update_team(team_id: str, body: TeamUpdate, user_id: str = Depends(get_curre
         data["mega_pokemon_id"] = mega_ids[0] if mega_ids else None
         data["mega_form_pokemon_id"] = mega_form_ids[0] if mega_form_ids else None
 
-    result = supabase.table("teams").update(data).eq("id", team_id).eq("user_id", user_id).execute()
+    try:
+        result = (
+            supabase.table("teams").update(data).eq("id", team_id).eq("user_id", user_id).execute()
+        )
+    except Exception as err:
+        if not _is_missing_dual_mega_column_error(err):
+            raise
+        legacy_data = _drop_dual_mega_columns_for_legacy_db(data, mega_ids)
+        result = (
+            supabase.table("teams")
+            .update(legacy_data)
+            .eq("id", team_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
     if not result.data:
         raise HTTPException(status_code=404, detail="Team not found")
     return TeamResponse.model_validate(result.data[0])
